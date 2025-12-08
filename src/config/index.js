@@ -7,7 +7,6 @@ import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { PORTS } from './PORTS.js';
-import { detectDeploymentMode } from '../database/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,7 +25,7 @@ export async function loadConfig() {
   }
 
   const env = process.env;
-  
+
   // Base configuration from environment
   const baseConfig = {
     server: {
@@ -48,8 +47,8 @@ export async function loadConfig() {
       endpoint: env.MCP_ENDPOINT || '/mcp',
     },
     puppeteer: {
-      headless: env.PUPPETEER_HEADLESS === 'false' ? false : 
-                env.PUPPETEER_HEADLESS === 'true' ? true : 'new',
+      headless: env.PUPPETEER_HEADLESS === 'false' ? false :
+        env.PUPPETEER_HEADLESS === 'true' ? true : 'new',
       timeout: parseInt(env.PUPPETEER_TIMEOUT || '30000', 10),
       protocolTimeout: parseInt(env.PUPPETEER_PROTOCOL_TIMEOUT || '300000', 10), // 5 minutes for slow sites
       executablePath: env.PUPPETEER_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -135,7 +134,7 @@ export async function loadConfig() {
   // Try to load local configuration file (optional)
   const localConfigPath = join(__dirname, '../../config.local.js');
   let localConfig = {};
-  
+
   try {
     if (existsSync(localConfigPath)) {
       const localConfigModule = await import(localConfigPath);
@@ -164,13 +163,13 @@ export async function loadConfig() {
 export async function getFigmaApiKey() {
   const config = await loadConfig();
   const apiKey = config.figma.apiKey;
-  
+
   if (!apiKey) {
     throw new Error(
       'Figma API key not found. Please set FIGMA_API_KEY environment variable.'
     );
   }
-  
+
   return apiKey;
 }
 
@@ -179,7 +178,7 @@ export async function getFigmaApiKey() {
  */
 function mergeDeep(target, source) {
   const result = { ...target };
-  
+
   for (const key in source) {
     if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
       result[key] = mergeDeep(target[key] || {}, source[key]);
@@ -187,10 +186,10 @@ function mergeDeep(target, source) {
       result[key] = source[key];
     }
   }
-  
-  // Add database configuration
+
+  // Add database configuration (SaaS-only: always Supabase)
   result.database = {
-    deploymentMode: detectDeploymentMode(),
+    deploymentMode: 'supabase',
     databaseUrl: process.env.DATABASE_URL || null,
     supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || null,
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || null,
