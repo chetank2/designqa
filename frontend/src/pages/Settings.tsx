@@ -14,7 +14,7 @@ import {
   GlobeAltIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline'
-import OnlineStatus, { checkApiHealth } from '../components/ui/OnlineStatus'
+import { checkApiHealth } from '../components/ui/OnlineStatus'
 import { getApiBaseUrl } from '../config/ports'
 import MCPStatus from '../components/ui/MCPStatus'
 import FigmaApiSettings from '../components/forms/FigmaApiSettings'
@@ -398,9 +398,6 @@ export default function Settings() {
                   <SignOutButton variant="ghost" className="ml-2" />
                 </div>
               )}
-              <OnlineStatus
-                onStatusChange={(status) => setServerStatus(status)}
-              />
             </div>
           </div>
 

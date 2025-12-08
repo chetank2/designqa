@@ -8,8 +8,7 @@ import {
   ArrowsRightLeftIcon,
   CameraIcon,
   DocumentTextIcon,
-  Squares2X2Icon,
-  CloudIcon
+  Squares2X2Icon
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -132,29 +131,9 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
       {/* Footer / Status */}
       <div className="p-4 border-t border-border/40 bg-muted/5 backdrop-blur-sm">
-        {isOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <CloudIcon className="w-4 h-4 text-emerald-500" />
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                Cloud Connected
-              </span>
-            </div>
-            <div className="flex items-center justify-start px-2">
-              <VersionBadge className="scale-90 origin-left" />
-            </div>
-          </motion.div>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <CloudIcon className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div className="h-1 w-8 bg-border/50 rounded-full" />
+        {isOpen && (
+          <div className="flex items-center justify-start px-2">
+            <VersionBadge className="scale-90 origin-left" />
           </div>
         )}
       </div>

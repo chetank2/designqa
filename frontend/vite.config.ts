@@ -18,7 +18,7 @@ function printConfig(config: any) {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // Use relative paths for assets (Electron compatibility)
+  base: '/', // Use root path for SaaS web deployment
   esbuild: {
     drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [] // Keep console logs in dev
   },
@@ -69,7 +69,7 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunk for large dependencies
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          
+
           // UI components chunk
           ui: [
             '@heroicons/react/24/outline',
@@ -77,14 +77,14 @@ export default defineConfig({
             'framer-motion',
             '@headlessui/react'
           ],
-          
+
           // Forms and data handling
           forms: [
             '@tanstack/react-query',
             'react-hook-form'
           ]
         },
-        
+
         // Optimize chunk size
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
@@ -92,18 +92,18 @@ export default defineConfig({
         }
       }
     },
-    
+
     // Set chunk size warning limit (reduced from default)
     chunkSizeWarningLimit: 500,
-    
+
     // Enable fast minification and tree shaking (use esbuild for speed)
     minify: 'esbuild',
-    
+
     // Source maps for debugging
     sourcemap: false // Disable in production for smaller build
   },
 
-  
+
   // Preview server configuration
   preview: {
     port: 4173,

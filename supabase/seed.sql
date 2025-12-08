@@ -1,6 +1,24 @@
 -- Seed script for Supabase database
 -- Run this after migrations to populate initial data
 
+-- =============================================================================
+-- TEST USERS
+-- =============================================================================
+-- 
+-- To create test users, run the script:
+--   node scripts/create-test-users.js
+--
+-- This will create two test users:
+--   - admin@test.com / test123456
+--   - user@test.com / test123456
+--
+-- The trigger (on_auth_user_created) will automatically create profiles
+-- in public.profiles table when users are created.
+
+-- =============================================================================
+-- SAMPLE DATA
+-- =============================================================================
+
 -- Insert a sample global design system
 INSERT INTO public.design_systems (id, name, slug, is_global, tokens, css_text, created_at, updated_at)
 VALUES (
