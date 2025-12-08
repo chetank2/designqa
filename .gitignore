@@ -18,10 +18,16 @@ config.json
 
 # API Keys and Tokens (SECURITY CRITICAL)
 **/config.json
-**/*token*
-**/*key*
-**/*secret*
-**/*password*
+# Only ignore actual secret/token files (not source code components)
+# Match files with token/key/secret/password in name AND common secret file extensions
+**/*token*.{json,env,txt,key,secret}
+**/*.token
+**/*key*.{json,env,txt,key,secret}
+**/*.key
+**/*secret*.{json,env,txt,key,secret}
+**/*.secret
+**/*password*.{json,env,txt,key,secret}
+**/*.password
 **/figd_*
 
 # Output directories with potentially sensitive data
