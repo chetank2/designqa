@@ -14,9 +14,8 @@ import {
   GlobeAltIcon,
   UserCircleIcon
 } from '@heroicons/react/24/outline'
-import { checkServerHealth } from '../services/serverStatus'
+import OnlineStatus, { checkApiHealth } from '../components/ui/OnlineStatus'
 import { getApiBaseUrl } from '../config/ports'
-import ServerStatus from '../components/ui/ServerStatus'
 import MCPStatus from '../components/ui/MCPStatus'
 import FigmaApiSettings from '../components/forms/FigmaApiSettings'
 import { Button } from '@/components/ui/button'
@@ -45,17 +44,17 @@ interface SettingsForm {
   maxConcurrentComparisons: number
   autoDeleteOldReports: boolean
   reportRetentionDays: number
-  
+
   // Figma Settings
   figmaPersonalAccessToken: string
   defaultFigmaExportFormat: 'svg' | 'png'
   figmaExportScale: number
-  
+
   // MCP Settings
   mcpConnectionMethod: MCPConnectionMethod
   mcpServerUrl: string
   mcpEndpoint: string
-  
+
   // Web Scraping Settings
   defaultViewport: {
     width: number
@@ -64,12 +63,12 @@ interface SettingsForm {
   userAgent: string
   enableJavaScript: boolean
   waitForNetworkIdle: boolean
-  
+
   // Visual Comparison Settings
   pixelMatchThreshold: number
   includeAntiAliasing: boolean
   ignoreColors: boolean
-  
+
   // Notifications
   emailNotifications: boolean
   slackWebhook: string
@@ -165,16 +164,16 @@ export default function Settings() {
   // Check server status on component mount
   useEffect(() => {
     const checkStatus = async () => {
-      const isHealthy = await checkServerHealth();
+      const isHealthy = await checkApiHealth();
       setServerStatus(isHealthy ? 'online' : 'offline');
-      
+
       if (isHealthy) {
         loadCurrentSettings();
       } else {
         loadCachedSettings();
       }
     };
-    
+
     checkStatus();
   }, []);
 
@@ -219,7 +218,7 @@ export default function Settings() {
         console.warn('Health check failed:', healthError);
         setServerStatus('offline');
       }
-      
+
       const response = await fetch(`${apiBaseUrl}/api/settings/current`, {
         headers: {
           'Cache-Control': 'no-cache',
@@ -227,15 +226,15 @@ export default function Settings() {
         },
         signal: AbortSignal.timeout(5000) // 5 second timeout
       });
-      
+
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
       }
-      
+
       const result = await response.json();
       if (result.success) {
         const settings = result.settings || result.data || {};
-        
+
         // Map backend settings to form format
         const formData: Partial<SettingsForm> = {
           mcpConnectionMethod: normalizeConnectionMethod(settings.method),
@@ -249,10 +248,10 @@ export default function Settings() {
           defaultFigmaExportFormat: settings.defaultFigmaExportFormat || 'svg',
           figmaExportScale: settings.figmaExportScale || 2
         };
-        
+
         // Update form with loaded settings
         reset(current => ({ ...current, ...formData }));
-        
+
         // Cache the settings
         saveSettingsToCache(formData);
       }
@@ -269,7 +268,7 @@ export default function Settings() {
     if (serverStatus === 'offline') {
       return { success: false, error: 'Server is offline. Cannot test connection.' };
     }
-    
+
     try {
       const formData = control._formValues;
       const testConfig = {
@@ -299,10 +298,10 @@ export default function Settings() {
   const onSubmit = async (data: SettingsForm) => {
     setIsSaving(true);
     setSaveStatus('idle');
-    
+
     // Always save to local cache regardless of server status
     saveSettingsToCache(data);
-    
+
     // If server is offline, don't try to save to server
     if (serverStatus === 'offline') {
       setIsSaving(false);
@@ -310,7 +309,7 @@ export default function Settings() {
       setTimeout(() => setSaveStatus('idle'), 3000);
       return;
     }
-    
+
     try {
       // Prepare settings data for backend
       const settingsData = {
@@ -390,7 +389,7 @@ export default function Settings() {
             <div>
               <p className="text-muted-foreground">Configure your comparison tool preferences and integrations</p>
             </div>
-            
+
             <div className="flex items-center gap-4">
               {user && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -399,12 +398,12 @@ export default function Settings() {
                   <SignOutButton variant="ghost" className="ml-2" />
                 </div>
               )}
-              <ServerStatus 
-                onStatusChange={(status) => setServerStatus(status)} 
+              <OnlineStatus
+                onStatusChange={(status) => setServerStatus(status)}
               />
             </div>
           </div>
-          
+
           {usingCachedSettings && (
             <Alert className="mt-2">
               <ExclamationTriangleIcon className="h-4 w-4" />
@@ -413,7 +412,7 @@ export default function Settings() {
               </AlertDescription>
             </Alert>
           )}
-          
+
           {serverStatus === 'offline' && !usingCachedSettings && (
             <Alert variant="destructive" className="mt-2">
               <ExclamationTriangleIcon className="h-4 w-4" />
@@ -590,7 +589,7 @@ export default function Settings() {
                           Uses your personal Figma access token. Simple and reliable for most use cases.
                         </p>
                       </div>
-                      
+
                       <div className="p-4 border rounded-lg bg-gray-50 border-gray-200">
                         <h4 className="font-medium text-gray-900 mb-2 flex items-center">
                           🖥️ Desktop MCP
@@ -599,7 +598,7 @@ export default function Settings() {
                           Connects to the Figma Desktop MCP server at http://127.0.0.1:3845/mcp.
                         </p>
                       </div>
-                      
+
                       <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
                         <h4 className="font-medium text-purple-900 mb-2 flex items-center">
                           ☁️ Remote MCP
@@ -772,14 +771,14 @@ export default function Settings() {
                                 alert('Please select a connection method first')
                                 return
                               }
-                              
+
                               const formData = control._formValues
                               const result = await testMCPConnection(
                                 method,
                                 formData.mcpServerUrl,
                                 formData.mcpEndpoint
                               )
-                              
+
                               if (result.success) {
                                 alert(`✅ Connection successful!\n${result.message || 'Connection established'}`)
                               } else {
@@ -1114,36 +1113,36 @@ export default function Settings() {
                   </Alert>
 
                   <div className="space-y-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          // Clear all stored tokens/credentials
-                          if (confirm('This will clear all stored API tokens and credentials. Continue?')) {
-                            // Implementation would go here
-                          }
-                        }}
-                      >
-                        Clear All Stored Credentials
-                      </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        // Clear all stored tokens/credentials
+                        if (confirm('This will clear all stored API tokens and credentials. Continue?')) {
+                          // Implementation would go here
+                        }
+                      }}
+                    >
+                      Clear All Stored Credentials
+                    </Button>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          // Export settings (without sensitive data)
-                          const settings = {}
-                          const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' })
-                          const url = URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = 'comparison-tool-settings.json'
-                          a.click()
-                        }}
-                      >
-                        Export Settings (Safe)
-                      </Button>
-                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        // Export settings (without sensitive data)
+                        const settings = {}
+                        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = 'comparison-tool-settings.json'
+                        a.click()
+                      }}
+                    >
+                      Export Settings (Safe)
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

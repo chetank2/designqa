@@ -19,14 +19,14 @@ import { loadConfig, getFigmaApiKey } from '../../config/index.js';
 import { getMCPClient, getMCPProvider } from '../../config/mcp-config.js';
 import { logger } from '../../utils/logger.js';
 import { performanceMonitor } from '../../monitoring/performanceMonitor.js';
-import { 
-  configureSecurityMiddleware, 
-  configureRateLimit, 
-  errorHandler, 
+import {
+  configureSecurityMiddleware,
+  configureRateLimit,
+  errorHandler,
   notFoundHandler,
   responseFormatter,
   requestLogger,
-  validateExtractionUrl 
+  validateExtractionUrl
 } from '../../server/middleware.js';
 import rateLimit from 'express-rate-limit';
 import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.js';
@@ -60,13 +60,13 @@ function saveFigmaApiKey(apiKey) {
     if (fs.existsSync(configPath)) {
       configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     }
-    
+
     configData.figmaApiKey = apiKey;
     configData.lastUpdated = new Date().toISOString();
     if (!configData.createdAt) {
       configData.createdAt = new Date().toISOString();
     }
-    
+
     fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
     return true;
   } catch (error) {
@@ -85,29 +85,29 @@ export async function startServer() {
     const legacyConfig = await import('../../config.js');
     config = legacyConfig.config;
   }
-  
+
   const figmaConnectionMode = getMCPProvider();
   const isApiOnlyFigma = figmaConnectionMode === 'api';
-  
+
   // Create Express app and HTTP server
   const app = express();
   const httpServer = createServer(app);
-  
+
   // Enhanced service initialization with backward compatibility
   let serviceManager;
   let figmaClient, comparisonEngine, browserPool, unifiedWebExtractor, resourceManager;
   // Legacy compatibility aliases - all point to UnifiedWebExtractor
   let webExtractorV2, enhancedWebExtractor;
-  
+
   try {
     // Try enhanced service initialization
     const { serviceManager: sm } = await import('../../services/core/ServiceManager.js');
     serviceManager = sm;
-    
+
     const initResults = await serviceManager.initializeServices(config);
     if (initResults.success) {
       console.log('✅ Enhanced service initialization successful');
-      
+
       // Get services from enhanced service manager
       if (!isApiOnlyFigma) {
         try {
@@ -118,63 +118,63 @@ export async function startServer() {
       }
       comparisonEngine = serviceManager.getService('comparisonEngine');
       browserPool = serviceManager.getService('browserPool');
-      
+
       // Initialize unified extractor and resource manager
       unifiedWebExtractor = new UnifiedWebExtractor();
       resourceManager = getResourceManager();
-      
+
       // Legacy compatibility - all extractors point to the unified one
       enhancedWebExtractor = serviceManager.getService('webExtractor'); // This now returns UnifiedWebExtractor
       webExtractorV2 = unifiedWebExtractor; // Compatibility alias
-      
+
     } else {
       throw new Error('Enhanced initialization failed, using fallback');
     }
   } catch (error) {
     console.warn('⚠️ Enhanced service initialization failed, using legacy mode:', error.message);
-    
+
     // Fallback to legacy initialization (preserve existing functionality)
     try {
-    if (!isApiOnlyFigma) {
-      figmaClient = await getMCPClient();
+      if (!isApiOnlyFigma) {
+        figmaClient = await getMCPClient();
+      }
+    } catch (mcpError) {
+      if (!isApiOnlyFigma && figmaConnectionMode === 'desktop') {
+        figmaClient = new FigmaMCPClient({
+          baseUrl: process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp'
+        });
+      } else if (!isApiOnlyFigma) {
+        throw mcpError;
+      }
     }
-  } catch (mcpError) {
-    if (!isApiOnlyFigma && figmaConnectionMode === 'desktop') {
-      figmaClient = new FigmaMCPClient({
-        baseUrl: process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp'
-      });
-    } else if (!isApiOnlyFigma) {
-      throw mcpError;
-    }
-  }
     comparisonEngine = new ComparisonEngine();
     browserPool = getBrowserPool();
     unifiedWebExtractor = new UnifiedWebExtractor();
     resourceManager = getResourceManager();
-    
+
     // Legacy compatibility - all extractors point to the unified one
     enhancedWebExtractor = unifiedWebExtractor; // Compatibility alias
     webExtractorV2 = unifiedWebExtractor; // Compatibility alias
-    
+
     // Start performance monitoring the old way
     performanceMonitor.startMonitoring();
   }
-  
+
   // WebSocket server implementation pending - will be added in future version
   // const webSocketManager = initializeWebSocket(httpServer, config);
   const webSocketManager = {
     getActiveConnectionsCount: () => 0,
     getActiveComparisonsCount: () => 0,
     createProgressTracker: (id) => ({
-      update: () => {},
-      complete: () => {},
-      error: () => {}
+      update: () => { },
+      complete: () => { },
+      error: () => { }
     })
   };
-  
+
   // Global MCP connection status
   let mcpConnected = isApiOnlyFigma ? null : false;
-  
+
   // Initialize Screenshot Comparison Service
   let screenshotComparisonService;
   try {
@@ -209,15 +209,15 @@ export async function startServer() {
     console.warn('⚠️ Database initialization failed:', error.message);
     console.warn('   Continuing without database - some features may be limited');
   }
-  
+
   // Configure enhanced middleware
   configureSecurityMiddleware(app, config);
-  
+
   // Body parsing middleware - MUST come before routes
   // Increased limits to handle large payloads (but multipart/form-data uses multer)
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-  
+
   // Development cache control (prevent browser caching issues)
   if (process.env.NODE_ENV !== 'production') {
     app.use((req, res, next) => {
@@ -232,7 +232,7 @@ export async function startServer() {
 
   // Request logging
   app.use(requestLogger);
-  
+
   // Authentication middleware (extracts user if present, but doesn't require it)
   try {
     const { extractUser } = await import('../../server/auth-middleware.js');
@@ -241,28 +241,21 @@ export async function startServer() {
   } catch (error) {
     console.warn('⚠️ Failed to load auth middleware:', error.message);
   }
-  
+
   // Response formatting
   app.use(responseFormatter);
-  
+
   // Rate limiting - ONLY for Figma API calls (external API that needs protection)
   const { generalLimiter, healthLimiter, extractionLimiter } = configureRateLimit(config);
-  
+
   // Apply extraction rate limiting ONLY to Figma API endpoints
   app.use('/api/figma-only/extract', extractionLimiter);
   // Note: /api/compare and /api/web/extract* should NOT be rate limited
   // They are internal operations, not external API calls
-  
+
   // NO rate limiting for any other endpoints - all operations should be unlimited except Figma API
-  
-  // Server Control Routes
-  try {
-    const serverControlRoutes = await import('../../routes/server-control.js');
-    app.use('/api/server', serverControlRoutes.default);
-    console.log('✅ Server control routes registered');
-  } catch (error) {
-    console.warn('⚠️ Failed to load server control routes:', error.message);
-  }
+
+  // Note: Server control routes removed for SaaS mode (start/stop/restart not applicable)
 
   try {
     const exportRoutes = await import('../../routes/exportRoutes.js');
@@ -277,7 +270,7 @@ export async function startServer() {
     const mcpRoutes = await import('../../routes/mcp-routes.js');
     app.use('/api/mcp', mcpRoutes.default);
     console.log('✅ MCP routes registered');
-    
+
     // MCP Test Routes
     const mcpTestRoutes = await import('../../routes/mcp-test-routes.js');
     app.use('/api/mcp', mcpTestRoutes.default);
@@ -298,16 +291,16 @@ export async function startServer() {
           error: 'Authentication required for remote MCP'
         });
       }
-      
+
       const { method, params } = req.body;
-      
+
       if (!method) {
         return res.status(400).json({
           success: false,
           error: 'Method is required'
         });
       }
-      
+
       if (isApiOnlyFigma) {
         return res.status(400).json({
           success: false,
@@ -320,12 +313,12 @@ export async function startServer() {
         userId: req.user.id,
         mode: 'figma'
       });
-      
+
       // Ensure connected
       if (!mcpClient.initialized) {
         await mcpClient.connect();
       }
-      
+
       // Call the MCP method
       let result;
       if (method === 'tools/list') {
@@ -344,7 +337,7 @@ export async function startServer() {
           params: params || {}
         });
       }
-      
+
       res.json({
         success: true,
         data: result
@@ -366,37 +359,37 @@ export async function startServer() {
   } catch (error) {
     console.warn('⚠️ Failed to load color analytics routes:', error.message);
   }
-  
+
   // Serve frontend static files (exclude report files)
   const frontendPath = path.join(__dirname, '../../../frontend/dist');
-  
+
   // Custom middleware to block report files from frontend static serving
   app.use((req, res, next) => {
     if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
       return next(); // Skip static middleware for report files
     }
-    
+
     // Add cache-busting headers for JS/CSS assets to prevent cache conflicts
     if (req.path.match(/\.(js|css|html)$/)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
     }
-    
+
     express.static(frontendPath)(req, res, next);
   });
-  
+
   // Serve output files (reports, images, screenshots)
   const outputPath = getOutputBaseDir();
   app.use('/output', express.static(outputPath));
   app.use('/reports', express.static(path.join(outputPath, 'reports')));
   app.use('/images', express.static(path.join(outputPath, 'images')));
   app.use('/screenshots', express.static(path.join(outputPath, 'screenshots')));
-  
+
   // Serve CSS styles for reports
   const stylesPath = path.join(__dirname, '../../reporting/styles');
   app.use('/styles', express.static(stylesPath));
-  
+
   // Initialize MCP connection on startup (if enabled)
   if (figmaClient) {
     figmaClient.connect().then(connected => {
@@ -411,15 +404,15 @@ export async function startServer() {
     try {
       const realTimeMetrics = performanceMonitor.getRealTimeMetrics();
       const browserStats = browserPool.getStats();
-      
+
       // Enhanced health data with service manager integration
       let enhancedHealth = {};
       if (serviceManager) {
         enhancedHealth = serviceManager.getServicesStatus();
       }
-      
+
       res.json({
-        status: 'ok', 
+        status: 'ok',
         mcp: {
           enabled: !isApiOnlyFigma,
           connected: !!mcpConnected,
@@ -460,7 +453,7 @@ export async function startServer() {
         path.join(process.resourcesPath || '', 'app/package.json'),
         path.join(process.resourcesPath || '', 'package.json')
       ];
-      
+
       let foundPath = null;
       for (const pkgPath of possiblePaths) {
         try {
@@ -473,12 +466,12 @@ export async function startServer() {
           // Continue to next path
         }
       }
-      
+
       if (!packageJson) {
         // Fallback to hardcoded version if package.json not found
         packageJson = { version: '1.1.0', name: 'figma-web-comparison-tool' };
       }
-      
+
       res.json({
         success: true,
         data: {
@@ -517,7 +510,7 @@ export async function startServer() {
       }
 
       const servicesStatus = serviceManager.getServicesStatus();
-      
+
       res.json({
         success: true,
         data: {
@@ -587,7 +580,7 @@ export async function startServer() {
       }
 
       const { circuitBreakerRegistry } = await import('../resilience/CircuitBreaker.js');
-      
+
       res.json({
         success: true,
         data: {
@@ -657,18 +650,18 @@ export async function startServer() {
           // Fall through to StorageProvider
         }
       }
-      
+
       // Fallback to StorageProvider
       if (reports.length === 0 && !dbServices) {
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider(req.user?.id);
-        
+
         const filters = {
           userId: req.user?.id,
           format: req.query.format,
           comparisonId: req.query.comparisonId
         };
-        
+
         reports = await storage.listReports(filters);
       }
 
@@ -697,25 +690,25 @@ export async function startServer() {
       const { getReportsDir } = await import('../../utils/outputPaths.js');
       const { id } = req.params;
       const reportsPath = getReportsDir();
-      
+
       // Find the report file
       const files = fs.readdirSync(reportsPath);
-      const reportFile = files.find(file => 
+      const reportFile = files.find(file =>
         file.includes(id) && file.endsWith('.html')
       );
-      
+
       if (!reportFile) {
         return res.status(404).json({
           success: false,
           error: 'Report not found'
         });
       }
-      
+
       const filePath = path.join(reportsPath, reportFile);
       fs.unlinkSync(filePath);
-      
+
       logger.info(`Report deleted: ${reportFile}`);
-      
+
       res.json({
         success: true,
         message: 'Report deleted successfully'
@@ -742,7 +735,7 @@ export async function startServer() {
           user: null
         });
       }
-      
+
       res.json({
         success: true,
         authenticated: true,
@@ -768,14 +761,14 @@ export async function startServer() {
       const { getStorageProvider } = await import('../../config/storage-config.js');
       // Use user ID if authenticated, otherwise use local storage
       const storage = getStorageProvider(req.user?.id || null);
-      
+
       const filters = {
         userId: req.user?.id,
         isGlobal: req.query.isGlobal === 'true' ? true : req.query.isGlobal === 'false' ? false : undefined
       };
-      
+
       const systems = await storage.listDesignSystems(filters);
-      
+
       res.json({
         success: true,
         data: systems
@@ -799,7 +792,7 @@ export async function startServer() {
           error: 'Authentication required for global design systems'
         });
       }
-      
+
       // Validate required fields
       if (!req.body.name || !req.body.name.trim()) {
         return res.status(400).json({
@@ -807,7 +800,7 @@ export async function startServer() {
           error: 'Design system name is required'
         });
       }
-      
+
       // Validate tokens if provided
       let tokens = {};
       if (req.body.tokens) {
@@ -829,15 +822,15 @@ export async function startServer() {
           });
         }
       }
-      
+
       const { getStorageProvider } = await import('../../config/storage-config.js');
       // Use user ID if authenticated, otherwise use local storage
       const storage = getStorageProvider(req.user?.id || null);
-      
+
       if (!storage) {
         throw new Error('Storage provider not available');
       }
-      
+
       const systemData = {
         name: req.body.name.trim(),
         slug: req.body.slug?.trim(),
@@ -848,9 +841,9 @@ export async function startServer() {
         figmaNodeId: req.body.figmaNodeId,
         isGlobal: req.body.isGlobal || false
       };
-      
+
       const saved = await storage.saveDesignSystem(systemData);
-      
+
       res.json({
         success: true,
         data: saved
@@ -869,9 +862,9 @@ export async function startServer() {
       const { getStorageProvider } = await import('../../config/storage-config.js');
       // Use user ID if authenticated, otherwise use local storage
       const storage = getStorageProvider(req.user?.id || null);
-      
+
       const system = await storage.getDesignSystem(req.params.id);
-      
+
       res.json({
         success: true,
         data: system
@@ -890,10 +883,10 @@ export async function startServer() {
       const { getStorageProvider } = await import('../../config/storage-config.js');
       // Use user ID if authenticated, otherwise use local storage
       const storage = getStorageProvider(req.user?.id || null);
-      
+
       // Get existing system to preserve ID
       const existing = await storage.getDesignSystem(req.params.id);
-      
+
       // Check if trying to make global without auth
       if (req.body.isGlobal && !req.user) {
         return res.status(401).json({
@@ -901,7 +894,7 @@ export async function startServer() {
           error: 'Authentication required for global design systems'
         });
       }
-      
+
       const systemData = {
         id: existing.id,
         name: req.body.name ?? existing.name,
@@ -913,9 +906,9 @@ export async function startServer() {
         figmaNodeId: req.body.figmaNodeId ?? existing.figmaNodeId,
         isGlobal: req.body.isGlobal ?? existing.isGlobal
       };
-      
+
       const updated = await storage.saveDesignSystem(systemData);
-      
+
       res.json({
         success: true,
         data: updated
@@ -934,16 +927,16 @@ export async function startServer() {
       const { getStorageProvider } = await import('../../config/storage-config.js');
       // Use user ID if authenticated, otherwise use local storage
       const storage = getStorageProvider(req.user?.id || null);
-      
+
       const deleted = await storage.deleteDesignSystem(req.params.id);
-      
+
       if (!deleted) {
         return res.status(404).json({
           success: false,
           error: 'Design system not found'
         });
       }
-      
+
       res.json({
         success: true,
         message: 'Design system deleted'
@@ -962,21 +955,21 @@ export async function startServer() {
       const { getStorageProvider } = await import('../../config/storage-config.js');
       // Use user ID if authenticated, otherwise use local storage
       const storage = getStorageProvider(req.user?.id || null);
-      
+
       const css = await storage.getDesignSystemCSS(req.params.id);
-      
+
       if (!css) {
         return res.status(404).json({
           success: false,
           error: 'CSS not found for this design system'
         });
       }
-      
+
       // If it's a URL, redirect; otherwise return CSS text
       if (css.startsWith('http')) {
         return res.redirect(css);
       }
-      
+
       res.setHeader('Content-Type', 'text/css');
       res.send(css);
     } catch (error) {
@@ -1001,17 +994,17 @@ export async function startServer() {
           .select('id, name, url, login_url, notes, last_used_at, created_at, updated_at')
           .eq('user_id', req.user.id)
           .order('last_used_at', { ascending: false, nullsFirst: false });
-        
+
         if (error) {
           throw new Error(error.message);
         }
-        
+
         // Map login_url to loginUrl for frontend consistency
         const mappedCredentials = (credentials || []).map(cred => ({
           ...cred,
           loginUrl: cred.login_url
         }));
-        
+
         return res.json({
           success: true,
           data: mappedCredentials
@@ -1020,7 +1013,7 @@ export async function startServer() {
         // Use local storage
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider();
-        
+
         // Check if storage is local mode
         const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
         if (storageMode === 'local') {
@@ -1048,7 +1041,7 @@ export async function startServer() {
   app.post('/api/credentials', healthLimiter, async (req, res) => {
     try {
       const { name, url, loginUrl, username, password, notes } = req.body;
-      
+
       // Validate required fields
       if (!name || !name.trim()) {
         return res.status(400).json({
@@ -1074,19 +1067,19 @@ export async function startServer() {
           error: 'Password is required'
         });
       }
-      
+
       // Support both Supabase and local storage
       if (supabaseClient && req.user) {
         // Use Supabase storage
         const { CredentialManager } = await import('../../services/CredentialEncryption.js');
         const credentialManager = new CredentialManager();
-        
+
         // Prepare credentials for storage
         const prepared = await credentialManager.prepareForStorage(
           { name, url, loginUrl, username, password, notes },
           supabaseClient
         );
-        
+
         // Save to database
         const { data: credential, error } = await supabaseClient
           .from('saved_credentials')
@@ -1101,11 +1094,11 @@ export async function startServer() {
           })
           .select()
           .single();
-        
+
         if (error) {
           throw new Error(error.message);
         }
-        
+
         return res.json({
           success: true,
           data: {
@@ -1123,7 +1116,7 @@ export async function startServer() {
         // Use local storage
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider();
-        
+
         // Check if storage is local mode
         const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
         if (storageMode === 'local') {
@@ -1131,13 +1124,13 @@ export async function startServer() {
             throw new Error('Storage provider not available');
           }
           const saved = await storage.saveCredential(
-            { 
-              name: name.trim(), 
-              url: url.trim(), 
-              loginUrl: loginUrl?.trim(), 
-              username: username.trim(), 
-              password: password.trim(), 
-              notes: notes?.trim() 
+            {
+              name: name.trim(),
+              url: url.trim(),
+              loginUrl: loginUrl?.trim(),
+              username: username.trim(),
+              password: password.trim(),
+              notes: notes?.trim()
             },
             {}
           );
@@ -1165,7 +1158,7 @@ export async function startServer() {
     try {
       const credentialId = req.params.id;
       const { name, url, loginUrl, username, password, notes } = req.body;
-      
+
       // Validate required fields if provided
       if (name !== undefined && (!name || !name.trim())) {
         return res.status(400).json({
@@ -1179,13 +1172,13 @@ export async function startServer() {
           error: 'Credential URL cannot be empty'
         });
       }
-      
+
       // Support both Supabase and local storage
       if (supabaseClient && req.user) {
         // Use Supabase storage
         const { CredentialManager } = await import('../../services/CredentialEncryption.js');
         const credentialManager = new CredentialManager();
-        
+
         // Get existing credential
         const { data: existing, error: fetchError } = await supabaseClient
           .from('saved_credentials')
@@ -1193,14 +1186,14 @@ export async function startServer() {
           .eq('id', credentialId)
           .eq('user_id', req.user.id)
           .single();
-        
+
         if (fetchError || !existing) {
           return res.status(404).json({
             success: false,
             error: 'Credential not found'
           });
         }
-        
+
         // Prepare updated credentials
         let prepared = {};
         if (username || password) {
@@ -1226,7 +1219,7 @@ export async function startServer() {
             password_vault_id: existing.password_vault_id
           };
         }
-        
+
         // Update in database
         const updateData = {
           name: prepared.name,
@@ -1236,14 +1229,14 @@ export async function startServer() {
           notes: notes !== undefined ? notes : existing.notes,
           updated_at: new Date().toISOString()
         };
-        
+
         // Include loginUrl if provided or if updating credentials
         if (loginUrl !== undefined) {
           updateData.login_url = loginUrl || null;
         } else if (prepared.loginUrl !== undefined) {
           updateData.login_url = prepared.loginUrl || null;
         }
-        
+
         const { data: updated, error } = await supabaseClient
           .from('saved_credentials')
           .update(updateData)
@@ -1251,11 +1244,11 @@ export async function startServer() {
           .eq('user_id', req.user.id)
           .select()
           .single();
-        
+
         if (error) {
           throw new Error(error.message);
         }
-        
+
         return res.json({
           success: true,
           data: {
@@ -1273,7 +1266,7 @@ export async function startServer() {
         // Use local storage
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider();
-        
+
         // Check if storage is local mode
         const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
         if (storageMode === 'local') {
@@ -1287,7 +1280,7 @@ export async function startServer() {
               error: 'Credential not found'
             });
           }
-          
+
           // Update credential (username/password optional - will preserve existing if not provided)
           if (!storage) {
             throw new Error('Storage provider not available');
@@ -1303,7 +1296,7 @@ export async function startServer() {
             },
             { id: credentialId }
           );
-          
+
           return res.json({
             success: true,
             data: updated
@@ -1327,7 +1320,7 @@ export async function startServer() {
   app.delete('/api/credentials/:id', healthLimiter, async (req, res) => {
     try {
       const credentialId = req.params.id;
-      
+
       // Support both Supabase and local storage
       if (supabaseClient && req.user) {
         // Use Supabase storage
@@ -1336,11 +1329,11 @@ export async function startServer() {
           .delete()
           .eq('id', credentialId)
           .eq('user_id', req.user.id);
-        
+
         if (error) {
           throw new Error(error.message);
         }
-        
+
         return res.json({
           success: true,
           message: 'Credential deleted'
@@ -1349,7 +1342,7 @@ export async function startServer() {
         // Use local storage
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider();
-        
+
         // Check if storage is local mode
         const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
         if (storageMode === 'local') {
@@ -1383,7 +1376,7 @@ export async function startServer() {
   app.get('/api/credentials/:id/decrypt', healthLimiter, async (req, res) => {
     try {
       const credentialId = req.params.id;
-      
+
       // Support both Supabase and local storage
       if (supabaseClient && req.user) {
         // Use Supabase storage
@@ -1394,25 +1387,25 @@ export async function startServer() {
           .eq('id', credentialId)
           .eq('user_id', req.user.id)
           .single();
-        
+
         if (fetchError || !credential) {
           return res.status(404).json({
             success: false,
             error: 'Credential not found'
           });
         }
-        
+
         // Decrypt credentials (server-side only)
         const { CredentialManager } = await import('../../services/CredentialEncryption.js');
         const credentialManager = new CredentialManager();
         const decrypted = await credentialManager.retrieveFromStorage(credential, supabaseClient);
-        
+
         // Update last_used_at
         await supabaseClient
           .from('saved_credentials')
           .update({ last_used_at: new Date().toISOString() })
           .eq('id', credentialId);
-        
+
         return res.json({
           success: true,
           data: {
@@ -1428,7 +1421,7 @@ export async function startServer() {
         // Use local storage
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider();
-        
+
         // Check if storage is local mode
         const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
         if (storageMode === 'local') {
@@ -1482,7 +1475,7 @@ export async function startServer() {
   app.post('/api/settings/save', healthLimiter, (req, res) => {
     try {
       const { figmaPersonalAccessToken } = req.body;
-      
+
       if (figmaPersonalAccessToken) {
         const saved = saveFigmaApiKey(figmaPersonalAccessToken);
         if (saved) {
@@ -1513,10 +1506,10 @@ export async function startServer() {
   app.post('/api/settings/test-connection', healthLimiter, async (req, res) => {
     try {
       const { figmaPersonalAccessToken } = req.body;
-      
+
       // Use provided token or load from config
       const apiKey = figmaPersonalAccessToken || loadFigmaApiKey();
-      
+
       if (!apiKey) {
         return res.json({
           success: false,
@@ -1524,7 +1517,7 @@ export async function startServer() {
           type: 'no-token'
         });
       }
-      
+
       // Test Figma API
       try {
         const testResponse = await fetch('https://api.figma.com/v1/me', {
@@ -1532,15 +1525,15 @@ export async function startServer() {
             'X-Figma-Token': apiKey
           }
         });
-        
+
         if (testResponse.ok) {
           const userData = await testResponse.json();
-          
+
           // Save the API key if it was provided in the request
           if (figmaPersonalAccessToken) {
             saveFigmaApiKey(figmaPersonalAccessToken);
           }
-          
+
           res.json({
             success: true,
             message: `Connected to Figma API as ${userData.email || 'user'}`,
@@ -1562,7 +1555,7 @@ export async function startServer() {
           type: 'api-error'
         });
       }
-      
+
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -1578,111 +1571,111 @@ export async function startServer() {
     extractionLimiter,
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
-    try {
-      const { figmaUrl, extractionMode = 'both', preferredMethod = null } = req.body;
-
-      // Use unified extractor
-      const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
-      const extractor = new UnifiedFigmaExtractor(config);
-
-      // Extract data using best available method
-      const extractionResult = await extractor.extract(figmaUrl, {
-        preferredMethod,
-        timeout: 30000,
-        apiKey: loadFigmaApiKey()
-      });
-
-      if (!extractionResult.success) {
-        throw new Error(extractionResult.error || 'Extraction failed');
-      }
-
-      const standardizedData = extractionResult.data;
-      
-      // Generate HTML report for Figma extraction
-      const reportGenerator = await import('../../reporting/index.js');
-      let reportPath = null;
-      
       try {
-        const reportData = {
-          figmaData: {
-            fileName: standardizedData.metadata.fileName,
-            extractedAt: standardizedData.extractedAt,
-            components: standardizedData.components,
-            metadata: standardizedData.metadata
-          },
-          webData: {
-            url: '',
-            elements: [],
-            colorPalette: [],
-            typography: { fontFamilies: [], fontSizes: [], fontWeights: [] }
-          },
-          timestamp: new Date().toISOString(),
-          metadata: {
-            extractionType: 'figma-only',
-            componentsExtracted: standardizedData.components.length,
-            timestamp: new Date().toISOString()
-          }
-        };
-        
-        reportPath = await reportGenerator.generateReport(reportData, {
-          filename: `figma-extraction-${Date.now()}.html`
+        const { figmaUrl, extractionMode = 'both', preferredMethod = null } = req.body;
+
+        // Use unified extractor
+        const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
+        const extractor = new UnifiedFigmaExtractor(config);
+
+        // Extract data using best available method
+        const extractionResult = await extractor.extract(figmaUrl, {
+          preferredMethod,
+          timeout: 30000,
+          apiKey: loadFigmaApiKey()
         });
-        
-        console.log(`📄 HTML report generated: ${reportPath}`);
-      } catch (reportError) {
-        console.warn('⚠️ HTML report generation failed:', reportError.message);
-        console.warn('Report Error Stack:', reportError.stack);
-      }
-      
-      // Count all components recursively
-      const countAllComponents = (components) => {
-        let count = 0;
-        components.forEach(component => {
-          count += 1;
-          if (component.children && component.children.length > 0) {
-            count += countAllComponents(component.children);
-          }
-        });
-        return count;
-      };
 
-      const totalComponentCount = countAllComponents(standardizedData.components);
-
-      // Ensure metadata is properly constructed even if standardizedData.metadata is null
-      const metadata = {
-        ...(standardizedData.metadata || {}), // Handle null metadata gracefully
-        componentCount: totalComponentCount, // Use actual count
-        colorCount: standardizedData.colors?.length || 0, // Use actual count with fallback
-        typographyCount: standardizedData.typography?.length || 0, // Use actual count with fallback
-        extractedAt: new Date().toISOString(),
-        source: standardizedData.extractionMethod || 'figma-mcp'
-      };
-
-      console.log('🔍 Figma extraction metadata debug:', {
-        originalMetadata: standardizedData.metadata,
-        colorsLength: standardizedData.colors?.length,
-        constructedMetadata: metadata
-      });
-
-      res.json({
-        success: true,
-        data: {
-          ...standardizedData,
-          componentCount: totalComponentCount, // Override with actual recursive count
-          extractionMethod: standardizedData.extractionMethod, // Ensure it's at root level
-          metadata,
-          reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null,
-          reports: reportPath ? {
-            directUrl: `/reports/${reportPath.split('/').pop()}`,
-            downloadUrl: `/reports/${reportPath.split('/').pop()}?download=true`,
-            hasError: false
-          } : null
+        if (!extractionResult.success) {
+          throw new Error(extractionResult.error || 'Extraction failed');
         }
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
+
+        const standardizedData = extractionResult.data;
+
+        // Generate HTML report for Figma extraction
+        const reportGenerator = await import('../../reporting/index.js');
+        let reportPath = null;
+
+        try {
+          const reportData = {
+            figmaData: {
+              fileName: standardizedData.metadata.fileName,
+              extractedAt: standardizedData.extractedAt,
+              components: standardizedData.components,
+              metadata: standardizedData.metadata
+            },
+            webData: {
+              url: '',
+              elements: [],
+              colorPalette: [],
+              typography: { fontFamilies: [], fontSizes: [], fontWeights: [] }
+            },
+            timestamp: new Date().toISOString(),
+            metadata: {
+              extractionType: 'figma-only',
+              componentsExtracted: standardizedData.components.length,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+          reportPath = await reportGenerator.generateReport(reportData, {
+            filename: `figma-extraction-${Date.now()}.html`
+          });
+
+          console.log(`📄 HTML report generated: ${reportPath}`);
+        } catch (reportError) {
+          console.warn('⚠️ HTML report generation failed:', reportError.message);
+          console.warn('Report Error Stack:', reportError.stack);
+        }
+
+        // Count all components recursively
+        const countAllComponents = (components) => {
+          let count = 0;
+          components.forEach(component => {
+            count += 1;
+            if (component.children && component.children.length > 0) {
+              count += countAllComponents(component.children);
+            }
+          });
+          return count;
+        };
+
+        const totalComponentCount = countAllComponents(standardizedData.components);
+
+        // Ensure metadata is properly constructed even if standardizedData.metadata is null
+        const metadata = {
+          ...(standardizedData.metadata || {}), // Handle null metadata gracefully
+          componentCount: totalComponentCount, // Use actual count
+          colorCount: standardizedData.colors?.length || 0, // Use actual count with fallback
+          typographyCount: standardizedData.typography?.length || 0, // Use actual count with fallback
+          extractedAt: new Date().toISOString(),
+          source: standardizedData.extractionMethod || 'figma-mcp'
+        };
+
+        console.log('🔍 Figma extraction metadata debug:', {
+          originalMetadata: standardizedData.metadata,
+          colorsLength: standardizedData.colors?.length,
+          constructedMetadata: metadata
+        });
+
+        res.json({
+          success: true,
+          data: {
+            ...standardizedData,
+            componentCount: totalComponentCount, // Override with actual recursive count
+            extractionMethod: standardizedData.extractionMethod, // Ensure it's at root level
+            metadata,
+            reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null,
+            reports: reportPath ? {
+              directUrl: `/reports/${reportPath.split('/').pop()}`,
+              downloadUrl: `/reports/${reportPath.split('/').pop()}?download=true`,
+              hasError: false
+            } : null
+          }
+        });
+      } catch (error) {
+        next(error);
+      }
+    });
 
   /**
    * Web extraction endpoint (legacy route)
@@ -1692,15 +1685,15 @@ export async function startServer() {
     console.warn('⚠️ DEPRECATED: /api/web/extract will be removed. Use /api/web/extract-v3');
     res.setHeader('X-Deprecated-Endpoint', 'true');
     let webExtractor = null;
-    
+
     // Track this extraction to prevent SIGTERM interruption
     if (global.trackExtraction) {
       global.trackExtraction.start();
     }
-    
+
     try {
       const { url } = req.body;
-      
+
       if (!url) {
         return res.status(400).json({
           success: false,
@@ -1709,15 +1702,15 @@ export async function startServer() {
       }
 
       console.log(`🔗 Starting web extraction for: ${url}`);
-      
+
       // Use the unified extractor instead of creating a new instance
       webExtractor = unifiedWebExtractor;
-      
+
       // Ensure extractor is initialized
       if (!webExtractor.isReady()) {
         await webExtractor.initialize();
       }
-      
+
       // Extract web data (no authentication for legacy endpoint)
       const rawWebData = await webExtractor.extractWebData(url);
 
@@ -1772,17 +1765,17 @@ export async function startServer() {
       };
 
       const webData = await unifiedWebExtractor.extractWebData(targetUrl, unifiedOptions);
-      
+
       // Generate HTML report for web extraction
       const reportGenerator = await import('../../reporting/index.js');
       let reportPath = null;
-      
+
       try {
         // Create a properly structured report data for web-only extractions
         const elements = webData.elements || [];
         const colorPalette = webData.colorPalette || [];
         const typography = webData.typography || { fontFamilies: [], fontSizes: [], fontWeights: [] };
-        
+
         const reportData = {
           figmaData: {
             fileName: `Web Extraction Report for ${new URL(targetUrl).hostname}`,
@@ -1828,11 +1821,11 @@ export async function startServer() {
             timestamp: new Date().toISOString()
           }
         };
-        
+
         reportPath = await reportGenerator.generateReport(reportData, {
           filename: `web-extraction-${Date.now()}.html`
         });
-        
+
         console.log(`📄 HTML report generated: ${reportPath}`);
       } catch (reportError) {
         console.warn('⚠️ HTML report generation failed:', reportError.message);
@@ -1881,10 +1874,10 @@ export async function startServer() {
     console.log('🚀 COMPARE ENDPOINT HIT - Request received');
     console.log('🔍 Request body keys:', Object.keys(req.body));
     console.log('🔍 Authentication in body:', !!req.body.authentication);
-    
+
     try {
       const { figmaUrl, webUrl, includeVisual = false, nodeId } = req.body;
-      
+
       if (!figmaUrl || !webUrl) {
         return res.status(400).json({
           success: false,
@@ -1896,13 +1889,13 @@ export async function startServer() {
       // Extract data from both sources using the same method as single source
       logger.info('Starting data extraction', { figmaUrl, webUrl });
       const startTime = Date.now();
-      
+
       const figmaStartTime = Date.now();
       let figmaData = null;
       try {
         console.log('🎨 Using UnifiedFigmaExtractor for comparison (same as single source)');
         console.log('🎯 NodeId from request:', nodeId || 'No nodeId - extracting full file');
-        
+
         // Use unified extractor - SAME AS SINGLE SOURCE
         const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
         const extractor = new UnifiedFigmaExtractor(config);
@@ -1934,9 +1927,9 @@ export async function startServer() {
             metadata: standardizedData.metadata,
             extractionMethod: standardizedData.extractionMethod
           };
-          
+
           // Colors extracted successfully
-          
+
           console.log('✅ Figma extraction successful via UnifiedFigmaExtractor');
           console.log('📊 Figma data summary:', {
             components: figmaData.components?.length || 0,
@@ -1951,133 +1944,133 @@ export async function startServer() {
         }
       } catch (figmaError) {
         console.log('⚠️ Figma extraction failed, continuing with web extraction only:', figmaError.message);
-        figmaData = { 
-          components: [], 
+        figmaData = {
+          components: [],
           componentCount: 0,
           componentsCount: 0,
-          error: figmaError.message 
+          error: figmaError.message
         };
       }
-  const figmaDuration = Date.now() - figmaStartTime;
-  performanceMonitor.trackExtraction('Figma', figmaDuration, { url: figmaUrl });
-  
-  const webStartTime = Date.now();
-  let webData;
-  
-  // DEBUG: Log the full request body to understand the structure
-  console.log('🔍 DEBUG: Full request body:', JSON.stringify(req.body, null, 2));
-  console.log('🔍 DEBUG: Authentication object:', JSON.stringify(req.body.authentication, null, 2));
-  
-  // Extract authentication from request body if available
-  const authentication = req.body.authentication?.webAuth ? {
-    type: 'form',
-    username: req.body.authentication.webAuth.username,
-    password: req.body.authentication.webAuth.password
-  } : req.body.authentication && req.body.authentication.type ? {
-    type: req.body.authentication.type,
-    username: req.body.authentication.username,
-    password: req.body.authentication.password,
-    loginUrl: req.body.authentication.loginUrl,
-    waitTime: req.body.authentication.waitTime,
-    successIndicator: req.body.authentication.successIndicator
-  } : null;
+      const figmaDuration = Date.now() - figmaStartTime;
+      performanceMonitor.trackExtraction('Figma', figmaDuration, { url: figmaUrl });
 
-  console.log('🔧 Using UnifiedWebExtractor for comparison with auth:', authentication ? 'enabled' : 'disabled');
-  console.log('🔍 DEBUG: Parsed authentication:', JSON.stringify(authentication, null, 2));
-  
-  const freightTigerUrl = webUrl.includes('freighttiger.com');
-  const requestedTimeout = req.body.options?.timeout;
-  const comparisonTimeout = requestedTimeout 
-    || (freightTigerUrl ? 300000 : (config?.timeouts?.webExtraction || 90000));
+      const webStartTime = Date.now();
+      let webData;
 
-  const extractionOptions = {
-    authentication,
-    timeout: comparisonTimeout,
-    includeScreenshot: false,
-    stabilityTimeout: freightTigerUrl ? 60000 : 5000
-  };
+      // DEBUG: Log the full request body to understand the structure
+      console.log('🔍 DEBUG: Full request body:', JSON.stringify(req.body, null, 2));
+      console.log('🔍 DEBUG: Authentication object:', JSON.stringify(req.body.authentication, null, 2));
 
-  const attemptWebExtraction = async (label = 'primary') => {
-    console.log(`🌐 Web extraction attempt (${label}) with timeout ${comparisonTimeout}ms`);
-    return unifiedWebExtractor.extractWebData(webUrl, extractionOptions);
-  };
+      // Extract authentication from request body if available
+      const authentication = req.body.authentication?.webAuth ? {
+        type: 'form',
+        username: req.body.authentication.webAuth.username,
+        password: req.body.authentication.webAuth.password
+      } : req.body.authentication && req.body.authentication.type ? {
+        type: req.body.authentication.type,
+        username: req.body.authentication.username,
+        password: req.body.authentication.password,
+        loginUrl: req.body.authentication.loginUrl,
+        waitTime: req.body.authentication.waitTime,
+        successIndicator: req.body.authentication.successIndicator
+      } : null;
 
-  try {
-    console.log(`🔧 Using authentication: ${authentication ? 'enabled' : 'disabled'}`);
-    webData = await attemptWebExtraction();
-  } catch (webError) {
-    const message = webError?.message || '';
-    const canRetry = /Page was closed before extraction could begin/i.test(message) ||
-      /Extraction aborted due to timeout/i.test(message);
+      console.log('🔧 Using UnifiedWebExtractor for comparison with auth:', authentication ? 'enabled' : 'disabled');
+      console.log('🔍 DEBUG: Parsed authentication:', JSON.stringify(authentication, null, 2));
 
-    if (canRetry) {
-      console.warn(`⚠️ Web extraction aborted early (${message}). Retrying once with fresh session...`);
-      // Give the browser pool a brief moment to recycle pages
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      webData = await attemptWebExtraction('retry');
-    } else {
-      console.error('❌ Web extraction failed:', message);
-      throw webError;
-    }
-  }
+      const freightTigerUrl = webUrl.includes('freighttiger.com');
+      const requestedTimeout = req.body.options?.timeout;
+      const comparisonTimeout = requestedTimeout
+        || (freightTigerUrl ? 300000 : (config?.timeouts?.webExtraction || 90000));
 
-  console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
-  console.log('📊 Web data summary:', {
-    elements: webData.elements?.length || 0,
-    colors: webData.colorPalette?.length || 0,
-    fontFamilies: webData.typography?.fontFamilies?.length || 0,
-    fontSizes: webData.typography?.fontSizes?.length || 0,
-    spacing: webData.spacing?.length || 0,
-    borderRadius: webData.borderRadius?.length || 0
-  });
-  
-  // Debug: Sample extracted data
-  if (webData.colorPalette?.length > 0) {
-    console.log('🎨 Sample colors:', webData.colorPalette.slice(0, 3));
-  }
-  if (webData.typography?.fontFamilies?.length > 0) {
-    console.log('📝 Sample fonts:', webData.typography.fontFamilies.slice(0, 3));
-  }
-  if (webData.spacing?.length > 0) {
-    console.log('📏 Sample spacing:', webData.spacing.slice(0, 3));
-  }
-  
-  const webDuration = Date.now() - webStartTime;
-  performanceMonitor.trackExtraction('Web', webDuration, { url: webUrl });
+      const extractionOptions = {
+        authentication,
+        timeout: comparisonTimeout,
+        includeScreenshot: false,
+        stabilityTimeout: freightTigerUrl ? 60000 : 5000
+      };
 
-  logger.extraction('Figma', figmaUrl, figmaData);
-  logger.extraction('Web', webUrl, webData);
+      const attemptWebExtraction = async (label = 'primary') => {
+        console.log(`🌐 Web extraction attempt (${label}) with timeout ${comparisonTimeout}ms`);
+        return unifiedWebExtractor.extractWebData(webUrl, extractionOptions);
+      };
 
-  // Compare the data
-  const comparisonStartTime = Date.now();
-  console.log('🔄 Starting comparison with data:', {
-    figmaComponents: figmaData.components?.length || 0,
-    webElements: webData.elements?.length || 0
-  });
-  
-  const comparison = await comparisonEngine.compareDesigns(figmaData, webData);
-  const comparisonDuration = Date.now() - comparisonStartTime;
-  
-  console.log('✅ Comparison completed:', {
-    totalComparisons: comparison.comparisons?.length || 0,
-    totalMatches: comparison.summary?.totalMatches || 0,
-    totalDeviations: comparison.summary?.totalDeviations || 0
-  });
-  
-  const totalDuration = Date.now() - startTime;
-  performanceMonitor.trackComparison(comparisonDuration, {
-    figmaComponents: figmaData?.components?.length || 0,
-    webElements: webData?.elements?.length || 0,
-    totalDuration
-  });
-  
-  logger.performance('Full comparison pipeline', totalDuration);
-  logger.comparison(comparison);
+      try {
+        console.log(`🔧 Using authentication: ${authentication ? 'enabled' : 'disabled'}`);
+        webData = await attemptWebExtraction();
+      } catch (webError) {
+        const message = webError?.message || '';
+        const canRetry = /Page was closed before extraction could begin/i.test(message) ||
+          /Extraction aborted due to timeout/i.test(message);
+
+        if (canRetry) {
+          console.warn(`⚠️ Web extraction aborted early (${message}). Retrying once with fresh session...`);
+          // Give the browser pool a brief moment to recycle pages
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          webData = await attemptWebExtraction('retry');
+        } else {
+          console.error('❌ Web extraction failed:', message);
+          throw webError;
+        }
+      }
+
+      console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
+      console.log('📊 Web data summary:', {
+        elements: webData.elements?.length || 0,
+        colors: webData.colorPalette?.length || 0,
+        fontFamilies: webData.typography?.fontFamilies?.length || 0,
+        fontSizes: webData.typography?.fontSizes?.length || 0,
+        spacing: webData.spacing?.length || 0,
+        borderRadius: webData.borderRadius?.length || 0
+      });
+
+      // Debug: Sample extracted data
+      if (webData.colorPalette?.length > 0) {
+        console.log('🎨 Sample colors:', webData.colorPalette.slice(0, 3));
+      }
+      if (webData.typography?.fontFamilies?.length > 0) {
+        console.log('📝 Sample fonts:', webData.typography.fontFamilies.slice(0, 3));
+      }
+      if (webData.spacing?.length > 0) {
+        console.log('📏 Sample spacing:', webData.spacing.slice(0, 3));
+      }
+
+      const webDuration = Date.now() - webStartTime;
+      performanceMonitor.trackExtraction('Web', webDuration, { url: webUrl });
+
+      logger.extraction('Figma', figmaUrl, figmaData);
+      logger.extraction('Web', webUrl, webData);
+
+      // Compare the data
+      const comparisonStartTime = Date.now();
+      console.log('🔄 Starting comparison with data:', {
+        figmaComponents: figmaData.components?.length || 0,
+        webElements: webData.elements?.length || 0
+      });
+
+      const comparison = await comparisonEngine.compareDesigns(figmaData, webData);
+      const comparisonDuration = Date.now() - comparisonStartTime;
+
+      console.log('✅ Comparison completed:', {
+        totalComparisons: comparison.comparisons?.length || 0,
+        totalMatches: comparison.summary?.totalMatches || 0,
+        totalDeviations: comparison.summary?.totalDeviations || 0
+      });
+
+      const totalDuration = Date.now() - startTime;
+      performanceMonitor.trackComparison(comparisonDuration, {
+        figmaComponents: figmaData?.components?.length || 0,
+        webElements: webData?.elements?.length || 0,
+        totalDuration
+      });
+
+      logger.performance('Full comparison pipeline', totalDuration);
+      logger.comparison(comparison);
 
       // Generate HTML report for comparison
       const reportGenerator = await import('../../reporting/index.js');
       let reportPath = null;
-      
+
       try {
         const reportData = {
           figmaData: {
@@ -2110,11 +2103,11 @@ export async function startServer() {
             webElementCount: webData?.elements?.length || 0
           }
         };
-        
+
         reportPath = await reportGenerator.generateReport(reportData, {
           filename: `comparison-${Date.now()}.html`
         });
-        
+
         console.log(`📄 HTML report generated: ${reportPath}`);
       } catch (reportError) {
         console.warn('⚠️ HTML report generation failed:', reportError.message);
@@ -2126,7 +2119,7 @@ export async function startServer() {
       // Generate unique comparison ID for saving reports
       let comparisonId = `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       console.log(`📋 Generated comparison ID: ${comparisonId}`);
-      
+
       // Save comparison to database if services available
       if (dbServices) {
         try {
@@ -2146,7 +2139,7 @@ export async function startServer() {
           console.warn('⚠️ Failed to save comparison to database:', dbError.message);
         }
       }
-      
+
       // Prepare extraction details for frontend
       const extractionDetails = {
         figma: {
@@ -2216,12 +2209,12 @@ export async function startServer() {
         // Comparison identifier for saving reports
         comparisonId,
         id: comparisonId, // Alias for backwards compatibility
-        
+
         figmaData: {
           ...figmaData,
           // STANDARDIZED FIELDS (preferred)
           componentCount: figmaData?.components?.length || 0, // Standard field name
-          
+
           // Transform typography to include aggregated data for UI
           typography: {
             ...figmaData?.typography, // Keep original array
@@ -2235,7 +2228,7 @@ export async function startServer() {
               .map(t => t.fontWeight?.toString())
               .filter(Boolean))]
           },
-          
+
           // LEGACY FIELDS (maintained for backward compatibility)
           componentsCount: figmaData?.components?.length || 0 // Keep for compatibility
         },
@@ -2243,7 +2236,7 @@ export async function startServer() {
           ...webData,
           // STANDARDIZED FIELDS (preferred)
           elementCount: webData?.elements?.length || 0, // Standard field name
-          
+
           // LEGACY FIELDS (maintained for backward compatibility)
           elementsCount: webData?.elements?.length || 0 // Keep for compatibility
         },
@@ -2252,11 +2245,11 @@ export async function startServer() {
           comparedAt: new Date().toISOString(),
           includeVisual,
           version: '1.0.0',
-          
+
           // STANDARDIZED FIELDS (preferred)
           figmaComponentCount: figmaData?.components?.length || 0, // Standard field name
           webElementCount: webData?.elements?.length || 0, // Standard field name
-          
+
           // LEGACY FIELDS (maintained for backward compatibility)
           figmaComponentsCount: figmaData?.components?.length || 0, // Keep for compatibility
           webElementsCount: webData?.elements?.length || 0 // Keep for compatibility
@@ -2276,7 +2269,7 @@ export async function startServer() {
       });
     } catch (error) {
       console.error('❌ Comparison failed:', error.message);
-      
+
       res.status(500).json({
         success: false,
         error: `Comparison failed: ${error.message}`
@@ -2287,7 +2280,7 @@ export async function startServer() {
   /**
    * Screenshot Comparison Endpoints
    */
-  
+
   // Configure multer for file uploads
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -2330,11 +2323,11 @@ export async function startServer() {
       console.log('  Headers:', req.headers);
       console.log('  Content-Length:', req.headers['content-length']);
       console.log('  Content-Type:', req.headers['content-type']);
-      
+
       // Increase timeout for large file uploads
       req.setTimeout(5 * 60 * 1000); // 5 minutes
       res.setTimeout(5 * 60 * 1000);
-      
+
       upload.fields([
         { name: 'figmaScreenshot', maxCount: 1 },
         { name: 'developedScreenshot', maxCount: 1 }
@@ -2344,7 +2337,7 @@ export async function startServer() {
           console.error('  Error code:', err.code);
           console.error('  Error message:', err.message);
           console.error('  Stack:', err.stack);
-          
+
           if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({
               success: false,
@@ -2372,9 +2365,9 @@ export async function startServer() {
             'content-length': req.headers['content-length']
           }
         });
-        
+
         const files = req.files;
-        
+
         if (!files || !files.figmaScreenshot || !files.developedScreenshot) {
           console.log('Missing files:', {
             files: !!files,
@@ -2389,7 +2382,7 @@ export async function startServer() {
 
         // Get upload ID from multer storage (already generated in destination callback)
         const uploadId = req.uploadId;
-        
+
         // Store upload metadata
         const metadata = {
           uploadId,
@@ -2427,7 +2420,7 @@ export async function startServer() {
   app.post('/api/screenshots/compare', async (req, res) => {
     try {
       const { uploadId, settings } = req.body;
-      
+
       if (!uploadId) {
         return res.status(400).json({
           success: false,
@@ -2455,9 +2448,9 @@ export async function startServer() {
       };
 
       console.log(`📸 Starting screenshot comparison for upload: ${uploadId}`);
-      
+
       const result = await screenshotComparisonService.compareScreenshots(uploadId, comparisonSettings);
-      
+
       // Save screenshot result to database if services available
       if (dbServices && result.id) {
         try {
@@ -2483,7 +2476,7 @@ export async function startServer() {
           console.warn('⚠️ Failed to save screenshot result to database:', dbError.message);
         }
       }
-      
+
       res.json({
         success: true,
         data: result
@@ -2502,7 +2495,7 @@ export async function startServer() {
   app.get('/api/screenshots/images/:comparisonId/:imageType', async (req, res) => {
     try {
       const { comparisonId, imageType } = req.params;
-      
+
       // Validate image type
       const allowedTypes = ['pixel-diff', 'side-by-side', 'figma-processed', 'developed-processed'];
       if (!allowedTypes.includes(imageType)) {
@@ -2511,10 +2504,10 @@ export async function startServer() {
           error: 'Invalid image type'
         });
       }
-      
+
       const comparisonDir = path.join(process.cwd(), 'output/screenshots/comparisons', comparisonId);
       let imagePath;
-      
+
       switch (imageType) {
         case 'pixel-diff':
           imagePath = path.join(comparisonDir, 'pixel-diff.png');
@@ -2529,7 +2522,7 @@ export async function startServer() {
           imagePath = path.join(comparisonDir, 'developed-processed.png');
           break;
       }
-      
+
       // Check if image exists
       if (!fs.existsSync(imagePath)) {
         return res.status(404).json({
@@ -2537,15 +2530,15 @@ export async function startServer() {
           error: 'Image not found'
         });
       }
-      
+
       // Set appropriate headers
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
-      
+
       // Stream the image file
       const imageStream = fs.createReadStream(imagePath);
       imageStream.pipe(res);
-      
+
     } catch (error) {
       console.error('Error serving image:', error);
       res.status(500).json({
@@ -2559,10 +2552,10 @@ export async function startServer() {
   app.get('/api/screenshots/reports/:comparisonId', async (req, res) => {
     try {
       const { comparisonId } = req.params;
-      
+
       const comparisonDir = path.join(process.cwd(), 'output/screenshots/comparisons', comparisonId);
       const reportPath = path.join(comparisonDir, 'detailed-report.html');
-      
+
       // Check if report exists
       if (!fs.existsSync(reportPath)) {
         return res.status(404).json({
@@ -2570,15 +2563,15 @@ export async function startServer() {
           error: 'Report not found'
         });
       }
-      
+
       // Set appropriate headers for HTML
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
-      
+
       // Stream the HTML file
       const reportStream = fs.createReadStream(reportPath);
       reportStream.pipe(res);
-      
+
     } catch (error) {
       console.error('Error serving report:', error);
       res.status(500).json({
@@ -2594,16 +2587,16 @@ export async function startServer() {
   app.post('/api/reports/save', async (req, res) => {
     try {
       const { comparisonId, reportData, title, format = 'html' } = req.body;
-      
+
       if (!comparisonId) {
         return res.status(400).json({
           success: false,
           error: 'Comparison ID is required'
         });
       }
-      
+
       console.log(`📋 Saving report for comparison: ${comparisonId}`);
-      
+
       // Use ReportService if available, otherwise fall back to StorageProvider
       let reportEntry;
       if (dbServices && reportData) {
@@ -2619,12 +2612,12 @@ export async function startServer() {
           // Fall through to StorageProvider
         }
       }
-      
+
       // Fallback to StorageProvider
       if (!reportEntry) {
         const { getStorageProvider } = await import('../../config/storage-config.js');
         const storage = getStorageProvider(req.user?.id);
-        
+
         if (reportData) {
           reportEntry = await storage.saveReport(reportData, {
             comparisonId,
@@ -2644,13 +2637,13 @@ export async function startServer() {
         }
         console.log(`✅ Report saved via StorageProvider: ${reportEntry.id}`);
       }
-      
+
       res.json({
         success: true,
         report: reportEntry,
         reports: [reportEntry] // For compatibility with frontend
       });
-      
+
     } catch (error) {
       console.error('❌ Error saving report:', error);
       res.status(500).json({
@@ -2665,7 +2658,7 @@ export async function startServer() {
     try {
       const { comparisonId } = req.params;
       const resultPath = path.join(process.cwd(), 'output/screenshots/comparisons', comparisonId, 'result.json');
-      
+
       if (!fs.existsSync(resultPath)) {
         return res.status(404).json({
           success: false,
@@ -2674,7 +2667,7 @@ export async function startServer() {
       }
 
       const result = JSON.parse(await fs.promises.readFile(resultPath, 'utf8'));
-      
+
       res.json({
         success: true,
         data: result
@@ -2693,7 +2686,7 @@ export async function startServer() {
   app.get('/api/screenshots/list', async (req, res) => {
     try {
       const comparisonsDir = path.join(process.cwd(), 'output/screenshots/comparisons');
-      
+
       if (!fs.existsSync(comparisonsDir)) {
         return res.json({
           success: true,
@@ -2761,26 +2754,26 @@ export async function startServer() {
   app.post('/api/web/extract-v2',
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
-    console.warn('⚠️ DEPRECATED: /api/web/extract-v2 will be removed. Use /api/web/extract-v3');
-    res.setHeader('X-Deprecated-Endpoint', 'true');
-    
-    try {
-      const { url, authentication, options = {} } = req.body;
+      console.warn('⚠️ DEPRECATED: /api/web/extract-v2 will be removed. Use /api/web/extract-v3');
+      res.setHeader('X-Deprecated-Endpoint', 'true');
 
-      // Extract using improved extractor
-      const webData = await webExtractorV2.extractWebData(url, {
-        authentication,
-        timeout: config.timeouts.webExtraction,
-        includeScreenshot: options.includeScreenshot !== false,
-        viewport: options.viewport,
-        ...options
-      });
+      try {
+        const { url, authentication, options = {} } = req.body;
 
-      res.json(webData);
-    } catch (error) {
-      next(error);
-    }
-  });
+        // Extract using improved extractor
+        const webData = await webExtractorV2.extractWebData(url, {
+          authentication,
+          timeout: config.timeouts.webExtraction,
+          includeScreenshot: options.includeScreenshot !== false,
+          viewport: options.viewport,
+          ...options
+        });
+
+        res.json(webData);
+      } catch (error) {
+        next(error);
+      }
+    });
 
   /**
    * Unified web extraction endpoint (V3 - Recommended)
@@ -2789,44 +2782,44 @@ export async function startServer() {
   app.post('/api/web/extract-v3',
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
-    try {
-      const { url, authentication, options = {} } = req.body;
-      const startTime = Date.now();
+      try {
+        const { url, authentication, options = {} } = req.body;
+        const startTime = Date.now();
 
-      console.log(`🚀 Starting unified extraction for: ${url}`);
+        console.log(`🚀 Starting unified extraction for: ${url}`);
 
-      // Extract using unified extractor with cross-platform support
-      const webData = await unifiedWebExtractor.extractWebData(url, {
-        authentication,
-        timeout: options.timeout || config.timeouts.webExtraction,
-        includeScreenshot: options.includeScreenshot !== false,
-        viewport: options.viewport || { width: 1920, height: 1080 },
-        stabilityTimeout: options.stabilityTimeout || 5000,
-        ...options
-      });
-
-      const duration = Date.now() - startTime;
-      console.log(`✅ Unified extraction completed in ${duration}ms`);
-
-      // Track performance
-      if (performanceMonitor) {
-        performanceMonitor.trackExtraction('unified-web', duration, {
-          url,
-          elementsExtracted: webData.elements?.length || 0,
-          hasScreenshot: !!webData.screenshot
+        // Extract using unified extractor with cross-platform support
+        const webData = await unifiedWebExtractor.extractWebData(url, {
+          authentication,
+          timeout: options.timeout || config.timeouts.webExtraction,
+          includeScreenshot: options.includeScreenshot !== false,
+          viewport: options.viewport || { width: 1920, height: 1080 },
+          stabilityTimeout: options.stabilityTimeout || 5000,
+          ...options
         });
-      }
 
-      res.json({
-        ...webData,
-        extractor: 'unified-v3',
-        performance: { duration }
-      });
-    } catch (error) {
-      console.error(`❌ Unified extraction failed: ${error.message}`);
-      next(error);
-    }
-  });
+        const duration = Date.now() - startTime;
+        console.log(`✅ Unified extraction completed in ${duration}ms`);
+
+        // Track performance
+        if (performanceMonitor) {
+          performanceMonitor.trackExtraction('unified-web', duration, {
+            url,
+            elementsExtracted: webData.elements?.length || 0,
+            hasScreenshot: !!webData.screenshot
+          });
+        }
+
+        res.json({
+          ...webData,
+          extractor: 'unified-v3',
+          performance: { duration }
+        });
+      } catch (error) {
+        console.error(`❌ Unified extraction failed: ${error.message}`);
+        next(error);
+      }
+    });
 
   /**
    * Browser pool statistics endpoint
@@ -2834,7 +2827,7 @@ export async function startServer() {
   app.get('/api/browser/stats', (req, res) => {
     const stats = browserPool.getStats();
     const resourceStats = resourceManager.getStats();
-    
+
     res.json({
       browserPool: stats,
       resourceManager: resourceStats,
@@ -2877,47 +2870,47 @@ export async function startServer() {
 
   // 404 handler for API routes
   app.use('/api', notFoundHandler);
-  
+
   // Global error handler
   app.use(errorHandler);
 
   // Enhanced graceful shutdown handling
   async function gracefulShutdown(signal) {
     console.log(`Received ${signal}, initiating graceful shutdown...`);
-    
+
     try {
       // Shutdown enhanced services first
       if (serviceManager) {
         console.log('Shutting down enhanced service manager...');
         await serviceManager.shutdown();
       }
-      
+
       // Cancel all active extractions
       console.log('Cancelling active extractions...');
       await webExtractorV2.cancelAllExtractions();
       await unifiedWebExtractor.cancelAllExtractions();
-      
+
       // Shutdown resource manager
       console.log('Shutting down resource manager...');
       await shutdownResourceManager();
-      
+
       // Shutdown browser pool
       console.log('Shutting down browser pool...');
       await shutdownBrowserPool();
-      
+
       // Close server
       console.log('Closing HTTP server...');
       server.close(() => {
         console.log('✅ Graceful shutdown completed');
         process.exit(0);
       });
-      
+
       // Force exit after 30 seconds
       setTimeout(() => {
         console.log('⚠️ Force exit after timeout');
         process.exit(1);
       }, 30000);
-      
+
     } catch (error) {
       console.error('❌ Error during shutdown:', error.message);
       process.exit(1);
@@ -2935,30 +2928,30 @@ export async function startServer() {
     console.error('💥 UNHANDLED REJECTION:', reason);
     console.error('  Promise:', promise);
   });
-  
+
   // Start server
   const PORT = config.server.port;
   const server = httpServer.listen(PORT, config.server.host, () => {
     // Write directly to stdout for Electron detection
     process.stdout.write(`Server running on port ${PORT}\n`);
-    
+
     console.log(`🚀 Server running at http://${config.server.host}:${PORT}`);
     console.log(`📱 Frontend available at http://${config.server.host}:${PORT}`);
     console.log(`🔌 MCP Status: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
     console.log(`🔌 WebSocket server ready for connections`);
     console.log(`🔧 Enhanced features: Browser Pool, Security, Rate Limiting`);
-    
+
     // Start periodic status checks
     // Skip local MCP checks in production (Railway/cloud deployments don't have Figma Desktop)
     const allowLocalMCP = process.env.ENABLE_LOCAL_MCP === 'true' || process.env.NODE_ENV !== 'production';
-    
+
     if (allowLocalMCP) {
       setInterval(async () => {
         try {
           const wasConnected = mcpConnected;
           if (figmaClient) {
             mcpConnected = await figmaClient.connect();
-            
+
             if (wasConnected !== mcpConnected) {
               console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
             }

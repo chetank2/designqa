@@ -1,6 +1,6 @@
 import { Bars3Icon, BellIcon } from '@heroicons/react/24/outline'
 import MCPStatus from '../ui/MCPStatus'
-import ServerStatus from '../ui/ServerStatus'
+import OnlineStatus from '../ui/OnlineStatus'
 import { ThemeToggle } from '../ui/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '../../contexts/AuthContext'
@@ -64,7 +64,7 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-full bg-muted/20 border border-white/5 mx-2">
-            <ServerStatus />
+            <OnlineStatus />
             <div className="w-px h-4 bg-border/40" />
             <MCPStatus />
           </div>
