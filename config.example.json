@@ -1,0 +1,31 @@
+{
+  "accessToken": "YOUR_FIGMA_ACCESS_TOKEN_HERE",
+  "puppeteer": {
+    "headless": "new",
+    "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+  },
+  "thresholds": {
+    "colorDifference": 10,
+    "sizeDifference": 5,
+    "spacingDifference": 3,
+    "fontSizeDifference": 2
+  },
+  "ports": {
+    "server": 3847,
+    "fallback": 3845
+  },
+  "figmaApi": {
+    "tokenLastUpdated": null
+  },
+  "mcpServer": {
+    "url": "http://127.0.0.1:3845",
+    "endpoint": "/sse"
+  },
+  "method": "api",
+  "defaultTimeout": 30000,
+  "maxConcurrentComparisons": 3,
+  "autoDeleteOldReports": false,
+  "reportRetentionDays": 30,
+  "defaultFigmaExportFormat": "svg",
+  "figmaExportScale": 2
+} 

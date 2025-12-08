@@ -1,0 +1,219 @@
+{
+  "name": "figma-web-comparison-tool",
+  "version": "1.1.0",
+  "description": "Compare Figma designs with web implementations",
+  "main": "electron/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start-server.js",
+    "dev": "node scripts/start-server.js",
+    "start:direct": "node server.js",
+    "start:web": "node scripts/web-app-launcher.js",
+    "electron": "electron .",
+    "electron:dev": "NODE_ENV=development electron .",
+    "build": "npm run build:frontend",
+    "build:frontend": "npm run sync:env && cd frontend && npm run build",
+    "build:railway": "npm run setup && npm run build",
+    "sync:env": "node scripts/sync-env-vars.js",
+    "rebuild:electron": "npx @electron/rebuild",
+    "clean:dist": "rm -rf dist/mac* dist/*.dmg* dist/builder-debug.yml dist/latest-mac.yml",
+    "build:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac:internal",
+    "build:mac:release": "npm run build:mac:internal",
+    "build:mac:internal": "npm run clean:dist && npm run build:frontend && npm run rebuild:electron && electron-builder --mac",
+    "postbuild:frontend": "node scripts/create-share-zips.js --web-only",
+    "postbuild:mac": "node scripts/create-share-zips.js --mac-only",
+    "bundle:share": "node scripts/create-share-zips.js",
+    "dist": "npm run build:frontend && electron-builder --mac --publish=never",
+    "dev:app": "./scripts/dev-app.sh",
+    "dev:restart": "pkill -f 'Figma Comparison Tool' || true && npm run dev:app",
+    "setup": "npm install && cd frontend && npm install",
+    "test": "node tests/run-tests.js",
+    "test:unit": "node tests/run-tests.js unit",
+    "test:integration": "node tests/run-tests.js integration",
+    "test:api": "node tests/run-tests.js api",
+    "test:e2e": "node tests/run-tests.js e2e",
+    "test:watch": "node tests/run-tests.js --watch",
+    "test:coverage": "node tests/run-tests.js --coverage",
+    "test:load": "node tests/load/load-test.js",
+    "test:load:heavy": "node tests/load/load-test.js --concurrency 20 --duration 60000",
+    "lint": "eslint . --ext .js,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit",
+    "clean": "node scripts/cleanup-console-logs.js",
+    "bundle-check": "cd frontend && npm run build && ls -lh dist/assets/*.js",
+    "security-audit": "npm audit && cd frontend && npm audit",
+    "prepare-production": "npm run lint && npm run type-check && npm run test && npm run build",
+    "ports:validate": "node scripts/validate-ports.mjs",
+    "ports:validate-build": "npm run build:frontend && npm run ports:validate",
+    "sync:platforms": "node scripts/sync-platforms.js",
+    "sync:check": "node scripts/sync-platforms.js --check-only",
+    "dev:unified": "npm run sync:platforms && npm run electron:dev",
+    "build:unified": "npm run sync:platforms && npm run build:mac",
+    "build:production": "node scripts/production-build.js",
+    "deploy:check": "node scripts/production-build.js && npm run start:production",
+    "start:production": "NODE_ENV=production node server.js",
+    "postinstall": "node scripts/postinstall.cjs",
+    "diagnose": "node scripts/quick-diagnose.cjs",
+    "fix:frontend": "npm run build:frontend && npm run diagnose",
+    "emergency:reset": "pkill -f \"PORT=3847\" || true && rm -rf frontend/dist && npm run build:frontend && npm start",
+    "dev:safe": "npm run fix:frontend && npm start",
+    "db:migrate": "node scripts/db-migrate.js",
+    "db:migrate-data": "node scripts/db-migrate-data.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "axios": "^1.11.0",
+    "better-sqlite3": "^11.7.0",
+    "canvas": "^3.2.0",
+    "compression": "^1.8.1",
+    "compromise": "^14.10.0",
+    "cors": "^2.8.5",
+    "electron-store": "^10.1.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
+    "glob": "^10.3.10",
+    "helmet": "^7.2.0",
+    "jsbn": "^1.1.0",
+    "knex": "^3.1.0",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "natural": "^6.12.0",
+    "node-fetch": "^3.3.2",
+    "open": "^10.2.0",
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0",
+    "puppeteer": "^21.5.2",
+    "sharp": "^0.32.6",
+    "socket.io": "^4.8.1",
+    "sprintf-js": "^1.1.3",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@electron/notarize": "^2.3.0",
+    "@electron/rebuild": "^4.0.1",
+    "@jest/globals": "^29.7.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@vercel/node": "^3.0.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js",
+      "!**/node_modules/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "testTimeout": 30000,
+    "verbose": true,
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    }
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "figma",
+    "web",
+    "comparison",
+    "design",
+    "frontend",
+    "testing"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "build": {
+    "appId": "com.local.figma-comparison-tool",
+    "productName": "Figma Comparison Tool",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "src/**/*",
+      "macos-server/**/*",
+      "server.js",
+      "package.json",
+      "config.json",
+      "node_modules/**/*",
+      "!src/**/*.test.js",
+      "!tests/**/*",
+      "!scripts/**/*"
+    ],
+    "asar": false,
+    "nodeGypRebuild": false,
+    "npmRebuild": false,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      },
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "gatekeeperAssess": false
+    },
+    "afterSign": "scripts/after-sign.js",
+    "dmg": {
+      "title": "Figma Comparison Tool",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}
