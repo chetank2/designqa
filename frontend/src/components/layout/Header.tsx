@@ -111,11 +111,6 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/settings?tab=auth')} className="cursor-pointer">
-                      <UserCircleIcon className="mr-2 h-4 w-4" />
-                      Account Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive focus:text-destructive">
                       Sign Out
                     </DropdownMenuItem>
@@ -124,7 +119,7 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
                   <>
                     <DropdownMenuLabel>Not signed in</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/settings?tab=auth')}>
+                    <DropdownMenuItem onClick={() => navigate('/signin')}>
                       <UserCircleIcon className="mr-2 h-4 w-4" />
                       Sign In
                     </DropdownMenuItem>

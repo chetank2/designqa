@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './components/layout/Sidebar'
 import Header from './components/layout/Header'
@@ -9,8 +9,37 @@ import SingleSourcePage from './pages/SingleSourcePage'
 import ScreenshotComparison from './pages/ScreenshotComparison'
 import Reports from './pages/Reports'
 import ColorAnalytics from './pages/ColorAnalytics'
+import SignIn from './pages/SignIn'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
+import { useAuth } from './contexts/AuthContext'
+import { isAuthRequired } from './utils/auth'
+
+/**
+ * Protected Route Component
+ * Redirects to sign-in if auth is required and user is not authenticated
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const authRequired = isAuthRequired();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authRequired && !user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 /**
  * Main App Content Component
@@ -19,8 +48,19 @@ import { Toaster } from '@/components/ui/toaster'
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, loading } = useAuth()
+  const authRequired = isAuthRequired()
+
+  // Immediate redirect check before rendering any content
+  useEffect(() => {
+    if (!loading && authRequired && !user && location.pathname !== '/signin') {
+      navigate('/signin', { replace: true })
+    }
+  }, [user, loading, authRequired, location.pathname, navigate])
 
   const getPageTitle = (pathname: string): string => {
+    if (pathname.includes('signin')) return 'Sign In'
     if (pathname.includes('new-comparison')) return 'Compare'
     if (pathname.includes('screenshot-comparison')) return 'Screenshot Comparison'
     if (pathname.includes('settings')) return 'Settings'
@@ -34,6 +74,20 @@ function AppContent() {
     initial: { opacity: 0, scale: 0.98, y: 10 },
     in: { opacity: 1, scale: 1, y: 0 },
     out: { opacity: 0, scale: 1.02, y: -10 }
+  }
+
+  // Don't show sidebar/header on sign-in page
+  const isSignInPage = location.pathname === '/signin'
+  
+  // If auth is required and user is not authenticated, show sign-in page immediately
+  // This prevents any flash of sidebar/header before redirect
+  if (isSignInPage || (!loading && authRequired && !user)) {
+    return (
+      <Routes>
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="*" element={<Navigate to="/signin" replace />} />
+      </Routes>
+    )
   }
 
   return (
@@ -68,15 +122,16 @@ function AppContent() {
               className="min-h-full"
             >
               <Routes location={location}>
-                <Route path="/" element={<NewComparison />} />
-                <Route path="/new-comparison" element={<NewComparison />} />
-                <Route path="/screenshot-comparison" element={<ScreenshotComparison />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/single-source" element={<SingleSourcePage />} />
-                <Route path="/color-analytics" element={<ColorAnalytics />} />
-                {/* Redirect any other routes to main comparison */}
-                <Route path="*" element={<NewComparison />} />
+                <Route path="/signin" element={<SignIn />} />
+                <Route path="/" element={<ProtectedRoute><NewComparison /></ProtectedRoute>} />
+                <Route path="/new-comparison" element={<ProtectedRoute><NewComparison /></ProtectedRoute>} />
+                <Route path="/screenshot-comparison" element={<ProtectedRoute><ScreenshotComparison /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/single-source" element={<ProtectedRoute><SingleSourcePage /></ProtectedRoute>} />
+                <Route path="/color-analytics" element={<ProtectedRoute><ColorAnalytics /></ProtectedRoute>} />
+                {/* Redirect any other routes */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </motion.div>
           </AnimatePresence>

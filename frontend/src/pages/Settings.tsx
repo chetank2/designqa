@@ -29,7 +29,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 
 import { cn } from '@/lib/utils'
 import { useAuth } from '../contexts/AuthContext'
-import SignInForm from '../components/auth/SignInForm'
 import SignOutButton from '../components/auth/SignOutButton'
 import { supabase } from '../lib/supabase'
 import DesignSystemsManager from '../components/settings/DesignSystemsManager'
@@ -112,15 +111,21 @@ export default function Settings() {
   const [isLoading, setIsLoading] = useState(true)
   const [serverStatus, setServerStatus] = useState<'online' | 'offline' | 'checking'>('checking')
   const [usingCachedSettings, setUsingCachedSettings] = useState(false)
-  const { user, loading: authLoading, signOut } = useAuth()
+  const { user } = useAuth()
 
   // Sync activeTab with URL parameter
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') || 'general'
-    if (tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl)
+    // Validate that the tab exists in tabs array, default to 'general' if not (handles old 'auth' tab)
+    const validTab = tabs.find(tab => tab.id === tabFromUrl) ? tabFromUrl : 'general'
+    if (validTab !== tabFromUrl) {
+      // Remove invalid tab from URL (e.g., old 'auth' tab that was removed)
+      setSearchParams({ tab: validTab }, { replace: true })
     }
-  }, [searchParams, activeTab])
+    if (validTab !== activeTab) {
+      setActiveTab(validTab)
+    }
+  }, [searchParams, activeTab, tabs])
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -358,7 +363,6 @@ export default function Settings() {
   const tabs = [
     { id: 'general', name: 'General', icon: CogIcon },
     { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
-    { id: 'auth', name: 'Account', icon: UserCircleIcon },
     { id: 'design-systems', name: 'Design Systems', icon: DocumentTextIcon },
     { id: 'credentials', name: 'Credentials', icon: ShieldCheckIcon },
     { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
@@ -425,7 +429,7 @@ export default function Settings() {
           onValueChange={handleTabChange}
           className="section-standard"
         >
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-8">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -791,47 +795,6 @@ export default function Settings() {
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-
-            <TabsContent value="auth">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account & Authentication</CardTitle>
-                  <CardDescription>
-                    Sign in to sync your data with Supabase cloud storage
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {supabase && (
-                    <>
-                      {authLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                          <span className="ml-3 text-muted-foreground">Loading...</span>
-                        </div>
-                      ) : user ? (
-                        <div className="space-y-4">
-                          <Alert>
-                            <CheckCircleIcon className="h-4 w-4" />
-                            <AlertDescription>
-                              Signed in as <strong>{user.email}</strong>
-                            </AlertDescription>
-                          </Alert>
-                          <div className="space-y-2">
-                            <Label>User ID</Label>
-                            <Input value={user.id} readOnly className="font-mono text-xs" />
-                          </div>
-                          <div className="flex justify-end">
-                            <SignOutButton />
-                          </div>
-                        </div>
-                      ) : (
-                        <SignInForm onSuccess={() => window.location.reload()} />
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="design-systems">
