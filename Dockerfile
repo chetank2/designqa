@@ -45,10 +45,13 @@ COPY frontend/tsconfig.node.json ./frontend/tsconfig.node.json
 COPY frontend/tailwind.config.js ./frontend/tailwind.config.js
 COPY frontend/postcss.config.js ./frontend/postcss.config.js
 COPY frontend/components.json ./frontend/components.json
+# Copy frontend .env file if it exists (for Vite build-time variables)
+# This allows VITE_ prefixed variables to be available during build
+COPY frontend/.env* ./frontend/ 2>/dev/null || true
 # Create empty public directory if it doesn't exist (Vite handles this gracefully)
 RUN mkdir -p ./frontend/public
 
-# Build frontend (now that we have source files)
+# Build frontend (now that we have source files and env vars)
 RUN echo "Building frontend..." && \
     cd frontend && \
     npm run build && \
