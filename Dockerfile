@@ -94,12 +94,6 @@ RUN --mount=type=secret,id=vite_supabase_url,required=false \
     echo "Created frontend directory" && \
     mv apps/saas-frontend/dist ./frontend/dist
 
-# Copy backend source files
-COPY apps/saas-backend/server.js ./server.js
-COPY apps/saas-backend/src ./src
-COPY apps/saas-backend/scripts ./scripts
-COPY apps/saas-backend/config.example.json ./config.json
-
 # Production stage
 FROM node:20-slim AS production
 
@@ -125,25 +119,27 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy backend package files and workspace structure
-COPY apps/saas-backend/package*.json ./
-COPY package.json ./
-COPY pnpm-workspace.yaml ./
+# Copy root workspace files
+COPY package.json pnpm-workspace.yaml ./
 
-# Copy production-ready node_modules from builder stage
+# Copy production-ready node_modules from builder stage (root modules)
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy built frontend from builder stage
-COPY --from=builder /app/frontend/dist ./frontend/dist
+# Copy backend source files preserving structure
+COPY apps/saas-backend ./apps/saas-backend
 
-# Copy server files from builder stage
-COPY --from=builder /app/server.js ./server.js
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/config.json ./config.json
+# Copy backend node_modules from builder (contains symlinks to root)
+COPY --from=builder /app/apps/saas-backend/node_modules ./apps/saas-backend/node_modules
 
-# Set production environment
-ENV NODE_ENV=production
+# Ensure config.json exists
+RUN cp ./apps/saas-backend/config.example.json ./apps/saas-backend/config.json
+
+# Copy built frontend from builder stage to where backend expects it
+# backend server.js expects 'frontend/dist' in cwd
+COPY --from=builder /app/frontend/dist ./apps/saas-backend/frontend/dist
+
+# Set working directory to backend app
+WORKDIR /app/apps/saas-backend
 
 # Expose port
 EXPOSE 3847
