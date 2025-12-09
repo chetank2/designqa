@@ -50,8 +50,47 @@ RUN npm install -g pnpm && \
     pnpm install --frozen-lockfile --filter @myapp/saas-backend... && \
     echo "Dependencies installed successfully"
 
-# Copy pre-built frontend dist (built locally with pnpm)
-COPY apps/saas-frontend/dist ./frontend/dist
+# Copy frontend source files needed for build
+COPY apps/saas-frontend/src ./apps/saas-frontend/src
+COPY apps/saas-frontend/index.html ./apps/saas-frontend/index.html
+COPY apps/saas-frontend/vite.config.ts ./apps/saas-frontend/vite.config.ts
+COPY apps/saas-frontend/tsconfig.json ./apps/saas-frontend/tsconfig.json
+COPY apps/saas-frontend/tsconfig.node.json ./apps/saas-frontend/tsconfig.node.json
+COPY apps/saas-frontend/tailwind.config.js ./apps/saas-frontend/tailwind.config.js
+COPY apps/saas-frontend/postcss.config.js ./apps/saas-frontend/postcss.config.js
+COPY apps/saas-frontend/components.json ./apps/saas-frontend/components.json
+RUN mkdir -p ./apps/saas-frontend/public
+
+# Build frontend with flexible secret handling
+RUN --mount=type=secret,id=vite_supabase_url,required=false \
+    --mount=type=secret,id=vite_supabase_anon_key,required=false \
+    echo "Building frontend..." && \
+    cd apps/saas-frontend && \
+    touch .env && \
+    if [ -f /run/secrets/vite_supabase_url ]; then \
+        echo "Using BuildKit secret for VITE_SUPABASE_URL" && \
+        echo "VITE_SUPABASE_URL=$(cat /run/secrets/vite_supabase_url)" >> .env && \
+        export VITE_SUPABASE_URL="$(cat /run/secrets/vite_supabase_url)"; \
+    elif [ -n "${VITE_SUPABASE_URL:-}" ]; then \
+        echo "Using ARG/env var for VITE_SUPABASE_URL" && \
+        echo "VITE_SUPABASE_URL=${VITE_SUPABASE_URL}" >> .env && \
+        export VITE_SUPABASE_URL="${VITE_SUPABASE_URL}"; \
+    fi && \
+    if [ -f /run/secrets/vite_supabase_anon_key ]; then \
+        echo "Using BuildKit secret for VITE_SUPABASE_ANON_KEY" && \
+        echo "VITE_SUPABASE_ANON_KEY=$(cat /run/secrets/vite_supabase_anon_key)" >> .env && \
+        export VITE_SUPABASE_ANON_KEY="$(cat /run/secrets/vite_supabase_anon_key)"; \
+    elif [ -n "${VITE_SUPABASE_ANON_KEY:-}" ]; then \
+        echo "Using ARG/env var for VITE_SUPABASE_ANON_KEY" && \
+        echo "VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}" >> .env && \
+        export VITE_SUPABASE_ANON_KEY="${VITE_SUPABASE_ANON_KEY}"; \
+    fi && \
+    rm -rf dist && \
+    pnpm run build && \
+    rm -f .env && \
+    cd ../.. && \
+    echo "Frontend build completed successfully" && \
+    mv apps/saas-frontend/dist ./frontend/dist
 
 # Copy backend source files (only what's needed for production)
 COPY apps/saas-backend/server.js ./server.js
