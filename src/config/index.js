@@ -33,7 +33,9 @@ export async function loadConfig() {
       host: env.HOST || env.SERVER_HOST || '0.0.0.0',  // Bind to all interfaces for cloud deployments
     },
     cors: {
-      origins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : [
+      origins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',').map(origin => origin.trim()) : [
+        'https://designqa.onrender.com',
+        'https://designqa-ck.vercel.app',
         'http://localhost:3000',
         `http://localhost:${PORTS.SERVER}`,
         `http://localhost:${PORTS.WEB_DEV}`,

@@ -30,10 +30,23 @@ export function configureSecurityMiddleware(app, config) {
     crossOriginEmbedderPolicy: false, // Required for some Puppeteer operations
   }));
 
-  // CORS configuration - Permissive for cross-platform compatibility
+  // CORS configuration - Use whitelist from config
   app.use(cors({
-    origin: true, // Allow all origins for development and local apps
-    credentials: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Check if origin is in the allowed list
+      const allowedOrigins = config.cors?.origins || [];
+      if (allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: config.cors?.credentials !== false,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['*'], // Allow all headers
     exposedHeaders: ['*'], // Expose all headers
