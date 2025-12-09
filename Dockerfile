@@ -59,12 +59,11 @@ COPY frontend/tsconfig.node.json ./frontend/tsconfig.node.json
 COPY frontend/tailwind.config.js ./frontend/tailwind.config.js
 COPY frontend/postcss.config.js ./frontend/postcss.config.js
 COPY frontend/components.json ./frontend/components.json
-# Copy frontend .env file if it exists (for local builds)
-# For Render/cloud builds, use build args (VITE_*) passed via --build-arg
-# Vite will use ENV vars set above (from ARG) which take precedence over .env file
-# Note: If frontend/.env doesn't exist, this COPY will fail - that's okay for cloud builds using build args
-# For Render, pass VITE_* variables as build args instead of relying on .env file
-COPY frontend/.env ./frontend/.env 2>/dev/null || echo "No frontend/.env - using build args"
+# Copy frontend .env file (for local builds - ensure it exists by running 'npm run sync:env' first)
+# For Render/cloud builds, pass VITE_* variables as build args (--build-arg VITE_SUPABASE_URL=...)
+# ENV vars set above (from ARG) take precedence over .env file values
+# Note: If building for Render without frontend/.env, pass build args instead
+COPY frontend/.env ./frontend/.env
 # Create empty public directory if it doesn't exist (Vite handles this gracefully)
 RUN mkdir -p ./frontend/public
 
