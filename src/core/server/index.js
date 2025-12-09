@@ -147,11 +147,7 @@ export async function startServer(portArg) {
         figmaClient = await getMCPClient();
       }
     } catch (mcpError) {
-      if (!isApiOnlyFigma && figmaConnectionMode === 'desktop') {
-        figmaClient = new FigmaMCPClient({
-          baseUrl: process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp'
-        });
-      } else if (!isApiOnlyFigma) {
+      if (!isApiOnlyFigma) {
         throw mcpError;
       }
     }
@@ -2945,7 +2941,6 @@ export async function startServer(portArg) {
   console.log(`[DEBUG] Attempting to listen on port: ${PORT}`);
 
   const server = httpServer.listen(PORT, config.server.host, () => {
-    // Write directly to stdout for Electron detection
     process.stdout.write(`Server running on port ${PORT}\n`);
 
     console.log(`🚀 Server running at http://${config.server.host}:${PORT}`);
@@ -2954,33 +2949,26 @@ export async function startServer(portArg) {
     console.log(`🔌 WebSocket server ready for connections`);
     console.log(`🔧 Enhanced features: Browser Pool, Security, Rate Limiting`);
 
-    // Start periodic status checks
-    // Skip local MCP checks in production (Railway/cloud deployments don't have Figma Desktop)
-    const allowLocalMCP = process.env.ENABLE_LOCAL_MCP === 'true' || process.env.NODE_ENV !== 'production';
+    // Start periodic MCP status checks
+    setInterval(async () => {
+      try {
+        const wasConnected = mcpConnected;
+        if (figmaClient) {
+          mcpConnected = await figmaClient.connect();
 
-    if (allowLocalMCP) {
-      setInterval(async () => {
-        try {
-          const wasConnected = mcpConnected;
-          if (figmaClient) {
-            mcpConnected = await figmaClient.connect();
-
-            if (wasConnected !== mcpConnected) {
-              console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
-            }
-          } else {
-            mcpConnected = null;
+          if (wasConnected !== mcpConnected) {
+            console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
           }
-        } catch (error) {
-          if (mcpConnected) {
-            mcpConnected = false;
-            console.log('🔌 MCP Status changed: Disconnected');
-          }
+        } else {
+          mcpConnected = null;
         }
-      }, 30000); // Check every 30 seconds
-    } else {
-      console.log('ℹ️  Local MCP health checks disabled in production (ENABLE_LOCAL_MCP not set)');
-    }
+      } catch (error) {
+        if (mcpConnected) {
+          mcpConnected = false;
+          console.log('🔌 MCP Status changed: Disconnected');
+        }
+      }
+    }, 30000); // Check every 30 seconds
   });
 
   // Setup signal handlers

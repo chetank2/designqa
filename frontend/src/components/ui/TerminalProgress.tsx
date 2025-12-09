@@ -20,19 +20,8 @@ export default function TerminalProgress({ isVisible, onComplete }: TerminalProg
   const [currentIndex, setCurrentIndex] = useState(0);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Detect if we're in Electron to show appropriate commands
-  const isElectron = typeof window !== 'undefined' && 
-                    (window.navigator.userAgent.includes('Electron') || 
-                     window.process?.type === 'renderer');
-
-  const initialCommands: Omit<TerminalCommand, 'id' | 'timestamp'>[] = isElectron ? [
-    { command: 'cd /Applications/Figma\\ Comparison\\ Tool.app', status: 'pending' },
-    { command: 'Starting Electron Express Server...', status: 'pending' },
-    { command: 'Server running on 127.0.0.1:3847', status: 'pending' },
-    { command: 'curl -s http://localhost:3847/api/health', status: 'pending' },
-    { command: 'macOS app ready!', status: 'pending' }
-  ] : [
-    { command: 'cd /Users/user/Comparision\\ tool', status: 'pending' },
+  const initialCommands: Omit<TerminalCommand, 'id' | 'timestamp'>[] = [
+    { command: 'Starting Figma Comparison Tool...', status: 'pending' },
     { command: 'PORT=3847 node server.js', status: 'pending' },
     { command: 'Checking server health...', status: 'pending' },
     { command: 'curl -s http://localhost:3847/api/health', status: 'pending' },
@@ -67,25 +56,19 @@ export default function TerminalProgress({ isVisible, onComplete }: TerminalProg
         let output = '';
         switch (i) {
           case 0:
-            output = isElectron ? '/Applications/Figma Comparison Tool.app' : '~/Comparision tool';
+            output = '🚀 Starting Figma Comparison Tool...\n✅ Enhanced service initialization successful';
             break;
           case 1:
-            output = isElectron ? 
-              '🚀 Starting Figma Comparison Tool...\n✅ Electron Express Server started\n🚀 Server running at http://127.0.0.1:3847' :
-              '🚀 Starting Figma Web Comparison Tool...\n✅ Enhanced service initialization successful\n🚀 Server running at http://localhost:3847';
+            output = '🚀 Server running at http://localhost:3847';
             break;
           case 2:
-            output = isElectron ? 
-              '✅ Express server running on port 3847' :
-              'Server health check initiated...';
+            output = 'Server health check initiated...';
             break;
           case 3:
             output = '{"success": true, "data": {"status": "ok"}}';
             break;
           case 4:
-            output = isElectron ? 
-              '✅ macOS app is ready!' :
-              '✅ Connection successful - Port 3847';
+            output = '✅ Connection successful - Port 3847';
             break;
         }
 

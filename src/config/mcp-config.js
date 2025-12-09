@@ -9,7 +9,6 @@ import { getSupabaseClient } from './supabase.js';
 
 const PROVIDERS = {
   API: 'api',
-  DESKTOP: 'desktop',
   FIGMA: 'figma'
 };
 
@@ -21,9 +20,6 @@ function normalizeProvider(value) {
   const normalized = value.toLowerCase();
   if (['api', 'figma-api'].includes(normalized)) {
     return PROVIDERS.API;
-  }
-  if (['desktop', 'figma-desktop', 'local'].includes(normalized)) {
-    return PROVIDERS.DESKTOP;
   }
   if (['figma', 'figma-cloud', 'cloud', 'remote'].includes(normalized)) {
     return PROVIDERS.FIGMA;
@@ -42,12 +38,8 @@ export function getMCPProvider() {
     return envPreference;
   }
 
-  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
-  if (isVercel) {
-    return PROVIDERS.FIGMA;
-  }
-
-  return PROVIDERS.DESKTOP;
+  // Default to Remote MCP for cloud deployments
+  return PROVIDERS.FIGMA;
 }
 
 /**
@@ -120,9 +112,7 @@ export async function getMCPClient(options = {}) {
       figmaToken: token
     });
   } else {
-    mcpClientInstance = new FigmaMCPClient({
-      baseUrl: process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp'
-    });
+    throw new Error(`Unsupported MCP provider: ${currentMode}. Supported providers: api, figma`);
   }
 
   mcpMode = currentMode;

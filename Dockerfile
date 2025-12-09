@@ -24,9 +24,6 @@ WORKDIR /app
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 
-# Copy postinstall script before npm ci (needed for postinstall hook, but will skip due to DOCKER_BUILD=true)
-COPY scripts/postinstall.cjs ./scripts/postinstall.cjs
-
 # Install dependencies immediately (before copying large source files)
 # This runs right after copying package files to avoid timeout
 # Using explicit echo to verify execution and prevent caching issues

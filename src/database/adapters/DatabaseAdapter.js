@@ -1,6 +1,6 @@
 /**
  * Database Adapter Interface
- * Abstract interface for database operations supporting both Supabase and SQLite
+ * Abstract interface for database operations (Supabase-only for cloud deployments)
  */
 
 /**
@@ -97,7 +97,7 @@ export class DatabaseAdapter {
 
   /**
    * Get database type
-   * @returns {string} Database type ('supabase' or 'sqlite')
+   * @returns {string} Database type ('supabase')
    */
   getType() {
     throw new Error('getType must be implemented by subclass');

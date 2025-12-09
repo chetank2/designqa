@@ -21,20 +21,7 @@ export const DEFAULT_SERVER_PORT = APP_SERVER_PORT;
 // macOS app port - Uses same unified port
 export const MACOS_APP_PORT = APP_SERVER_PORT;
 
-// Function to detect if we're running in Electron (macOS app)
-export function isElectronApp(): boolean {
-  return typeof window !== 'undefined' && 
-         (window.navigator.userAgent.includes('Electron') || 
-          // @ts-ignore - Check for Electron APIs
-          window.require !== undefined ||
-          // @ts-ignore - Check for process in renderer
-          (window.process && window.process.type === 'renderer'));
-}
-
-// Function to detect if we're running in Electron environment (e.g., Electron app or renderer)
-export function isElectronEnvironment(): boolean {
-  return typeof window !== 'undefined' && !!(window as any).electronAPI;
-}
+// Electron detection removed - cloud deployments only
 
 // Type declaration for Vite's import.meta.env
 interface ImportMetaEnv {
@@ -62,18 +49,8 @@ export function getServerPort(): number {
   const env = import.meta.env;
   const envPort = env.VITE_SERVER_PORT;
   
-  // Auto-detect port based on environment
-  if (!definedPort && !envPort && isElectronApp()) {
-    console.log('🖥️ Detected Electron app, using unified server port:', APP_SERVER_PORT);
-    return APP_SERVER_PORT; // Use unified port for consistency
-  }
-  
   // Parse the port from environment or use default
   const port = definedPort || (envPort ? parseInt(envPort, 10) : DEFAULT_SERVER_PORT);
-  
-  if (!definedPort && !envPort) {
-    console.log('🌐 Detected web app, using web app port:', port);
-  }
   
   return port;
 }

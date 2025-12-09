@@ -9,7 +9,12 @@ class FigmaMCPClient {
     this.messageId = 0;
     this.sessionId = null;
     this.initialized = false;
-    this.baseUrl = options.baseUrl || process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp';
+    // Note: This client is deprecated in favor of RemoteMCPClient for cloud deployments
+    // Only kept for backward compatibility if needed
+    this.baseUrl = options.baseUrl || process.env.FIGMA_DESKTOP_MCP_URL || null;
+    if (!this.baseUrl) {
+      throw new Error('FigmaMCPClient requires baseUrl option. Use RemoteMCPClient for cloud deployments.');
+    }
   }
 
   /**

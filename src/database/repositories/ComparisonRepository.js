@@ -30,11 +30,6 @@ export class ComparisonRepository {
       completedAt: data.completedAt || null
     };
 
-    // Convert JSON fields for SQLite
-    if (this.adapter.getType() === 'sqlite') {
-      comparisonData.result = comparisonData.result;
-    }
-
     return await this.adapter.insert(this.table, comparisonData);
   }
 

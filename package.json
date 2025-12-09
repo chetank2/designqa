@@ -26,7 +26,6 @@
     "type-check": "tsc --noEmit",
     "security-audit": "npm audit && cd frontend && npm audit",
     "start:production": "NODE_ENV=production node server.js",
-    "postinstall": "node scripts/postinstall.cjs",
     "diagnose": "node scripts/quick-diagnose.cjs",
     "db:migrate": "node scripts/db-migrate.js",
     "db:migrate-data": "node scripts/db-migrate-data.js"

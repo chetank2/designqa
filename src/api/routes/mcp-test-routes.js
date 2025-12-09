@@ -5,7 +5,6 @@
 
 import express from 'express';
 import fetch from 'node-fetch';
-import FigmaMCPClient from '../../figma/mcpClient.js';
 
 const router = express.Router();
 
@@ -20,10 +19,8 @@ router.post('/test-connection', async (req, res) => {
     console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint });
     
     switch (method) {
-      case 'mcp_server':
-        return await testMCPServer(req, res);
-        
       case 'direct_api':
+      case 'api':
         return await testDirectAPI(req, res);
         
       case 'mcp_tools':
@@ -38,7 +35,7 @@ router.post('/test-connection', async (req, res) => {
       default:
         return res.json({
           success: false,
-          error: `Unknown connection method: ${method}`
+          error: `Unknown connection method: ${method}. Supported methods: api, mcp_tools`
         });
     }
   } catch (error) {
@@ -49,50 +46,6 @@ router.post('/test-connection', async (req, res) => {
     });
   }
 });
-
-/**
- * Test Figma Dev Mode MCP Server connection
- */
-async function testMCPServer(req, res) {
-  try {
-    console.log('🔍 Testing Figma Dev Mode MCP Server connection...');
-    
-    // Use our MCP client to test the connection
-    const mcpClient = new FigmaMCPClient();
-    
-    const connected = await mcpClient.connect();
-    
-    if (connected) {
-      return res.json({
-        success: true,
-        message: 'Figma Dev Mode MCP Server connected successfully! Ready to extract design data.',
-        data: {
-          connected: true,
-          serverUrl: 'http://127.0.0.1:3845/mcp',
-          availableTools: ['get_code', 'get_metadata', 'get_variable_defs'],
-          toolsCount: 3,
-          note: 'Connection established. You can now use Figma MCP tools for enhanced design extraction.'
-        }
-      });
-    } else {
-      throw new Error('Failed to establish MCP session');
-    }
-  } catch (error) {
-    console.error('❌ Figma Dev Mode MCP Server test failed:', error);
-    
-    if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
-      return res.json({
-        success: false,
-        error: 'Figma Dev Mode MCP Server not running. Please:\n1. Open Figma Desktop app\n2. Go to Figma menu > Preferences\n3. Enable "Enable local MCP Server"\n4. The server should run at http://127.0.0.1:3845/mcp'
-      });
-    }
-    
-    return res.json({
-      success: false,
-      error: `Figma Dev Mode MCP Server connection failed: ${error.message}`
-    });
-  }
-}
 
 /**
  * Test Direct Figma API connection

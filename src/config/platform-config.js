@@ -17,20 +17,10 @@ export class PlatformConfig {
   }
 
   /**
-   * Detect current platform (web vs electron/macOS)
+   * Detect current platform (web only for cloud deployments)
    */
   detectPlatform() {
-    // Check if running in Electron
-    if (process.versions.electron) {
-      return 'electron';
-    }
-    
-    // Check if explicitly set to macOS mode (for native macOS app)
-    if (process.env.PLATFORM_MODE === 'macos') {
-      return 'macos';
-    }
-    
-    // Default to web
+    // Cloud deployments always use web platform
     return 'web';
   }
 
@@ -71,41 +61,10 @@ export class PlatformConfig {
         },
         figma: {
           useMCP: true,
-          mcpServerUrl: 'http://localhost:3845'
+          mcpServerUrl: 'https://mcp.figma.com/mcp'
         }
       },
       
-      macos: {
-        server: {
-          port: serverPort,
-          staticPath: path.join(__dirname, '../../frontend/dist'),
-          cors: {
-            origin: [`http://localhost:${serverPort}`],
-            credentials: true
-          }
-        },
-        figma: {
-          useMCP: true,
-          mcpServerUrl: 'http://localhost:3845',
-          fallbackToDirectAPI: true // macOS can fallback to direct API
-        }
-      },
-      
-      electron: {
-        server: {
-          port: serverPort,
-          staticPath: path.join(__dirname, '../../frontend/dist'),
-          cors: {
-            origin: [`http://localhost:${serverPort}`],
-            credentials: true
-          }
-        },
-        figma: {
-          useMCP: true,
-          mcpServerUrl: 'http://localhost:3845',
-          fallbackToDirectAPI: true
-        }
-      }
     };
 
     return {
@@ -144,11 +103,11 @@ export class PlatformConfig {
   }
 
   isMacOS() {
-    return this.platform === 'macos' || this.platform === 'electron';
+    return false; // macOS platform not supported in cloud deployments
   }
 
   isElectron() {
-    return this.platform === 'electron';
+    return false; // Electron platform not supported in cloud deployments
   }
 
   /**
@@ -166,18 +125,6 @@ export class PlatformConfig {
       }
     };
 
-    if (this.isElectron()) {
-      // More permissive settings for Electron
-      base.helmet.contentSecurityPolicy = {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https:", "http:"]
-        }
-      };
-    }
 
     return base;
   }
@@ -187,10 +134,10 @@ export class PlatformConfig {
    */
   getLoggingConfig() {
     return {
-      level: this.isElectron() ? 'debug' : 'info',
+      level: 'info',
       console: true,
-      file: this.isElectron() ? false : true, // File logging for web only
-      format: this.isElectron() ? 'simple' : 'json'
+      file: true, // File logging for cloud deployments
+      format: 'json'
     };
   }
 }

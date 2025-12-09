@@ -9,13 +9,13 @@ export const config = {
   // Server configuration
   server: {
     port: process.env.PORT || PORTS.SERVER,
-    host: process.env.HOST || 'localhost'
+    host: process.env.HOST || '0.0.0.0'  // Cloud deployments bind to all interfaces
   },
 
-  // MCP configuration
+  // MCP configuration (Remote MCP for cloud deployments)
   mcp: {
     enabled: true,
-    url: 'http://127.0.0.1:3845',
+    url: process.env.MCP_URL || 'https://mcp.figma.com/mcp',
     endpoint: '/mcp'
   },
 

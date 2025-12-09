@@ -22,10 +22,9 @@ export async function initDatabase(options = {}) {
     return servicesInstance;
   }
 
-  // Get database adapter
+  // Get database adapter (Supabase-only for cloud deployments)
   adapterInstance = await getDatabaseAdapter({
-    userId: options.userId,
-    dbPath: process.env.DATABASE_URL?.replace('file:', '')
+    userId: options.userId
   });
 
   // Get storage provider

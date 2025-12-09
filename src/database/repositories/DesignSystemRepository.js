@@ -30,11 +30,6 @@ export class DesignSystemRepository {
       updatedAt: data.updatedAt || new Date().toISOString()
     };
 
-    // Convert boolean for SQLite
-    if (this.adapter.getType() === 'sqlite') {
-      systemData.isGlobal = systemData.isGlobal ? 1 : 0;
-    }
-
     return await this.adapter.insert(this.table, systemData);
   }
 
@@ -62,11 +57,6 @@ export class DesignSystemRepository {
       } catch (e) {
         // Invalid JSON, keep as string
       }
-    }
-
-    // Convert boolean from SQLite
-    if (this.adapter.getType() === 'sqlite' && typeof system.isGlobal === 'number') {
-      system.isGlobal = system.isGlobal === 1;
     }
 
     return system;
@@ -98,11 +88,6 @@ export class DesignSystemRepository {
       }
     }
 
-    // Convert boolean from SQLite
-    if (this.adapter.getType() === 'sqlite' && typeof system.isGlobal === 'number') {
-      system.isGlobal = system.isGlobal === 1;
-    }
-
     return system;
   }
 
@@ -120,10 +105,6 @@ export class DesignSystemRepository {
       updateData.tokens = JSON.stringify(updateData.tokens);
     }
 
-    // Convert boolean for SQLite
-    if (this.adapter.getType() === 'sqlite' && updateData.isGlobal !== undefined) {
-      updateData.isGlobal = updateData.isGlobal ? 1 : 0;
-    }
 
     // Add updated timestamp
     if (!updateData.updatedAt) {
@@ -145,11 +126,6 @@ export class DesignSystemRepository {
       } catch (e) {
         // Invalid JSON, keep as string
       }
-    }
-
-    // Convert boolean from SQLite
-    if (this.adapter.getType() === 'sqlite' && typeof system.isGlobal === 'number') {
-      system.isGlobal = system.isGlobal === 1;
     }
 
     return system;
@@ -183,9 +159,9 @@ export class DesignSystemRepository {
     if (userId !== null) {
       // Include global systems and user's systems
       if (isGlobal === true) {
-        where.isGlobal = this.adapter.getType() === 'sqlite' ? 1 : true;
+        where.isGlobal = true;
       } else if (isGlobal === false) {
-        where.isGlobal = this.adapter.getType() === 'sqlite' ? 0 : false;
+        where.isGlobal = false;
         if (userId) where.userId = userId;
       } else {
         // Include both global and user's systems
@@ -193,7 +169,7 @@ export class DesignSystemRepository {
         // In production, use OR conditions
       }
     } else if (isGlobal !== null) {
-      where.isGlobal = this.adapter.getType() === 'sqlite' ? (isGlobal ? 1 : 0) : isGlobal;
+      where.isGlobal = isGlobal;
     }
 
     const results = await this.adapter.select(this.table, {
@@ -211,10 +187,6 @@ export class DesignSystemRepository {
         } catch (e) {
           // Invalid JSON, keep as string
         }
-      }
-
-      if (this.adapter.getType() === 'sqlite' && typeof system.isGlobal === 'number') {
-        system.isGlobal = system.isGlobal === 1;
       }
 
       return system;

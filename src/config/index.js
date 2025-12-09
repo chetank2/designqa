@@ -30,7 +30,7 @@ export async function loadConfig() {
   const baseConfig = {
     server: {
       port: parseInt(env.PORT || env.SERVER_PORT || PORTS.SERVER.toString(), 10),
-      host: env.HOST || env.SERVER_HOST || '0.0.0.0',  // Bind to all interfaces for Electron compatibility
+      host: env.HOST || env.SERVER_HOST || '0.0.0.0',  // Bind to all interfaces for cloud deployments
     },
     cors: {
       origins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : [
@@ -43,7 +43,7 @@ export async function loadConfig() {
     },
     mcp: {
       enabled: env.MCP_ENABLED !== 'false',
-      url: env.MCP_URL || 'http://127.0.0.1:3845',
+      url: env.MCP_URL || 'https://mcp.figma.com/mcp',
       endpoint: env.MCP_ENDPOINT || '/mcp',
     },
     puppeteer: {
@@ -51,7 +51,7 @@ export async function loadConfig() {
         env.PUPPETEER_HEADLESS === 'true' ? true : 'new',
       timeout: parseInt(env.PUPPETEER_TIMEOUT || '30000', 10),
       protocolTimeout: parseInt(env.PUPPETEER_PROTOCOL_TIMEOUT || '300000', 10), // 5 minutes for slow sites
-      executablePath: env.PUPPETEER_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      executablePath: env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: env.PUPPETEER_ARGS ? env.PUPPETEER_ARGS.split(',') : [
         '--no-sandbox',
         '--disable-setuid-sandbox',

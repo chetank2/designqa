@@ -3,7 +3,6 @@
  * Detects storage mode and provides appropriate StorageProvider instance
  */
 
-import { LocalStorageProvider } from '../storage/LocalStorageProvider.js';
 import { SupabaseStorageProvider } from '../storage/SupabaseStorageProvider.js';
 
 let storageProviderInstance = null;
@@ -11,26 +10,11 @@ let storageMode = null;
 
 /**
  * Detect storage mode based on environment
- * @returns {'local'|'supabase'} Storage mode
+ * @returns {'supabase'} Storage mode (always Supabase for cloud deployments)
  */
 export function detectStorageMode() {
-  // Check if Supabase is configured
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  
-  if (supabaseUrl) {
-    // Check if we're in SaaS mode (Vercel) or desktop with Supabase configured
-    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
-    
-    if (isVercel) {
-      return 'supabase'; // SaaS mode always uses Supabase
-    }
-    
-    // Desktop mode with Supabase configured - can use either
-    // Default to local, but can be overridden via env var
-    return process.env.STORAGE_MODE === 'supabase' ? 'supabase' : 'local';
-  }
-  
-  return 'local'; // Default to local filesystem
+  // Cloud deployments always use Supabase
+  return 'supabase';
 }
 
 /**
@@ -50,19 +34,18 @@ export function getStorageProvider(userId = null) {
     return storageProviderInstance;
   }
   
-  // Create new instance based on mode
+  // Create new instance based on mode (always Supabase for cloud deployments)
   storageMode = currentMode;
   
   if (storageMode === 'supabase') {
     try {
       storageProviderInstance = new SupabaseStorageProvider(userId);
     } catch (error) {
-      console.warn('⚠️ Failed to initialize Supabase storage, falling back to local:', error.message);
-      storageProviderInstance = new LocalStorageProvider();
-      storageMode = 'local';
+      console.error('❌ Failed to initialize Supabase storage:', error.message);
+      throw new Error('Supabase storage is required for cloud deployments. Please configure SUPABASE_URL and related environment variables.');
     }
   } else {
-    storageProviderInstance = new LocalStorageProvider();
+    throw new Error(`Unsupported storage mode: ${storageMode}. Only 'supabase' is supported for cloud deployments.`);
   }
   
   return storageProviderInstance;
@@ -88,7 +71,7 @@ export async function isSupabaseStorageAvailable() {
 
 /**
  * Get current storage mode
- * @returns {'local'|'supabase'} Current storage mode
+ * @returns {'supabase'} Current storage mode (always Supabase for cloud deployments)
  */
 export function getStorageMode() {
   if (!storageMode) {

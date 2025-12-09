@@ -1,14 +1,13 @@
 /**
  * MCP API Routes
  * Exposes Figma MCP functionality via REST API
+ * Note: For cloud deployments, use Remote MCP (getMCPClient with mode='figma')
  */
 
 import express from 'express';
-import FigmaMCPClient from '../figma/mcpClient.js';
+import { getMCPClient } from '../config/mcp-config.js';
 
 const router = express.Router();
-
-// MCP client is initialized per request for better reliability
 
 /**
  * GET /api/mcp/status
@@ -16,7 +15,22 @@ const router = express.Router();
  */
 router.get('/status', async (req, res) => {
   try {
-    const mcpClient = new FigmaMCPClient();
+    const mcpClient = await getMCPClient();
+    
+    if (!mcpClient) {
+      return res.json({
+        success: false,
+        status: 'disabled',
+        available: false,
+        message: 'MCP is disabled (API-only mode)',
+        data: {
+          connected: false,
+          serverUrl: null,
+          tools: [],
+          toolsCount: 0
+        }
+      });
+    }
     
     // Test connection to get current status
     const isConnected = await mcpClient.connect();
@@ -26,11 +40,11 @@ router.get('/status', async (req, res) => {
       status: isConnected ? 'connected' : 'disconnected',
       available: isConnected,
       message: isConnected 
-        ? 'Figma Dev Mode MCP Server connected successfully'
-        : 'Figma Dev Mode MCP Server not available',
+        ? 'MCP Server connected successfully'
+        : 'MCP Server not available',
       data: {
         connected: isConnected,
-        serverUrl: 'http://127.0.0.1:3845/mcp',
+        serverUrl: mcpClient.baseUrl || mcpClient.remoteUrl || 'https://mcp.figma.com/mcp',
         tools: isConnected ? ['get_code', 'get_metadata', 'get_variable_defs'] : [],
         toolsCount: isConnected ? 3 : 0
       }
@@ -62,7 +76,13 @@ router.post('/figma/file', async (req, res) => {
       });
     }
     
-    const mcpClient = new FigmaMCPClient();
+    const mcpClient = await getMCPClient();
+    if (!mcpClient) {
+      return res.status(400).json({
+        success: false,
+        error: 'MCP is disabled (API-only mode)'
+      });
+    }
     await mcpClient.connect();
     const data = await mcpClient.getFigmaFile(fileId, nodeId);
     
@@ -94,7 +114,13 @@ router.post('/figma/export', async (req, res) => {
       });
     }
     
-    const mcpClient = new FigmaMCPClient();
+    const mcpClient = await getMCPClient();
+    if (!mcpClient) {
+      return res.status(400).json({
+        success: false,
+        error: 'MCP is disabled (API-only mode)'
+      });
+    }
     await mcpClient.connect();
     const data = await mcpClient.exportAssets(fileId, nodeIds, format, scale);
     
@@ -126,7 +152,13 @@ router.post('/figma/analyze', async (req, res) => {
       });
     }
     
-    const mcpClient = new FigmaMCPClient();
+    const mcpClient = await getMCPClient();
+    if (!mcpClient) {
+      return res.status(400).json({
+        success: false,
+        error: 'MCP is disabled (API-only mode)'
+      });
+    }
     await mcpClient.connect();
     const data = await mcpClient.analyzeComponents(fileId);
     
@@ -158,7 +190,13 @@ router.post('/figma/compare', async (req, res) => {
       });
     }
     
-    const mcpClient = new FigmaMCPClient();
+    const mcpClient = await getMCPClient();
+    if (!mcpClient) {
+      return res.status(400).json({
+        success: false,
+        error: 'MCP is disabled (API-only mode)'
+      });
+    }
     await mcpClient.connect();
     
     // Get Figma data via MCP

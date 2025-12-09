@@ -35,7 +35,7 @@ import DesignSystemsManager from '../components/settings/DesignSystemsManager'
 import CredentialsManager from '../components/settings/CredentialsManager'
 
 
-type MCPConnectionMethod = 'api' | 'desktop' | 'figma';
+type MCPConnectionMethod = 'api' | 'figma';
 
 interface SettingsForm {
   // General Settings
@@ -79,7 +79,7 @@ interface SettingsForm {
 const SETTINGS_PLACEHOLDERS = {
   figmaToken: 'figd_...',
   webhookUrl: 'https://hooks.slack.com/services/...',
-  mcpServerUrl: 'http://127.0.0.1:3845/mcp',
+  mcpServerUrl: 'https://mcp.figma.com/mcp',
   searchReports: 'Search reports by name, date, or status...'
 }
 
@@ -88,14 +88,11 @@ const normalizeConnectionMethod = (value?: string): MCPConnectionMethod => {
     case 'direct_api':
     case 'api':
       return 'api';
-    case 'mcp_server':
-    case 'desktop':
-      return 'desktop';
     case 'mcp_server_remote':
     case 'figma':
       return 'figma';
     default:
-      return 'api';
+      return 'figma'; // Default to Remote MCP for cloud deployments
   }
 };
 
@@ -157,8 +154,8 @@ export default function Settings() {
       figmaPersonalAccessToken: '',
       defaultFigmaExportFormat: 'svg',
       figmaExportScale: 2,
-      mcpConnectionMethod: 'api',
-      mcpServerUrl: 'http://127.0.0.1:3845/mcp',
+      mcpConnectionMethod: 'figma', // Default to Remote MCP for cloud deployments
+      mcpServerUrl: 'https://mcp.figma.com/mcp',
       mcpEndpoint: '/sse',
       defaultViewport: {
         width: 1920,
@@ -566,14 +563,13 @@ export default function Settings() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="api">Figma API</SelectItem>
-                              <SelectItem value="desktop">Desktop MCP</SelectItem>
                               <SelectItem value="figma">Remote MCP (Figma)</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Choose how to connect to Figma. Direct API is recommended for most users.
+                        Choose how to connect to Figma. Remote MCP is recommended for cloud deployments.
                       </p>
                     </div>
 
@@ -583,22 +579,13 @@ export default function Settings() {
                     </div>
 
                     {/* Connection Method Info Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
                         <h4 className="font-medium text-blue-900 mb-2 flex items-center">
                           🔑 Figma API
                         </h4>
                         <p className="text-sm text-blue-700">
-                          Uses your personal Figma access token. Simple and reliable for most use cases.
-                        </p>
-                      </div>
-
-                      <div className="p-4 border rounded-lg bg-gray-50 border-gray-200">
-                        <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                          🖥️ Desktop MCP
-                        </h4>
-                        <p className="text-sm text-gray-700">
-                          Connects to the Figma Desktop MCP server at http://127.0.0.1:3845/mcp.
+                          Uses your personal Figma access token. Simple and reliable for direct REST API calls.
                         </p>
                       </div>
 
@@ -607,7 +594,7 @@ export default function Settings() {
                           ☁️ Remote MCP
                         </h4>
                         <p className="text-sm text-purple-700">
-                          Uses Figma&apos;s hosted MCP service at https://mcp.figma.com/mcp (requires your token).
+                          Uses Figma&apos;s hosted MCP service at https://mcp.figma.com/mcp (requires your token). Recommended for cloud deployments.
                         </p>
                       </div>
                     </div>
@@ -645,58 +632,6 @@ export default function Settings() {
                   )}
                 />
 
-                {/* MCP Server Settings (shown for desktop method) */}
-                <Controller
-                  name="mcpConnectionMethod"
-                  control={control}
-                  render={({ field: methodField }) => (
-                    methodField.value === 'desktop' ? (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>MCP Server Configuration</CardTitle>
-                          <CardDescription>
-                            Configure connection to your MCP server
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="mcpServerUrl">MCP Server URL</Label>
-                              <Controller
-                                name="mcpServerUrl"
-                                control={control}
-                                render={({ field }) => (
-                                  <Input
-                                    {...field}
-                                    id="mcpServerUrl"
-                                    type="url"
-                                    placeholder={SETTINGS_PLACEHOLDERS.mcpServerUrl}
-                                  />
-                                )}
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="mcpEndpoint">Endpoint Path</Label>
-                              <Controller
-                                name="mcpEndpoint"
-                                control={control}
-                                render={({ field }) => (
-                                  <Input
-                                    {...field}
-                                    id="mcpEndpoint"
-                                    type="text"
-                                    placeholder="/sse"
-                                  />
-                                )}
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : <></>
-                  )}
-                />
 
                 {/* Export Settings */}
                 <Card>

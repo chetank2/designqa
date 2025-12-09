@@ -1,29 +1,33 @@
 # Environment Setup Guide
 
-This guide explains how to configure environment variables to replace hardcoded values in the Figma-Web Comparison Tool.
+This guide explains how to configure environment variables for cloud deployments (Render/Railway) of the Figma-Web Comparison Tool.
+
+**Note**: This application is designed for cloud deployments only. Local desktop mode is no longer supported.
 
 ## 🔐 **Required Environment Variables**
 
 ### **Figma Configuration**
 ```bash
-# Figma Personal Access Token (REQUIRED for production)
-FIGMA_ACCESS_TOKEN=figd_your_actual_token_here
+# Figma Personal Access Token (REQUIRED)
+FIGMA_API_KEY=figd_your_actual_token_here
+
+# Figma Connection Mode (REQUIRED)
+FIGMA_CONNECTION_MODE=figma  # Options: 'api' (direct REST API) or 'figma' (Remote MCP - recommended)
 
 # Optional Figma Configuration
-FIGMA_BASE_URL=https://api.figma.com
-FIGMA_DEFAULT_FILE_ID=your_default_file_id
-FIGMA_DEFAULT_NODE_ID=your_default_node_id
+FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Only used if FIGMA_CONNECTION_MODE=figma
 ```
 
 ### **Server Configuration**
 ```bash
 # Server Settings
-PORT=3004
-HOST=localhost
+PORT=3847
+# SERVER_HOST: For cloud deployments use '0.0.0.0' or leave unset (defaults to 0.0.0.0)
+# SERVER_HOST=0.0.0.0
 
-# MCP Server Configuration
-MCP_SERVER_URL=http://127.0.0.1:3845
-MCP_ENDPOINT=/sse
+# MCP Configuration (Remote MCP only for cloud deployments)
+FIGMA_CONNECTION_MODE=figma  # Use 'figma' for Remote MCP or 'api' for direct REST API
+FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Optional, defaults to https://mcp.figma.com/mcp
 ```
 
 ### **Application Environment**
@@ -73,11 +77,16 @@ cp .env.example .env
    FIGMA_ACCESS_TOKEN=figd_your_actual_token_here
    ```
 
-### **3. Configure MCP Server (Optional)**
-If using MCP server instead of direct API:
+### **3. Configure Figma Connection Mode**
+Choose between Remote MCP (recommended) or Direct API:
 ```bash
-MCP_SERVER_URL=http://127.0.0.1:3845
-MCP_ENDPOINT=/sse
+# Option 1: Remote MCP (recommended - full MCP protocol features)
+FIGMA_CONNECTION_MODE=figma
+FIGMA_API_KEY=figd_your_token_here
+
+# Option 2: Direct API (simpler, direct REST API calls)
+FIGMA_CONNECTION_MODE=api
+FIGMA_API_KEY=figd_your_token_here
 ```
 
 ### **4. Set Production Security**
@@ -111,10 +120,20 @@ FIGMA_DEFAULT_FILE_ID=
 FIGMA_DEFAULT_NODE_ID=
 
 # Server Configuration
-PORT=3004
-HOST=localhost
-MCP_SERVER_URL=http://127.0.0.1:3845
-MCP_ENDPOINT=/sse
+PORT=3847
+# SERVER_HOST=0.0.0.0  # Optional, defaults to 0.0.0.0 for cloud deployments
+
+# Figma Configuration
+FIGMA_CONNECTION_MODE=figma  # Use 'figma' for Remote MCP or 'api' for direct API
+FIGMA_API_KEY=figd_your_token_here
+# FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Optional, defaults to https://mcp.figma.com/mcp
+
+# Supabase Configuration (REQUIRED for cloud deployments)
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_KEY=xxx
+SUPABASE_ANON_KEY=xxx
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=xxx
 
 # Application Environment
 NODE_ENV=development
@@ -160,9 +179,10 @@ The application will validate environment variables on startup:
 - Ensure NODE_ENV is set correctly
 
 ### **"MCP connection failed"**
-- Verify MCP server is running
-- Check MCP_SERVER_URL and MCP_ENDPOINT
-- Test connection manually
+- Verify `FIGMA_API_KEY` is set correctly
+- Check `FIGMA_CONNECTION_MODE` is set to 'figma' or 'api'
+- For Remote MCP, ensure `FIGMA_MCP_URL` is correct (defaults to https://mcp.figma.com/mcp)
+- Verify your Figma token has the required permissions
 
 ## 📚 **Related Documentation**
 

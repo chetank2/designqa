@@ -1,32 +1,19 @@
 # Figma MCP in Docker & Render.com - Complete Guide
 
-## Why Figma MCP Doesn't Work in Docker (Local Mode)
+## Cloud-Only Deployment
 
-### The Problem
+This application is designed for cloud deployments only. **Local desktop MCP mode is not supported**. All deployments must use either:
 
-When running in Docker, the application tries to connect to **Figma Desktop App** running on your local machine at `http://127.0.0.1:3845/mcp`. However:
+1. **Remote MCP** (`FIGMA_CONNECTION_MODE=figma`) - Recommended
+2. **Direct API** (`FIGMA_CONNECTION_MODE=api`) - Alternative
 
-1. **Network Isolation**: Docker containers run in isolated network namespaces
-2. **Localhost Access**: `127.0.0.1` inside a Docker container refers to the container itself, NOT your host machine
-3. **No Figma Desktop**: Even if you could access the host, Figma Desktop App isn't installed inside the container
+## MCP Configuration for Cloud Deployments
 
-### The Error You See
+### Render.com / Railway / Docker Environment
 
-```
-❌ Connection failed: TypeError: fetch failed
-Error: connect ECONNREFUSED 127.0.0.1:3845
-```
-
-This is **expected and normal** - the container cannot reach Figma Desktop on your host.
-
-## Will MCP Work in Render.com?
-
-**Short Answer**: Yes, but you need to use **Remote MCP mode** (not local Desktop mode).
-
-### Render.com Environment
-
-- ✅ **Supports**: Remote MCP via Figma API (`FIGMA_CONNECTION_MODE=api` or `figma`)
-- ❌ **Does NOT support**: Local Desktop MCP (no Figma Desktop installed)
+- ✅ **Supports**: Remote MCP via Figma API (`FIGMA_CONNECTION_MODE=figma`)
+- ✅ **Supports**: Direct REST API (`FIGMA_CONNECTION_MODE=api`)
+- ❌ **Does NOT support**: Local Desktop MCP (not available in cloud deployments)
 
 ### How to Configure for Render.com
 
@@ -45,9 +32,6 @@ FIGMA_API_KEY=figd_your_token_here
 
 # Optional: Custom Remote MCP URL (defaults to https://mcp.figma.com/mcp)
 FIGMA_MCP_URL=https://mcp.figma.com/mcp
-
-# Disable local MCP health checks
-ENABLE_LOCAL_MCP=false
 ```
 
 **What you get:**
@@ -66,9 +50,6 @@ FIGMA_CONNECTION_MODE=api
 
 # Your Figma Personal Access Token (REQUIRED)
 FIGMA_API_KEY=figd_your_token_here
-
-# Disable local MCP health checks
-ENABLE_LOCAL_MCP=false
 ```
 
 **What you get:**
@@ -81,9 +62,10 @@ ENABLE_LOCAL_MCP=false
 
 | Mode | Connection Type | Works in Docker? | Works in Render? | Requires | Description |
 |------|----------------|------------------|------------------|----------|-------------|
-| `desktop` | Local Figma Desktop App | ❌ No | ❌ No | Figma Desktop running locally | Connects to `http://127.0.0.1:3845/mcp` |
 | `api` | Figma REST API (Direct) | ✅ Yes | ✅ Yes | `FIGMA_API_KEY` token | Direct REST API calls, no MCP protocol |
 | `figma` | **Remote MCP (Cloud)** | ✅ Yes | ✅ Yes | `FIGMA_API_KEY` token | **Uses Figma's Remote MCP service at `https://mcp.figma.com/mcp`** |
+
+**Note**: `desktop` mode is no longer supported. Use `figma` (Remote MCP) or `api` (Direct API) instead.
 
 ### Remote MCP (`figma` mode) - Recommended for Render.com
 
@@ -119,17 +101,9 @@ FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Optional, defaults to this URL
 
 ### Without Supabase
 
-✅ **Works**: Basic functionality
-- Figma API extraction
-- Web extraction  
-- Comparison features
-- Local storage (SQLite in Docker, memory in Render)
-
-❌ **Limited**: 
-- No user authentication
-- No persistent comparison history
-- No multi-user support
-- No secure credential storage
+❌ **Not Supported**: Supabase is required for cloud deployments
+- The application requires Supabase for database and storage
+- Set up a Supabase project before deploying
 
 ### With Supabase
 
@@ -148,10 +122,10 @@ FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Optional, defaults to this URL
 - Multiple users will use the app
 - You want secure token storage
 
-**Skip Supabase if**:
-- Single-user deployment
-- No need for persistent storage
-- Just testing/development
+**Supabase is Required**:
+- All cloud deployments require Supabase
+- Database and storage are provided by Supabase
+- User authentication and data persistence depend on Supabase
 
 ## Configuration for Render.com Deployment
 
@@ -163,7 +137,6 @@ NODE_ENV=production
 PORT=3847
 FIGMA_CONNECTION_MODE=figma          # Use Remote MCP
 FIGMA_API_KEY=figd_your_token_here
-ENABLE_LOCAL_MCP=false
 ```
 
 **Option B: Direct API**
@@ -172,7 +145,6 @@ NODE_ENV=production
 PORT=3847
 FIGMA_CONNECTION_MODE=api           # Use direct REST API
 FIGMA_API_KEY=figd_your_token_here
-ENABLE_LOCAL_MCP=false
 ```
 
 ### With Supabase (Recommended)
@@ -181,9 +153,8 @@ ENABLE_LOCAL_MCP=false
 # Core settings
 NODE_ENV=production
 PORT=3847
-FIGMA_CONNECTION_MODE=api
+FIGMA_CONNECTION_MODE=figma  # Use 'figma' for Remote MCP or 'api' for direct API
 FIGMA_API_KEY=figd_your_token_here
-ENABLE_LOCAL_MCP=false
 
 # Supabase configuration
 SUPABASE_URL=https://xxx.supabase.co
@@ -209,7 +180,9 @@ docker run -p 3847:3847 \
   -e PORT=3847 \
   -e FIGMA_CONNECTION_MODE=figma \
   -e FIGMA_API_KEY=your_token_here \
-  -e ENABLE_LOCAL_MCP=false \
+  -e SUPABASE_URL=https://xxx.supabase.co \
+  -e SUPABASE_SERVICE_KEY=your_service_key \
+  -e SUPABASE_ANON_KEY=your_anon_key \
   designqa:latest
 ```
 
@@ -222,7 +195,9 @@ docker run -p 3847:3847 \
   -e PORT=3847 \
   -e FIGMA_CONNECTION_MODE=api \
   -e FIGMA_API_KEY=your_token_here \
-  -e ENABLE_LOCAL_MCP=false \
+  -e SUPABASE_URL=https://xxx.supabase.co \
+  -e SUPABASE_SERVICE_KEY=your_service_key \
+  -e SUPABASE_ANON_KEY=your_anon_key \
   designqa:latest
 ```
 
@@ -234,29 +209,30 @@ docker run -p 3847:3847 \
 - Web extraction works
 - Comparison features work
 
-⚠️ **Expected Warnings** (can ignore):
-- `MCP connection failed` - This is normal, app falls back to API mode
-- `Supabase not configured` - Only if you didn't set Supabase vars
+⚠️ **Required Configuration**:
+- Supabase must be configured (SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY)
+- FIGMA_API_KEY must be set
+- FIGMA_CONNECTION_MODE must be set to 'figma' or 'api'
 
 ## Summary
 
-1. **Docker Local MCP**: Doesn't work (expected) - containers can't access host's Figma Desktop
-2. **Render.com Remote MCP**: ✅ **Will work perfectly** with `FIGMA_CONNECTION_MODE=figma` + `FIGMA_API_KEY`
-3. **Render.com Direct API**: ✅ **Will also work** with `FIGMA_CONNECTION_MODE=api` + `FIGMA_API_KEY`
-4. **Supabase**: Optional but recommended for production features
+1. **Cloud Deployments Only**: This application is designed for cloud deployments (Render/Railway/Docker)
+2. **Remote MCP**: ✅ **Recommended** - Use `FIGMA_CONNECTION_MODE=figma` + `FIGMA_API_KEY` for full MCP protocol features
+3. **Direct API**: ✅ **Alternative** - Use `FIGMA_CONNECTION_MODE=api` + `FIGMA_API_KEY` for simpler REST API calls
+4. **Supabase Required**: All deployments require Supabase for database and storage
 
-### Quick Setup for Render.com (Remote MCP - Recommended)
+### Quick Setup for Render.com / Railway (Remote MCP - Recommended)
 
-1. Set `FIGMA_CONNECTION_MODE=figma` in Render environment variables (uses Remote MCP)
-2. Set `FIGMA_API_KEY=your_token` in Render environment variables  
-3. Set `ENABLE_LOCAL_MCP=false` in Render environment variables
-4. (Optional) Configure Supabase if you need user accounts/history
+1. Set `FIGMA_CONNECTION_MODE=figma` in environment variables (uses Remote MCP)
+2. Set `FIGMA_API_KEY=your_token` in environment variables  
+3. Set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` in environment variables
+4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in environment variables (for frontend)
 
-### Quick Setup for Render.com (Direct API - Alternative)
+### Quick Setup for Render.com / Railway (Direct API - Alternative)
 
-1. Set `FIGMA_CONNECTION_MODE=api` in Render environment variables (uses direct REST API)
-2. Set `FIGMA_API_KEY=your_token` in Render environment variables  
-3. Set `ENABLE_LOCAL_MCP=false` in Render environment variables
-4. (Optional) Configure Supabase if you need user accounts/history
+1. Set `FIGMA_CONNECTION_MODE=api` in environment variables (uses direct REST API)
+2. Set `FIGMA_API_KEY=your_token` in environment variables  
+3. Set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` in environment variables
+4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in environment variables (for frontend)
 
 **Recommendation**: Use `FIGMA_CONNECTION_MODE=figma` for Remote MCP to get full MCP protocol features! 🚀
