@@ -61,6 +61,10 @@ COPY src ./src
 COPY scripts ./scripts
 COPY config.example.json ./config.json
 
+# Remove dev dependencies before exporting artifacts to production stage
+RUN npm prune --omit=dev && \
+    npm cache clean --force
+
 # Production stage - Railway will use this as the final stage
 FROM node:20-slim AS production
 
@@ -92,12 +96,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Copy scripts directory before npm ci (needed for postinstall hook)
-COPY scripts ./scripts
-
-# Install production dependencies only (Puppeteer will be installed but Chromium download is skipped)
-RUN npm ci --omit=dev && \
-    npm cache clean --force
+# Copy production-ready node_modules from builder stage (already pruned)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built frontend
 COPY --from=builder /app/frontend/dist ./frontend/dist

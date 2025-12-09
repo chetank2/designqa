@@ -8,6 +8,8 @@ This project now includes a Render blueprint (`render.yaml`) plus a matching `.r
 2. In Render click **New +** → **Blueprint** and select the repo.
 3. Render will detect `render.yaml` and create a single Docker-based web service that points to the existing `Dockerfile`. No extra build or start commands are required because `CMD ["npm", "start"]` is already defined.
 
+> The Dockerfile installs dependencies once in the builder stage and then copies the pruned `node_modules` into the production image, so the slow `npm ci --omit=dev` layer no longer appears during Render builds.
+
 > Prefer Docker mode instead of the default “Node” runtime. The Dockerfile already handles `npm ci`, the Vite build, and Puppeteer’s native dependencies. Reusing it prevents Render from repeating those expensive steps in every deploy.
 
 ## 2. Environment Variables
