@@ -1,11 +1,25 @@
 # Multi-stage build for Railway deployment
 FROM node:20-slim AS builder
 
+# Build arguments for Vite environment variables (passed during docker build)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_API_URL
+ARG VITE_WS_URL
+ARG VITE_SERVER_PORT
+
 # Set environment to skip Chromium download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SKIP_ELECTRON_POSTINSTALL=true
 ENV DOCKER_BUILD=true
+
+# Set Vite build-time environment variables from build args
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_WS_URL=${VITE_WS_URL}
+ENV VITE_SERVER_PORT=${VITE_SERVER_PORT}
 
 # Install only essential build dependencies (no Chromium)
 # Include xz-utils for lzma-native native module compilation
@@ -45,11 +59,12 @@ COPY frontend/tsconfig.node.json ./frontend/tsconfig.node.json
 COPY frontend/tailwind.config.js ./frontend/tailwind.config.js
 COPY frontend/postcss.config.js ./frontend/postcss.config.js
 COPY frontend/components.json ./frontend/components.json
-# Copy frontend .env file if it exists (for Vite build-time variables)
-# This allows VITE_ prefixed variables to be available during build
-# Use a shell command to copy conditionally (Docker COPY doesn't support conditionals)
-RUN mkdir -p ./frontend && \
-    if [ -f ../frontend/.env ]; then cp ../frontend/.env ./frontend/.env; fi || true
+# Copy frontend .env file if it exists (for local builds)
+# For Render/cloud builds, use build args (VITE_*) passed via --build-arg
+# Vite will use ENV vars set above (from ARG) which take precedence over .env file
+# Note: If frontend/.env doesn't exist, this COPY will fail - that's okay for cloud builds using build args
+# For Render, pass VITE_* variables as build args instead of relying on .env file
+COPY frontend/.env ./frontend/.env 2>/dev/null || echo "No frontend/.env - using build args"
 # Create empty public directory if it doesn't exist (Vite handles this gracefully)
 RUN mkdir -p ./frontend/public
 
