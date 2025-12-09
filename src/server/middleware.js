@@ -37,7 +37,7 @@ export function configureSecurityMiddleware(app, config) {
       if (!origin) {
         return callback(null, true);
       }
-      
+
       // Check if origin is in the allowed list
       const allowedOrigins = config.cors?.origins || [];
       if (allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
@@ -109,9 +109,20 @@ export function configureRateLimit(config) {
 export function errorHandler(error, req, res, next) {
   console.error('Express error:', error);
 
+  // Check for specific errors
+  if (error.message && (error.message.includes('Figma API key not available') || error.message.includes('Figma token required'))) {
+    const response = {
+      success: false,
+      error: 'Add your Figma API key in Settings',
+      code: 'FIGMA_KEY_REQUIRED',
+      timestamp: new Date().toISOString()
+    };
+    return res.status(428).json(response);
+  }
+
   // Don't send error details in production
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   const response = {
     success: false,
     error: isDevelopment ? error.message : 'Internal server error',
@@ -150,7 +161,7 @@ export function responseFormatter(req, res, next) {
   const originalJson = res.json;
 
   // Override json method to ensure consistent response format
-  res.json = function(body) {
+  res.json = function (body) {
     if (body && typeof body === 'object' && !body.hasOwnProperty('success')) {
       // Wrap data in standard response format
       const response = {
@@ -160,7 +171,7 @@ export function responseFormatter(req, res, next) {
       };
       return originalJson.call(this, response);
     }
-    
+
     // Add timestamp if it's already in our format but missing timestamp
     if (body && typeof body === 'object' && body.hasOwnProperty('success') && !body.timestamp) {
       body.timestamp = new Date().toISOString();
@@ -177,14 +188,14 @@ export function responseFormatter(req, res, next) {
  */
 export function requestLogger(req, res, next) {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     const status = res.statusCode;
     const method = req.method;
     const url = req.url;
     const userAgent = req.get('User-Agent') || 'unknown';
-    
+
     // Simple console logging for now - can be replaced with proper logger
     console.log(`${method} ${url} ${status} ${duration}ms - ${userAgent}`);
   });
@@ -210,7 +221,7 @@ export function validateExtractionUrl(allowedHosts = []) {
 
     try {
       const parsedUrl = new URL(targetUrl);
-      
+
       // Block dangerous protocols
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
         return res.status(400).json({

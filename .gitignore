@@ -15,6 +15,7 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 config.json
+secrets/
 
 # API Keys and Tokens (SECURITY CRITICAL)
 **/config.json

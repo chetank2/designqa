@@ -1,9 +1,8 @@
 # Multi-stage build for Railway deployment
+# syntax=docker/dockerfile:1.4
 FROM node:20-slim AS builder
 
-# Build arguments for Vite environment variables (passed during docker build)
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
+# Build arguments for non-sensitive Vite environment variables
 ARG VITE_API_URL
 ARG VITE_WS_URL
 ARG VITE_SERVER_PORT
@@ -14,9 +13,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV SKIP_ELECTRON_POSTINSTALL=true
 ENV DOCKER_BUILD=true
 
-# Set Vite build-time environment variables from build args
-ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+# Set non-sensitive Vite build-time environment variables from build args
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
 ENV VITE_SERVER_PORT=${VITE_SERVER_PORT}
@@ -59,18 +56,29 @@ COPY frontend/tsconfig.node.json ./frontend/tsconfig.node.json
 COPY frontend/tailwind.config.js ./frontend/tailwind.config.js
 COPY frontend/postcss.config.js ./frontend/postcss.config.js
 COPY frontend/components.json ./frontend/components.json
-# Copy frontend .env file (for local builds - ensure it exists by running 'npm run sync:env' first)
-# For Render/cloud builds, pass VITE_* variables as build args (--build-arg VITE_SUPABASE_URL=...)
-# ENV vars set above (from ARG) take precedence over .env file values
-# Note: If building for Render without frontend/.env, pass build args instead
-COPY frontend/.env ./frontend/.env
 # Create empty public directory if it doesn't exist (Vite handles this gracefully)
 RUN mkdir -p ./frontend/public
 
-# Build frontend (now that we have source files and env vars)
-RUN echo "Building frontend..." && \
+# Build frontend with secure secret handling
+# Secrets are mounted securely and not persisted in image layers
+# Usage: docker build --secret id=vite_supabase_url,src=./secrets/vite_supabase_url.txt --secret id=vite_supabase_anon_key,src=./secrets/vite_supabase_anon_key.txt
+# For local development, you can create secrets files or use build args (less secure but acceptable for local)
+RUN --mount=type=secret,id=vite_supabase_url,required=false \
+    --mount=type=secret,id=vite_supabase_anon_key,required=false \
+    echo "Building frontend..." && \
     cd frontend && \
+    # Create .env file from secrets (secrets are not persisted in image layers)
+    touch .env && \
+    if [ -f /run/secrets/vite_supabase_url ]; then \
+        echo "VITE_SUPABASE_URL=$(cat /run/secrets/vite_supabase_url)" >> .env; \
+    fi && \
+    if [ -f /run/secrets/vite_supabase_anon_key ]; then \
+        echo "VITE_SUPABASE_ANON_KEY=$(cat /run/secrets/vite_supabase_anon_key)" >> .env; \
+    fi && \
+    # Build with environment variables (secrets are only available during this RUN command)
     npm run build && \
+    # Explicitly remove .env file to ensure no secrets persist (defense in depth)
+    rm -f .env && \
     cd .. && \
     echo "Frontend build completed successfully"
 

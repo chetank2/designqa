@@ -55,12 +55,12 @@ export function detectMCPMode() {
  * @returns {Promise<string|null>} Figma token or null
  */
 async function getFigmaToken(userId = null) {
-  // First try environment variable
-  const envToken = process.env.FIGMA_API_KEY || process.env.FIGMA_TOKEN;
+  // First try environment variable (supporting specific service token first)
+  const envToken = process.env.FIGMA_MCP_SERVICE_TOKEN || process.env.FIGMA_API_KEY || process.env.FIGMA_TOKEN;
   if (envToken) {
     return envToken;
   }
-  
+
   // Try to get from Supabase Vault if user ID provided
   if (userId) {
     try {
@@ -74,7 +74,7 @@ async function getFigmaToken(userId = null) {
       console.warn('Failed to get Figma token from Supabase:', error.message);
     }
   }
-  
+
   return null;
 }
 
@@ -96,15 +96,21 @@ export async function getMCPClient(options = {}) {
     mcpMode = PROVIDERS.API;
     return null;
   }
-  
+
   if (mcpClientInstance && mcpMode === currentMode) {
     return mcpClientInstance;
   }
 
   if (currentMode === PROVIDERS.FIGMA) {
-    const token = figmaToken || await getFigmaToken(userId);
+    // For Remote MCP, prioritize the Service Token (System Account)
+    // If not set, fallback to user's Key (Personal Account)
+    let token = process.env.FIGMA_MCP_SERVICE_TOKEN;
     if (!token) {
-      throw new Error('Figma token required for remote MCP connection. Set FIGMA_API_KEY environment variable or configure in settings.');
+      token = figmaToken || await getFigmaToken(userId);
+    }
+
+    if (!token) {
+      throw new Error('Figma connection failed: No Service Token (FIGMA_MCP_SERVICE_TOKEN) or User API Key found.');
     }
 
     mcpClientInstance = new RemoteMCPClient({

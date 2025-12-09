@@ -34,6 +34,7 @@ import { getResourceManager, shutdownResourceManager } from '../../utils/Resourc
 import { getOutputBaseDir } from '../../utils/outputPaths.js';
 import { getSupabaseClient } from '../../config/supabase.js';
 import { initDatabase } from '../../database/init.js';
+import { encrypt, decrypt } from '../../services/CredentialEncryption.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,6 +52,36 @@ function loadFigmaApiKey() {
   } catch (error) {
   }
   return process.env.FIGMA_API_KEY || '';
+}
+
+// Get Figma API Key for user
+async function getUserFigmaApiKey(userId) {
+  if (!userId) {
+    return loadFigmaApiKey();
+  }
+
+  try {
+    const supabase = getSupabaseClient(true); // service role
+    if (!supabase) return loadFigmaApiKey();
+
+    const { data } = await supabase
+      .from('figma_api_keys')
+      .select('api_key')
+      .eq('user_id', userId)
+      .single();
+
+    if (data && data.api_key) {
+      const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY ||
+        process.env.LOCAL_CREDENTIAL_KEY ||
+        'local-credential-encryption-key-change-in-production';
+      return decrypt(data.api_key, encryptionKey);
+    }
+  } catch (error) {
+    console.warn('Failed to retrieve user Figma API key:', error.message);
+  }
+
+  // Fallback to env var if generic access allowed, or return null
+  return loadFigmaApiKey();
 }
 
 // Save Figma API key to config
@@ -1463,8 +1494,25 @@ export async function startServer(portArg) {
   /**
    * Settings endpoints
    */
-  app.get('/api/settings', healthLimiter, (req, res) => {
-    const apiKey = loadFigmaApiKey();
+  app.get('/api/settings', healthLimiter, async (req, res) => {
+    let apiKey = '';
+    let hasApiKey = false;
+
+    // Check for user-specific key first
+    if (req.user) {
+      const userKey = await getUserFigmaApiKey(req.user.id);
+      if (userKey) {
+        apiKey = userKey;
+        hasApiKey = true;
+      }
+    }
+
+    // Fallback to global key
+    if (!hasApiKey) {
+      apiKey = loadFigmaApiKey();
+      hasApiKey = !!apiKey;
+    }
+
     res.json({
       success: true,
       data: {
@@ -1474,16 +1522,39 @@ export async function startServer(portArg) {
           connected: mcpConnected
         },
         figmaApiKey: apiKey ? '***' + apiKey.slice(-4) : '', // Show last 4 chars only
-        hasApiKey: !!apiKey
+        hasApiKey
       }
     });
   });
 
-  app.post('/api/settings/save', healthLimiter, (req, res) => {
+  app.post('/api/settings/save', healthLimiter, async (req, res) => {
     try {
       const { figmaPersonalAccessToken } = req.body;
 
-      if (figmaPersonalAccessToken) {
+      if (figmaPersonalAccessToken !== undefined) {
+        // If user is authenticated, save to database
+        if (req.user) {
+          const supabase = getSupabaseClient(true);
+          if (supabase) {
+            const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY ||
+              process.env.LOCAL_CREDENTIAL_KEY ||
+              'local-credential-encryption-key-change-in-production';
+
+            if (figmaPersonalAccessToken) {
+              const encrypted = encrypt(figmaPersonalAccessToken, encryptionKey);
+              await supabase.from('figma_api_keys').upsert({
+                user_id: req.user.id,
+                api_key: encrypted,
+                updated_at: new Date().toISOString()
+              });
+            } else {
+              // Clear key
+              await supabase.from('figma_api_keys').delete().eq('user_id', req.user.id);
+            }
+          }
+        }
+
+        // Also save to config for backward compatibility/local mode
         const saved = saveFigmaApiKey(figmaPersonalAccessToken);
         if (saved) {
           res.json({
@@ -1491,10 +1562,15 @@ export async function startServer(portArg) {
             message: 'Figma API key saved successfully'
           });
         } else {
-          res.status(500).json({
-            success: false,
-            error: 'Failed to save Figma API key'
-          });
+          // If we saved to DB, it is still a success
+          if (req.user && getSupabaseClient(false)) {
+            res.json({ success: true, message: 'Figma API key saved to profile' });
+          } else {
+            res.status(500).json({
+              success: false,
+              error: 'Failed to save Figma API key'
+            });
+          }
         }
       } else {
         res.json({
@@ -1514,8 +1590,8 @@ export async function startServer(portArg) {
     try {
       const { figmaPersonalAccessToken } = req.body;
 
-      // Use provided token or load from config
-      const apiKey = figmaPersonalAccessToken || loadFigmaApiKey();
+      // Use provided token or load from config/user
+      const apiKey = figmaPersonalAccessToken || await getUserFigmaApiKey(req.user?.id);
 
       if (!apiKey) {
         return res.json({
@@ -1589,7 +1665,7 @@ export async function startServer(portArg) {
         const extractionResult = await extractor.extract(figmaUrl, {
           preferredMethod,
           timeout: 30000,
-          apiKey: loadFigmaApiKey()
+          apiKey: await getUserFigmaApiKey(req.user?.id)
         });
 
         if (!extractionResult.success) {
@@ -1909,9 +1985,10 @@ export async function startServer(portArg) {
 
         // Extract data using best available method (MCP first, API fallback)
         const extractionResult = await extractor.extract(figmaUrl, {
-          preferredMethod: null,
+          preferredMethod: 'both',
+          fallbackEnabled: true,
           timeout: 30000,
-          apiKey: loadFigmaApiKey(),
+          apiKey: await getUserFigmaApiKey(req.user?.id),
           nodeId: nodeId  // Pass nodeId for specific component extraction
         });
 

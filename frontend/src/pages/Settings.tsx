@@ -327,7 +327,8 @@ export default function Settings() {
       // Prepare settings data for backend
       const settingsData = {
         method: data.mcpConnectionMethod,
-        figmaPersonalAccessToken: data.figmaPersonalAccessToken,
+        // Only send token if it's not the mask value
+        figmaPersonalAccessToken: data.figmaPersonalAccessToken === '••••••••' ? undefined : data.figmaPersonalAccessToken,
         mcpServerUrl: data.mcpServerUrl,
         mcpEndpoint: data.mcpEndpoint,
         // Include other settings as needed
@@ -611,7 +612,7 @@ export default function Settings() {
                         <CardHeader>
                           <CardTitle>Figma API Token</CardTitle>
                           <CardDescription>
-                            Enter your personal Figma access token for direct API access
+                            Enter your personal Figma access token. This will be encrypted and stored securely for your user account.
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">

@@ -15,8 +15,8 @@ const router = express.Router();
  */
 router.get('/status', async (req, res) => {
   try {
-    const mcpClient = await getMCPClient();
-    
+    const mcpClient = await getMCPClient({ userId: req.user?.id });
+
     if (!mcpClient) {
       return res.json({
         success: false,
@@ -31,15 +31,15 @@ router.get('/status', async (req, res) => {
         }
       });
     }
-    
+
     // Test connection to get current status
     const isConnected = await mcpClient.connect();
-    
+
     res.json({
       success: true,
       status: isConnected ? 'connected' : 'disconnected',
       available: isConnected,
-      message: isConnected 
+      message: isConnected
         ? 'MCP Server connected successfully'
         : 'MCP Server not available',
       data: {
@@ -68,15 +68,15 @@ router.get('/status', async (req, res) => {
 router.post('/figma/file', async (req, res) => {
   try {
     const { fileId, nodeId } = req.body;
-    
+
     if (!fileId) {
       return res.status(400).json({
         success: false,
         error: 'fileId is required'
       });
     }
-    
-    const mcpClient = await getMCPClient();
+
+    const mcpClient = await getMCPClient({ userId: req.user?.id });
     if (!mcpClient) {
       return res.status(400).json({
         success: false,
@@ -85,7 +85,7 @@ router.post('/figma/file', async (req, res) => {
     }
     await mcpClient.connect();
     const data = await mcpClient.getFigmaFile(fileId, nodeId);
-    
+
     res.json({
       success: true,
       data
@@ -106,15 +106,15 @@ router.post('/figma/file', async (req, res) => {
 router.post('/figma/export', async (req, res) => {
   try {
     const { fileId, nodeIds, format = 'png', scale = 2 } = req.body;
-    
+
     if (!fileId || !nodeIds || !Array.isArray(nodeIds)) {
       return res.status(400).json({
         success: false,
         error: 'fileId and nodeIds array are required'
       });
     }
-    
-    const mcpClient = await getMCPClient();
+
+    const mcpClient = await getMCPClient({ userId: req.user?.id });
     if (!mcpClient) {
       return res.status(400).json({
         success: false,
@@ -123,7 +123,7 @@ router.post('/figma/export', async (req, res) => {
     }
     await mcpClient.connect();
     const data = await mcpClient.exportAssets(fileId, nodeIds, format, scale);
-    
+
     res.json({
       success: true,
       data
@@ -144,15 +144,15 @@ router.post('/figma/export', async (req, res) => {
 router.post('/figma/analyze', async (req, res) => {
   try {
     const { fileId } = req.body;
-    
+
     if (!fileId) {
       return res.status(400).json({
         success: false,
         error: 'fileId is required'
       });
     }
-    
-    const mcpClient = await getMCPClient();
+
+    const mcpClient = await getMCPClient({ userId: req.user?.id });
     if (!mcpClient) {
       return res.status(400).json({
         success: false,
@@ -161,7 +161,7 @@ router.post('/figma/analyze', async (req, res) => {
     }
     await mcpClient.connect();
     const data = await mcpClient.analyzeComponents(fileId);
-    
+
     res.json({
       success: true,
       data
@@ -182,15 +182,15 @@ router.post('/figma/analyze', async (req, res) => {
 router.post('/figma/compare', async (req, res) => {
   try {
     const { fileId, nodeId, webUrl } = req.body;
-    
+
     if (!fileId || !webUrl) {
       return res.status(400).json({
         success: false,
         error: 'fileId and webUrl are required'
       });
     }
-    
-    const mcpClient = await getMCPClient();
+
+    const mcpClient = await getMCPClient({ userId: req.user?.id });
     if (!mcpClient) {
       return res.status(400).json({
         success: false,
@@ -198,13 +198,13 @@ router.post('/figma/compare', async (req, res) => {
       });
     }
     await mcpClient.connect();
-    
+
     // Get Figma data via MCP
     const figmaData = await mcpClient.getFigmaFile(fileId, nodeId);
-    
+
     // Analyze components via MCP
     const componentAnalysis = await mcpClient.analyzeComponents(fileId);
-    
+
     // TODO: Integrate with existing web extraction and comparison logic
     // For now, return the MCP data
     const result = {
@@ -221,7 +221,7 @@ router.post('/figma/compare', async (req, res) => {
         status: 'mcp_integration_ready'
       }
     };
-    
+
     res.json({
       success: true,
       data: result
