@@ -27,9 +27,7 @@ COPY frontend/package*.json ./frontend/
 # Using explicit echo to verify execution and prevent caching issues
 # Skip optional dependencies and ignore scripts for problematic native modules
 RUN echo "Installing root dependencies..." && \
-    npm ci --include=dev --ignore-scripts && \
-    echo "Rebuilding native modules (excluding problematic ones)..." && \
-    npm rebuild --ignore-scripts || true && \
+    npm ci --include=dev && \
     echo "Installing frontend dependencies..." && \
     cd frontend && \
     npm ci --include=dev && \
