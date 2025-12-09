@@ -105,13 +105,24 @@ export async function getMCPClient(options = {}) {
     // For Remote MCP, prioritize the Service Token (System Account)
     // If not set, fallback to user's Key (Personal Account)
     let token = process.env.FIGMA_MCP_SERVICE_TOKEN;
+    let tokenSource = 'service_token (FIGMA_MCP_SERVICE_TOKEN)';
+
     if (!token) {
-      token = figmaToken || await getFigmaToken(userId);
+      token = figmaToken;
+      tokenSource = 'provided_argument';
+    }
+
+    if (!token) {
+      token = await getFigmaToken(userId);
+      tokenSource = 'user_context_or_fallback';
     }
 
     if (!token) {
       throw new Error('Figma connection failed: No Service Token (FIGMA_MCP_SERVICE_TOKEN) or User API Key found.');
     }
+
+    console.log(`🔌 Initializing Remote MCP Client with source: ${tokenSource}`);
+    console.log(`🔑 Token (last 4): ...${token.slice(-4)}`);
 
     mcpClientInstance = new RemoteMCPClient({
       remoteUrl: process.env.FIGMA_MCP_URL || 'https://mcp.figma.com/mcp',
