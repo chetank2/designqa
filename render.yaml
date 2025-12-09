@@ -30,3 +30,21 @@ services:
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
+
+  - type: web
+    name: mcp-proxy
+    env: node
+    region: oregon
+    rootDir: mcp-proxy
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm run start"
+    plan: free
+    envVars:
+      - key: FIGMA_MCP_URL
+        value: wss://mcp.figma.com/transports/websocket
+      - key: FIGMA_CLIENT_ID
+        sync: false
+      - key: FIGMA_CLIENT_SECRET
+        sync: false
+      - key: FIGMA_PAT
+        sync: false

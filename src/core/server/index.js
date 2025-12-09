@@ -399,23 +399,51 @@ export async function startServer(portArg) {
   }
 
   // Serve frontend static files (exclude report files)
-  const frontendPath = path.join(__dirname, '../../../frontend/dist');
-
-  // Custom middleware to block report files from frontend static serving
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
-      return next(); // Skip static middleware for report files
+  // Use process.cwd() for Docker compatibility - __dirname might not resolve correctly
+  const frontendPath = path.join(process.cwd(), 'frontend/dist');
+  
+  // Log frontend path for debugging
+  console.log(`📁 Frontend static path: ${frontendPath}`);
+  if (fs.existsSync(frontendPath)) {
+    console.log(`✅ Frontend dist directory exists`);
+    const assetsPath = path.join(frontendPath, 'assets');
+    if (fs.existsSync(assetsPath)) {
+      const assetFiles = fs.readdirSync(assetsPath);
+      console.log(`✅ Assets directory exists with ${assetFiles.length} files`);
+    } else {
+      console.warn(`⚠️ Assets directory missing: ${assetsPath}`);
     }
+  } else {
+    console.error(`❌ Frontend dist directory missing: ${frontendPath}`);
+  }
 
-    // Add cache-busting headers for JS/CSS assets to prevent cache conflicts
-    if (req.path.match(/\.(js|css|html)$/)) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+  // Serve static assets with proper MIME types
+  app.use('/assets', express.static(path.join(frontendPath, 'assets'), {
+    setHeaders: (res, filePath) => {
+      // Set correct MIME types
+      if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      } else if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'text/javascript');
+      }
+      // Cache headers for assets
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
+  }));
 
-    express.static(frontendPath)(req, res, next);
-  });
+  // Serve other static files from frontend/dist (like index.html)
+  app.use(express.static(frontendPath, {
+    setHeaders: (res, filePath) => {
+      // Add cache-busting headers for HTML to prevent cache conflicts
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    },
+    // Don't serve report files
+    index: false
+  }));
 
   // Serve output files (reports, images, screenshots)
   const outputPath = getOutputBaseDir();
@@ -2820,14 +2848,27 @@ export async function startServer(portArg) {
   });
 
   /**
-   * Catch-all route - serve frontend (exclude report files)
+   * Catch-all route - serve frontend (exclude report files and API routes)
    */
   app.get('*', (req, res) => {
+    // Don't serve frontend for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    
     // Don't serve frontend for report files
     if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
       return res.status(404).send('Report not found');
     }
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    
+    // Serve index.html for all other routes (SPA routing)
+    const indexPath = path.join(frontendPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`❌ index.html not found at: ${indexPath}`);
+      res.status(500).send('Frontend not found. Please rebuild the frontend.');
+    }
   });
 
   /**
