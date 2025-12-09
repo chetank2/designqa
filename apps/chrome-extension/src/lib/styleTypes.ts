@@ -11,7 +11,8 @@ export interface StyleSystemSnapshot {
 
 export interface GlobalComparisonPayload {
   figmaUrl: string;
-  figmaToken: string;
+  figmaToken?: string | null;
+  preferredMethod?: 'auto' | 'mcp' | 'rest';
 }
 
 export const createEmptySnapshot = (): StyleSystemSnapshot => ({

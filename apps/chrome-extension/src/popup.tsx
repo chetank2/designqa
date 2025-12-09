@@ -162,16 +162,17 @@ const Popup = () => {
     setStatus('loading');
     setError(null);
     try {
-      if (!figmaUrl.trim() || !figmaToken.trim()) {
-        throw new Error('Enter both a Figma file/frame URL and a Personal Access Token.');
+      if (!figmaUrl.trim()) {
+        throw new Error('Enter a Figma file or frame URL.');
       }
 
+      const token = figmaToken.trim();
       const { figmaStyles, webStyles } = await requestGlobalStyles({
         figmaUrl: figmaUrl.trim(),
-        figmaToken: figmaToken.trim()
+        figmaToken: token || undefined
       });
 
-      savePreferences(figmaUrl.trim(), figmaToken.trim(), rememberToken);
+      savePreferences(figmaUrl.trim(), token, rememberToken);
 
       const figmaNode = snapshotToNode(figmaStyles, 'figma');
       const webNode = snapshotToNode(webStyles, 'web');
@@ -262,7 +263,10 @@ const Popup = () => {
         />
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem' }}>
-        Figma Personal Access Token
+        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem' }}>
+          <span>Figma Personal Access Token</span>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>(optional)</span>
+        </span>
         <input
           type="password"
           value={figmaToken}
@@ -276,6 +280,9 @@ const Popup = () => {
             padding: '0.5rem'
           }}
         />
+        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+          The backend prefers MCP/REST connections automatically. Add a PAT only if your server asks for one.
+        </span>
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
         <input
