@@ -54,37 +54,34 @@ Here's the structure:
 
 ## How to Get Figma Node JSON from Your Figma Link
 
-### Method 1: Using the DesignQA API (Recommended)
+### Method 1: Using Chrome Extension with Backend (Recommended - No PAT Needed!)
 
-If you have the DesignQA backend running, you can use the extraction API:
+**Best Option:** Use the Chrome extension with your backend running:
 
-**Endpoint:** `POST /api/extract/figma`
+1. **Start the DesignQA backend** (if not already running):
+   ```bash
+   cd apps/saas-backend
+   npm start  # or pnpm start
+   ```
 
-**Request:**
-```json
-{
-  "figmaUrl": "https://www.figma.com/design/YOUR_FILE_ID/Your-Design-Name?node-id=123-456",
-  "nodeId": "123:456"  // Optional: specific node to extract
-}
-```
+2. **Open Figma Desktop** and open your design file
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "nodes": [
-      {
-        "nodeId": "123:456",
-        "name": "Button",
-        "styles": { ... }
-      }
-    ]
-  }
-}
-```
+3. **Use the Chrome Extension:**
+   - Click the extension icon
+   - Select "From URL" tab
+   - Paste your Figma URL
+   - Click "Fetch from Figma"
 
-### Method 2: Using Figma API Directly
+**How it works:**
+- ✅ **First tries Figma MCP** (if Figma Desktop is running) - **No PAT needed!**
+- ✅ **Falls back to Figma API** (if MCP unavailable) - Requires PAT only as fallback
+- ✅ **Automatic** - No manual configuration needed
+
+**Backend Endpoint:** `POST http://localhost:3847/api/figma-only/extract`
+
+### Method 2: Using Figma API Directly (Requires PAT)
+
+**Note:** Only needed if backend/MCP is unavailable.
 
 1. **Get a Figma Personal Access Token:**
    - Go to Figma → Settings → Account → Personal Access Tokens
@@ -228,8 +225,16 @@ The extension will match elements by `nodeId` and compare their styles.
 - Yes! Use comma-separated node IDs: `?ids=123:456,789:012`
 
 **Q: What if my Figma file is private?**
-- You need a Figma Personal Access Token with access to the file
+- **With MCP**: No token needed! Just open the file in Figma Desktop
+- **Without MCP**: You need a Figma Personal Access Token with access to the file
 - The token must have the file in its accessible files list
+
+**Q: Do I need a Figma Personal Access Token?**
+- **No, if using MCP!** Just ensure:
+  - DesignQA backend is running (`http://localhost:3847`)
+  - Figma Desktop is running with your file open
+  - MCP will be used automatically
+- **Yes, only as fallback** if MCP is unavailable (backend not running or Figma Desktop closed)
 
 **Q: How do I match web elements?**
 - Add `data-figma-node-id="your-node-id"` attribute to HTML elements
