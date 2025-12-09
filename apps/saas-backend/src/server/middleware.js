@@ -38,13 +38,13 @@ export function configureSecurityMiddleware(app, config) {
         return callback(null, true);
       }
 
-      // Check if origin is in the allowed list
-      const allowedOrigins = config.cors?.origins || [];
-      if (allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      // TEMPORARY: Allow all origins to debug Render deployment issues
+      // const allowedOrigins = config.cors?.origins || [];
+      // if (allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
+      callback(null, true);
+      // } else {
+      //   callback(new Error('Not allowed by CORS'));
+      // }
     },
     credentials: config.cors?.credentials !== false,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -120,16 +120,19 @@ export function errorHandler(error, req, res, next) {
     return res.status(428).json(response);
   }
 
-  // Don't send error details in production
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  // Don't send error details in production generally, but enabling for debugging this specific issue
+  const isDevelopment = process.env.NODE_ENV === 'development' || true; // FORCE DEBUG MODE
 
   const response = {
     success: false,
-    error: isDevelopment ? error.message : 'Internal server error',
+    error: error.message || 'Internal server error',
     timestamp: new Date().toISOString(),
   };
 
-  // Log full error in development
+  // Log full error in development AND production for debugging
+  console.error('🔥 CRITICAL ERROR:', error);
+  if (error.stack) console.error(error.stack);
+
   if (isDevelopment) {
     response.data = {
       stack: error.stack,

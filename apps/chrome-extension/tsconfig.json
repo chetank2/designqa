@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "types": ["chrome"],
+    "moduleResolution": "Node",
+    "module": "ESNext",
+    "target": "ES2020",
+    "baseUrl": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*", "popup.html", "manifest.json"],
+  "exclude": ["dist"]
+}

@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import { AdvancedAlgorithms } from './advancedAlgorithms.js';
+import { buildComparisonReport, compareColors } from '@myapp/compare-engine';
 import { logger } from '../utils/logger.js';
 import {
   saveSnapshot,
@@ -287,16 +288,22 @@ class ComparisonEngine {
       factors += 0.3;
     }
 
-    // Color similarity - check both possible locations for backgroundColor
+    // Color similarity using shared engine
     const figmaColor = figmaComponent.backgroundColor || figmaComponent.properties?.backgroundColor;
-    
     if (figmaColor && webElement.styles?.backgroundColor) {
-      const colorSimilarity = this.calculateColorSimilarity(
-        figmaColor,
-        webElement.styles.backgroundColor
+      const colorComparisons = compareColors(
+        figmaComponent.id || 'temp-node',
+        { background: figmaColor },
+        { background: webElement.styles.backgroundColor },
+        this.thresholds.colorDifference
       );
-      score += colorSimilarity * 0.2;
-      factors += 0.2;
+      if (colorComparisons.length > 0) {
+        const diffValue = colorComparisons[0].diff;
+        const maxDiff = this.thresholds.colorDifference || 10;
+        const normalized = Math.max(0, 1 - diffValue / maxDiff);
+        score += normalized * 0.2;
+        factors += 0.2;
+      }
     }
 
     return factors > 0 ? score / factors : 0;
@@ -577,160 +584,20 @@ class ComparisonEngine {
   async compareProperties(figmaComponent, webElement, options = {}) {
     const deviations = [];
     const matches = [];
+    const figmaNode = this.buildSharedFigmaNode(figmaComponent);
+    const webNode = this.buildSharedWebNode(figmaComponent, webElement);
+    const tolerance = this.mapToleranceToSharedConfig();
+    const baseFontSize = this.config?.comparison?.baseFontSize;
 
-    // Enhanced property comparison with new data structures
-    
-    // 1. Enhanced Typography comparison
-    let figmaTypography = null;
-    if (figmaComponent.properties?.typography) {
-      figmaTypography = figmaComponent.properties.typography;
-    } else if (figmaComponent.style) {
-      figmaTypography = figmaComponent.style;
-    }
-    
-    if (figmaTypography && webElement.styles) {
-      const { deviations: typoDev, matches: typoMatch } = this.compareTypography(
-        figmaTypography,
-        webElement.styles
-      );
-      deviations.push(...typoDev);
-      matches.push(...typoMatch);
-    }
+    const sharedResults = buildComparisonReport([figmaNode], [webNode], {
+      tolerance,
+      baseFontSize,
+      normalizeInput: true
+    });
 
-    // 2. Enhanced Color comparison
-    let figmaColors = {};
-    
-    // Extract colors from properties structure
-    if (figmaComponent.properties?.colors) {
-      figmaColors = figmaComponent.properties.colors;
-    } else {
-      // Fallback to old structure
-      if (figmaComponent.properties?.backgroundColor) {
-        figmaColors.backgroundColor = figmaComponent.properties.backgroundColor;
-      }
-      if (figmaComponent.properties?.color) {
-        figmaColors.color = figmaComponent.properties.color;
-      }
-      if (figmaComponent.properties?.borderColor) {
-        figmaColors.borderColor = figmaComponent.properties.borderColor;
-      }
-    }
-    
-    // Background color comparison
-    if (figmaColors.backgroundColor && webElement.styles?.backgroundColor) {
-      const { deviation, match } = this.compareColors(
-        figmaColors.backgroundColor,
-        webElement.styles.backgroundColor,
-        'backgroundColor'
-      );
-      if (deviation) deviations.push(deviation);
-      if (match) matches.push(match);
-    }
-    
-    // Text color comparison
-    if (figmaColors.color && webElement.styles?.color) {
-      const { deviation, match } = this.compareColors(
-        figmaColors.color,
-        webElement.styles.color,
-        'color'
-      );
-      if (deviation) deviations.push(deviation);
-      if (match) matches.push(match);
-    }
-    
-    // Border color comparison
-    if (figmaColors.borderColor && webElement.styles?.borderColor) {
-      const { deviation, match } = this.compareColors(
-        figmaColors.borderColor,
-        webElement.styles.borderColor,
-        'borderColor'
-      );
-      if (deviation) deviations.push(deviation);
-      if (match) matches.push(match);
-    }
-
-    // 3. Enhanced Spacing comparison
-    let figmaSpacing = {};
-    
-    if (figmaComponent.properties?.layout) {
-      const layout = figmaComponent.properties.layout;
-      figmaSpacing = {
-        paddingTop: layout.paddingTop,
-        paddingRight: layout.paddingRight,
-        paddingBottom: layout.paddingBottom,
-        paddingLeft: layout.paddingLeft,
-        marginTop: layout.marginTop,
-        marginRight: layout.marginRight,
-        marginBottom: layout.marginBottom,
-        marginLeft: layout.marginLeft,
-        itemSpacing: layout.itemSpacing
-      };
-    } else {
-      // Fallback to old structure
-      figmaSpacing = {
-        paddingTop: figmaComponent.paddingTop,
-        paddingRight: figmaComponent.paddingRight,
-        paddingBottom: figmaComponent.paddingBottom,
-        paddingLeft: figmaComponent.paddingLeft
-      };
-    }
-    
-    if (Object.values(figmaSpacing).some(v => v !== undefined) && webElement.styles) {
-      const { deviations: spacingDev, matches: spacingMatch } = this.compareSpacing(
-        figmaSpacing,
-        webElement.styles
-      );
-      deviations.push(...spacingDev);
-      matches.push(...spacingMatch);
-    }
-
-    // 4. Enhanced Border radius comparison
-    let figmaBorderRadius = null;
-    
-    if (figmaComponent.properties?.layout?.borderRadius !== undefined) {
-      figmaBorderRadius = figmaComponent.properties.layout.borderRadius;
-    } else if (figmaComponent.properties?.borderRadius !== undefined) {
-      figmaBorderRadius = figmaComponent.properties.borderRadius;
-    } else if (figmaComponent.cornerRadius !== undefined) {
-      figmaBorderRadius = figmaComponent.cornerRadius;
-    }
-    
-    if (figmaBorderRadius !== null && webElement.styles?.borderRadius) {
-      const { deviation, match } = this.compareBorderRadius(
-        figmaBorderRadius,
-        webElement.styles.borderRadius
-      );
-      if (deviation) deviations.push(deviation);
-      if (match) matches.push(match);
-    }
-
-    // 5. Individual border radius corners comparison
-    if (figmaComponent.properties?.layout?.borderRadii && webElement.styles) {
-      const figmaRadii = figmaComponent.properties.layout.borderRadii;
-      const webRadii = {
-        topLeft: webElement.styles.borderTopLeftRadius,
-        topRight: webElement.styles.borderTopRightRadius,
-        bottomLeft: webElement.styles.borderBottomLeftRadius,
-        bottomRight: webElement.styles.borderBottomRightRadius
-      };
-      
-      const { deviations: radiusDev, matches: radiusMatch } = this.compareBorderRadii(
-        figmaRadii,
-        webRadii
-      );
-      deviations.push(...radiusDev);
-      matches.push(...radiusMatch);
-    }
-
-    // 6. Dimensions
-    if (figmaComponent.dimensions && webElement.boundingRect) {
-      const { deviations: dimDev, matches: dimMatch } = this.compareDimensions(
-        figmaComponent.dimensions,
-        webElement.boundingRect
-      );
-      deviations.push(...dimDev);
-      matches.push(...dimMatch);
-    }
+    const translated = this.translateSharedResults(sharedResults);
+    deviations.push(...translated.deviations);
+    matches.push(...translated.matches);
 
     if (options.accessibilityChecksEnabled !== false) {
       const { deviations: contrastDeviations, matches: contrastMatches } = this.measureContrast(figmaComponent, webElement);
@@ -743,6 +610,159 @@ class ComparisonEngine {
     }
 
     return { deviations, matches };
+  }
+
+  buildSharedFigmaNode(figmaComponent) {
+    const properties = figmaComponent.properties || {};
+    const layout = properties.layout || {};
+    const typography = { ...(properties.typography || {}), ...(figmaComponent.style || {}) };
+    const colors = this.cleanRecord({
+      ...properties.colors,
+      color: properties.color,
+      background: properties.backgroundColor,
+      border: properties.borderColor
+    });
+
+    const spacing = this.cleanRecord({
+      paddingTop: layout.paddingTop ?? properties?.spacing?.paddingTop ?? figmaComponent.paddingTop,
+      paddingRight: layout.paddingRight ?? properties?.spacing?.paddingRight ?? figmaComponent.paddingRight,
+      paddingBottom: layout.paddingBottom ?? properties?.spacing?.paddingBottom ?? figmaComponent.paddingBottom,
+      paddingLeft: layout.paddingLeft ?? properties?.spacing?.paddingLeft ?? figmaComponent.paddingLeft,
+      marginTop: layout.marginTop ?? properties?.spacing?.marginTop,
+      marginRight: layout.marginRight ?? properties?.spacing?.marginRight,
+      marginBottom: layout.marginBottom ?? properties?.spacing?.marginBottom,
+      marginLeft: layout.marginLeft ?? properties?.spacing?.marginLeft,
+      gap: layout.gap ?? properties?.spacing?.gap ?? layout.itemSpacing ?? properties?.layout?.itemSpacing
+    });
+
+    const radius = this.cleanRecord({
+      borderRadius: layout.borderRadius ?? properties.borderRadius ?? figmaComponent.cornerRadius,
+      borderTopLeftRadius: layout.borderRadii?.topLeft,
+      borderTopRightRadius: layout.borderRadii?.topRight,
+      borderBottomLeftRadius: layout.borderRadii?.bottomLeft,
+      borderBottomRightRadius: layout.borderRadii?.bottomRight
+    });
+
+    const componentDimensions = figmaComponent.dimensions || {};
+    const layoutValues = this.cleanRecord({
+      width: layout.width ?? componentDimensions.width,
+      height: layout.height ?? componentDimensions.height,
+      minWidth: layout.minWidth,
+      minHeight: layout.minHeight,
+      maxWidth: layout.maxWidth,
+      maxHeight: layout.maxHeight
+    });
+
+    const shadows = {};
+    if (Array.isArray(properties.shadows) && properties.shadows.length > 0) {
+      shadows.dropShadow = properties.shadows.map(shadow => ({
+        offsetX: shadow.offset?.x ?? 0,
+        offsetY: shadow.offset?.y ?? 0,
+        blurRadius: shadow.radius ?? shadow.blur ?? 0,
+        spreadRadius: shadow.spread ?? 0,
+        color: shadow.color || shadow.fill || '#000000'
+      }));
+    }
+
+    return {
+      nodeId: figmaComponent.id,
+      name: figmaComponent.name,
+      selector: figmaComponent.selector,
+      styles: {
+        colors,
+        typography,
+        spacing,
+        radius,
+        layout: layoutValues,
+        shadows,
+        tokens: { ...(properties.tokens || {}), ...(figmaComponent.tokens || {}) }
+      }
+    };
+  }
+
+  buildSharedWebNode(figmaComponent, webElement) {
+    const computedStyles = { ...(webElement.styles || {}) };
+    if (webElement.boundingRect) {
+      computedStyles.width = webElement.boundingRect.width;
+      computedStyles.height = webElement.boundingRect.height;
+    }
+    if (webElement.computedStyles) {
+      Object.assign(computedStyles, webElement.computedStyles);
+    }
+
+    return {
+      nodeId: figmaComponent.id,
+      name: webElement.selector || webElement.tagName || webElement.type,
+      selector: webElement.selector,
+      computedStyles,
+      tokens: webElement.tokens || {}
+    };
+  }
+
+  mapToleranceToSharedConfig() {
+    return {
+      color: this.thresholds.colorDifference ?? 10,
+      typography: this.thresholds.fontSizeDifference ?? 2,
+      spacing: this.thresholds.spacingDifference ?? 3,
+      radius: this.thresholds.spacingDifference ?? 3,
+      shadows: this.thresholds.spacingDifference ?? 3,
+      layout: this.thresholds.sizeDifference ?? 5
+    };
+  }
+
+  translateSharedResults(results) {
+    const deviations = [];
+    const matches = [];
+
+    results.forEach(result => {
+      if (result.status === 'mismatch') {
+        deviations.push({
+          property: result.property,
+          figmaValue: result.figma,
+          webValue: result.web,
+          difference: result.diff,
+          severity: this.mapSeverityFromProperty(result.property, result.diff),
+          message: `${result.property} differs by ${Number(result.diff).toFixed(2)} units`
+        });
+      } else {
+        matches.push({
+          property: result.property,
+          value: result.web ?? result.figma,
+          message: `${result.property} matches within tolerance`
+        });
+      }
+    });
+
+    return { deviations, matches };
+  }
+
+  mapSeverityFromProperty(property, diff) {
+    if (typeof diff !== 'number' || !Number.isFinite(diff)) {
+      return 'low';
+    }
+
+    if (property.startsWith('color')) {
+      return this.getSeverity('color', diff);
+    }
+    if (property.startsWith('typography')) {
+      return this.getSeverity('fontSize', diff);
+    }
+    if (property.startsWith('spacing') || property.startsWith('radius')) {
+      return this.getSeverity('spacing', diff);
+    }
+    if (property.startsWith('layout')) {
+      return this.getSeverity('size', diff);
+    }
+    return 'low';
+  }
+
+  cleanRecord(record) {
+    return Object.entries(record)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
   }
 
   measureContrast(figmaComponent, webElement) {
@@ -1053,16 +1073,6 @@ class ComparisonEngine {
     const heightDiff = Math.abs(figmaDim.height - webDim.height) / Math.max(figmaDim.height, webDim.height);
     
     return 1 - (widthDiff + heightDiff) / 2;
-  }
-
-  calculateColorSimilarity(color1, color2) {
-    const rgb1 = this.hexToRgb(color1);
-    const rgb2 = this.parseWebColor(color2);
-    
-    if (!rgb1 || !rgb2) return 0;
-    
-    const difference = this.calculateColorDifference(rgb1, rgb2);
-    return Math.max(0, 1 - difference / 255);
   }
 
   hexToRgb(hex) {

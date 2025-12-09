@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "DesignQA Compare Extension",
+  "version": "0.1.0",
+  "description": "Compare Figma data with live web styles directly from any page.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Design QA Compare"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

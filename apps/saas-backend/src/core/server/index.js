@@ -401,7 +401,7 @@ export async function startServer(portArg) {
   // Serve frontend static files (exclude report files)
   // Use process.cwd() for Docker compatibility - __dirname might not resolve correctly
   const frontendPath = path.join(process.cwd(), 'frontend/dist');
-  
+
   // Log frontend path for debugging
   console.log(`📁 Frontend static path: ${frontendPath}`);
   if (fs.existsSync(frontendPath)) {
@@ -418,7 +418,12 @@ export async function startServer(portArg) {
   }
 
   // Serve static assets with proper MIME types
-  app.use('/assets', express.static(path.join(frontendPath, 'assets'), {
+  // Serve static assets with proper MIME types
+  app.use('/assets', (req, res, next) => {
+    // Debug logging for asset requests
+    console.log(`📂 Asset request: ${req.url}`);
+    next();
+  }, express.static(path.join(frontendPath, 'assets'), {
     setHeaders: (res, filePath) => {
       // Set correct MIME types
       if (filePath.endsWith('.css')) {
@@ -428,7 +433,8 @@ export async function startServer(portArg) {
       }
       // Cache headers for assets
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    }
+    },
+    fallthrough: false // Force error if file not found (handled by error handler)
   }));
 
   // Serve other static files from frontend/dist (like index.html)
@@ -2855,12 +2861,12 @@ export async function startServer(portArg) {
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'API endpoint not found' });
     }
-    
+
     // Don't serve frontend for report files
     if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
       return res.status(404).send('Report not found');
     }
-    
+
     // Serve index.html for all other routes (SPA routing)
     const indexPath = path.join(frontendPath, 'index.html');
     if (fs.existsSync(indexPath)) {

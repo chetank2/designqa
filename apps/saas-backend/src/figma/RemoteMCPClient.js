@@ -20,11 +20,11 @@ export class RemoteMCPClient {
   async connect() {
     try {
       console.log('🔄 Connecting to remote Figma MCP...');
-      
+
       if (!this.token) {
         throw new Error('Figma token required for remote MCP connection');
       }
-      
+
       // Step 1: Initialize with authentication
       const initResponse = await fetch(this.baseUrl, {
         method: 'POST',
@@ -58,7 +58,7 @@ export class RemoteMCPClient {
 
       // Get session ID from headers
       this.sessionId = initResponse.headers.get('mcp-session-id');
-      if (!this.sessionId) {
+      if (!this.sessionId && initResponse.ok) {
         // Some implementations may not use session IDs for stateless HTTPS
         this.sessionId = `remote_${Date.now()}`;
       }
@@ -84,7 +84,7 @@ export class RemoteMCPClient {
             params: {}
           })
         });
-        
+
         if (notifyResponse.ok) {
           await notifyResponse.text();
           console.log('✅ Initialized notification sent');
@@ -95,7 +95,7 @@ export class RemoteMCPClient {
 
       this.initialized = true;
       console.log('✅ Remote MCP client connected successfully');
-      
+
       // Step 3: List available tools
       try {
         const tools = await this.listTools();
@@ -106,8 +106,14 @@ export class RemoteMCPClient {
 
       return true;
 
+      throw error;
     } catch (error) {
-      console.error('❌ Remote connection failed:', error);
+      console.error(`❌ Remote connection failed to ${this.baseUrl}:`, error.message);
+      if (error.message.includes('401')) {
+        console.error('ℹ️  Tip: Check your FIGMA_MCP_SERVICE_TOKEN or FIGMA_MCP_URL environment variables.');
+        console.error('   Current URL:', this.baseUrl);
+        console.error('   Token present:', !!this.token);
+      }
       this.initialized = false;
       throw error;
     }
@@ -123,18 +129,18 @@ export class RemoteMCPClient {
 
     try {
       console.log(`🔧 Sending remote request: ${request.method}`);
-      
+
       const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json, text/event-stream',
         'Authorization': `Bearer ${this.token}`
       };
-      
+
       // Add session ID if available
       if (this.sessionId) {
         headers['mcp-session-id'] = this.sessionId;
       }
-      
+
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers,

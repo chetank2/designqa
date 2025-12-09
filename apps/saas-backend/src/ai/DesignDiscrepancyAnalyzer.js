@@ -1,6 +1,19 @@
 import sharp from 'sharp';
-import { createCanvas, loadImage } from 'canvas';
 import path from 'path';
+
+// Lazy-load canvas to avoid blocking server startup if native module isn't built
+let canvasModule = null;
+async function getCanvas() {
+  if (!canvasModule) {
+    try {
+      canvasModule = await import('canvas');
+    } catch (error) {
+      console.warn('⚠️ Canvas module not available. Some features may be disabled:', error.message);
+      return null;
+    }
+  }
+  return canvasModule;
+}
 
 /**
  * Design Discrepancy Analyzer
