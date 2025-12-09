@@ -13,6 +13,17 @@ services:
         value: production
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
         value: "true"
+      # Server binding - must be 0.0.0.0 for Render to detect the port
+      - key: SERVER_HOST
+        value: "0.0.0.0"
+      # MCP Configuration - disable local MCP and use Remote MCP
+      - key: ENABLE_LOCAL_MCP
+        value: "false"
+      - key: FIGMA_CONNECTION_MODE
+        value: "figma"
+      - key: FIGMA_MCP_URL
+        value: "https://mcp.figma.com/mcp"
+      # Required secrets (set in Render dashboard)
       - key: FIGMA_API_KEY
         sync: false
       - key: VITE_SUPABASE_URL
