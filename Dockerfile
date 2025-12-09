@@ -4,6 +4,8 @@ FROM node:20-slim AS builder
 # Set environment to skip Chromium download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV DEBIAN_FRONTEND=noninteractive
+ENV SKIP_ELECTRON_POSTINSTALL=true
+ENV DOCKER_BUILD=true
 
 # Install only essential build dependencies (no Chromium)
 # Include xz-utils for lzma-native native module compilation
@@ -22,10 +24,13 @@ WORKDIR /app
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 
+# Copy postinstall script before npm ci (needed for postinstall hook, but will skip due to DOCKER_BUILD=true)
+COPY scripts/postinstall.cjs ./scripts/postinstall.cjs
+
 # Install dependencies immediately (before copying large source files)
 # This runs right after copying package files to avoid timeout
 # Using explicit echo to verify execution and prevent caching issues
-# Skip optional dependencies and ignore scripts for problematic native modules
+# Postinstall script will skip electron-builder due to DOCKER_BUILD=true
 RUN echo "Installing root dependencies..." && \
     npm ci --include=dev && \
     echo "Installing frontend dependencies..." && \
