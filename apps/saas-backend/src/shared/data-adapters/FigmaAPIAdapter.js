@@ -143,6 +143,36 @@ export class FigmaAPIAdapter extends BaseDataAdapter {
       properties.x = node.absoluteBoundingBox.x;
       properties.y = node.absoluteBoundingBox.y;
     }
+    if (typeof node.paddingLeft === 'number') {
+      properties.paddingLeft = node.paddingLeft;
+    }
+    if (typeof node.paddingRight === 'number') {
+      properties.paddingRight = node.paddingRight;
+    }
+    if (typeof node.paddingTop === 'number') {
+      properties.paddingTop = node.paddingTop;
+    }
+    if (typeof node.paddingBottom === 'number') {
+      properties.paddingBottom = node.paddingBottom;
+    }
+    if (typeof node.itemSpacing === 'number') {
+      properties.itemSpacing = node.itemSpacing;
+    }
+    if (typeof node.cornerRadius === 'number') {
+      properties.cornerRadius = node.cornerRadius;
+    }
+    if (Array.isArray(node.rectangleCornerRadii)) {
+      properties.rectangleCornerRadii = node.rectangleCornerRadii;
+    }
+    if (node.effects) {
+      properties.effects = node.effects;
+    }
+    if (node.fills) {
+      properties.fills = node.fills;
+    }
+    if (node.strokes) {
+      properties.strokes = node.strokes;
+    }
 
     // Text properties
     if (node.type === 'TEXT') {

@@ -91,6 +91,8 @@ RUN --mount=type=secret,id=vite_supabase_url,required=false \
     rm -f .env && \
     cd ../.. && \
     echo "Frontend build completed successfully" && \
+    mkdir -p ./frontend && \
+    echo "Created frontend directory" && \
     mv apps/saas-frontend/dist ./frontend/dist
 
 # Copy backend source files (only what's needed for production)

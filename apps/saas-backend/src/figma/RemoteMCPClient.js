@@ -105,8 +105,6 @@ export class RemoteMCPClient {
       }
 
       return true;
-
-      throw error;
     } catch (error) {
       console.error(`❌ Remote connection failed to ${this.baseUrl}:`, error.message);
       if (error.message.includes('401')) {

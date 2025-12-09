@@ -302,6 +302,13 @@ export async function startServer(portArg) {
   } catch (error) {
     console.warn('⚠️ Failed to load export routes:', error.message);
   }
+  try {
+    const extensionRoutes = await import('../../routes/extensionRoutes.js');
+    app.use('/api/extension', extensionRoutes.createExtensionRoutes(config));
+    console.log('✅ Extension routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load extension routes:', error.message);
+  }
 
   // MCP Routes
   try {
