@@ -21,7 +21,11 @@ import { isAuthRequired } from './utils/auth'
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const authRequired = isAuthRequired();
+  const [authRequired, setAuthRequired] = useState(false);
+
+  useEffect(() => {
+    setAuthRequired(isAuthRequired());
+  }, []);
 
   if (loading) {
     return (
@@ -50,7 +54,12 @@ function AppContent() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, loading } = useAuth()
-  const authRequired = isAuthRequired()
+  const [authRequired, setAuthRequired] = useState(false)
+
+  // Check auth requirement after component mounts
+  useEffect(() => {
+    setAuthRequired(isAuthRequired())
+  }, [])
 
   // Immediate redirect check before rendering any content
   useEffect(() => {

@@ -113,6 +113,17 @@ export default function Settings() {
   const [usingCachedSettings, setUsingCachedSettings] = useState(false)
   const { user } = useAuth()
 
+  const tabs: Array<{ id: string; name: string; icon: any; disabled?: boolean; hint?: string }> = [
+    { id: 'general', name: 'General', icon: CogIcon },
+    { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
+    { id: 'design-systems', name: 'Design Systems', icon: DocumentTextIcon },
+    { id: 'credentials', name: 'Credentials', icon: ShieldCheckIcon },
+    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
+    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
+    { id: 'notifications', name: 'Notifications', icon: BellIcon },
+    { id: 'security', name: 'Security', icon: ShieldCheckIcon }
+  ]
+
   // Sync activeTab with URL parameter
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') || 'general'
@@ -165,22 +176,6 @@ export default function Settings() {
       notifyOnError: true
     }
   })
-
-  // Check server status on component mount
-  useEffect(() => {
-    const checkStatus = async () => {
-      const isHealthy = await checkApiHealth();
-      setServerStatus(isHealthy ? 'online' : 'offline');
-
-      if (isHealthy) {
-        loadCurrentSettings();
-      } else {
-        loadCachedSettings();
-      }
-    };
-
-    checkStatus();
-  }, []);
 
   // No caching of settings
   const saveSettingsToCache = (settings: Partial<SettingsForm>) => {
@@ -300,6 +295,22 @@ export default function Settings() {
     }
   };
 
+  // Check server status on component mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      const isHealthy = await checkApiHealth();
+      setServerStatus(isHealthy ? 'online' : 'offline');
+
+      if (isHealthy) {
+        loadCurrentSettings();
+      } else {
+        loadCachedSettings();
+      }
+    };
+
+    checkStatus();
+  }, []);
+
   const onSubmit = async (data: SettingsForm) => {
     setIsSaving(true);
     setSaveStatus('idle');
@@ -360,16 +371,7 @@ export default function Settings() {
     }
   };
 
-  const tabs = [
-    { id: 'general', name: 'General', icon: CogIcon },
-    { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
-    { id: 'design-systems', name: 'Design Systems', icon: DocumentTextIcon },
-    { id: 'credentials', name: 'Credentials', icon: ShieldCheckIcon },
-    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
-    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon },
-    { id: 'security', name: 'Security', icon: ShieldCheckIcon }
-  ]
+
 
   if (isLoading) {
     return (
@@ -617,7 +619,7 @@ export default function Settings() {
                   name="mcpConnectionMethod"
                   control={control}
                   render={({ field: methodField }) => (
-                    methodField.value === 'api' && (
+                    methodField.value === 'api' ? (
                       <Card>
                         <CardHeader>
                           <CardTitle>Figma API Token</CardTitle>
@@ -639,7 +641,7 @@ export default function Settings() {
                           />
                         </CardContent>
                       </Card>
-                    )
+                    ) : <></>
                   )}
                 />
 
@@ -648,7 +650,7 @@ export default function Settings() {
                   name="mcpConnectionMethod"
                   control={control}
                   render={({ field: methodField }) => (
-                    methodField.value === 'desktop' && (
+                    methodField.value === 'desktop' ? (
                       <Card>
                         <CardHeader>
                           <CardTitle>MCP Server Configuration</CardTitle>
@@ -692,7 +694,7 @@ export default function Settings() {
                           </div>
                         </CardContent>
                       </Card>
-                    )
+                    ) : <></>
                   )}
                 />
 

@@ -43,51 +43,44 @@ export default function CredentialsManager() {
     notes: ''
   });
 
-  useEffect(() => {
-    // Detect storage mode
-    const mode = supabase && user ? 'supabase' : 'local';
-    setStorageMode(mode);
-    loadCredentials(mode);
-  }, [user, supabase]);
-
   const loadCredentials = async (mode?: 'local' | 'supabase') => {
     const currentMode = mode || storageMode;
     try {
       setLoading(true);
       setError(null);
       const apiBaseUrl = getApiBaseUrl();
-      
+
       if (currentMode === 'supabase' && user && supabase) {
         // Load from Supabase via API
         const session = await supabase.auth.getSession();
         const token = session?.data.session?.access_token;
-        
+
         if (!token) {
           throw new Error('Not authenticated');
         }
-        
+
         const response = await fetch(`${apiBaseUrl}/api/credentials`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to load credentials from Supabase');
         }
-        
+
         const result = await response.json();
         setCredentials(result.data || []);
       } else {
         // Load from local storage via API (backend handles LocalStorageProvider)
         const response = await fetch(`${apiBaseUrl}/api/credentials`);
-        
+
         if (!response.ok) {
           // If API fails, return empty array for local mode
           setCredentials([]);
           return;
         }
-        
+
         const result = await response.json();
         setCredentials(result.data || []);
       }
@@ -99,6 +92,13 @@ export default function CredentialsManager() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Detect storage mode
+    const mode = supabase && user ? 'supabase' : 'local';
+    setStorageMode(mode);
+    loadCredentials(mode);
+  }, [user, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +136,7 @@ export default function CredentialsManager() {
       const headers: HeadersInit = {
         'Content-Type': 'application/json'
       };
-      
+
       if (currentMode === 'supabase' && user && supabase) {
         const session = await supabase.auth.getSession();
         const token = session?.data.session?.access_token;
@@ -144,10 +144,10 @@ export default function CredentialsManager() {
           headers['Authorization'] = `Bearer ${token}`;
         }
       }
-      
+
       let url = `${apiBaseUrl}/api/credentials`;
       let method = 'POST';
-      
+
       if (editingId) {
         url = `${apiBaseUrl}/api/credentials/${editingId}`;
         method = 'PUT';
@@ -198,7 +198,7 @@ export default function CredentialsManager() {
     try {
       const apiBaseUrl = getApiBaseUrl();
       const headers: HeadersInit = {};
-      
+
       if (currentMode === 'supabase' && user && supabase) {
         const session = await supabase.auth.getSession();
         const token = session?.data.session?.access_token;
@@ -206,7 +206,7 @@ export default function CredentialsManager() {
           headers['Authorization'] = `Bearer ${token}`;
         }
       }
-      
+
       const response = await fetch(`${apiBaseUrl}/api/credentials/${id}`, {
         method: 'DELETE',
         headers
