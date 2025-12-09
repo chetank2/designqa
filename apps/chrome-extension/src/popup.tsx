@@ -377,24 +377,24 @@ const Popup = () => {
           </p>
         </div>
       ) : (
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', gap: '0.3rem' }}>
-          Figma nodes JSON
-          <textarea
-            value={figmaInput}
-            onChange={event => setFigmaInput(event.target.value)}
-            rows={6}
-            style={{
-              width: '100%',
-              borderRadius: '0.5rem',
-              background: '#020617',
-              border: '1px solid #1e293b',
-              color: '#e2e8f0',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-              fontSize: '0.72rem',
-              padding: '0.5rem'
-            }}
-          />
-        </label>
+      <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', gap: '0.3rem' }}>
+        Figma nodes JSON
+        <textarea
+          value={figmaInput}
+          onChange={event => setFigmaInput(event.target.value)}
+          rows={6}
+          style={{
+            width: '100%',
+            borderRadius: '0.5rem',
+            background: '#020617',
+            border: '1px solid #1e293b',
+            color: '#e2e8f0',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            fontSize: '0.72rem',
+            padding: '0.5rem'
+          }}
+        />
+      </label>
       )}
       <button
         onClick={handleCompare}

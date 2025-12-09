@@ -41,13 +41,14 @@ WORKDIR /app
 COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml* ./
+COPY apps/saas-frontend/package.json ./apps/saas-frontend/
 COPY apps/saas-backend/package.json ./apps/saas-backend/
 COPY packages/compare-engine/package.json ./packages/compare-engine/
 
-# Install pnpm and workspace dependencies
+# Install pnpm and workspace dependencies (including frontend for build)
 RUN npm install -g pnpm && \
     echo "Installing workspace dependencies..." && \
-    pnpm install --frozen-lockfile --filter @myapp/saas-backend... && \
+    pnpm install --frozen-lockfile && \
     echo "Dependencies installed successfully"
 
 # Copy frontend source files needed for build
