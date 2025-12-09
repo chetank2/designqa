@@ -74,7 +74,7 @@ function saveFigmaApiKey(apiKey) {
   }
 }
 
-export async function startServer() {
+export async function startServer(portArg) {
   // Load configuration with fallback to defaults
   let config;
   try {
@@ -104,8 +104,16 @@ export async function startServer() {
     const { serviceManager: sm } = await import('../../services/core/ServiceManager.js');
     serviceManager = sm;
 
-    const initResults = await serviceManager.initializeServices(config);
-    if (initResults.success) {
+    // Add timeout for service initialization (10 seconds)
+    const initPromise = serviceManager.initializeServices(config);
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 10000));
+
+    const initResults = await Promise.race([initPromise, timeoutPromise]);
+
+    if (initResults.timeout) {
+      console.warn('⚠️ Service initialization timed out after 10s - continuing in degraded mode');
+      // We still want to try to get services if they initialized partially, but for now we assume degraded
+    } else if (initResults.success) {
       console.log('✅ Enhanced service initialization successful');
 
       // Get services from enhanced service manager
@@ -200,13 +208,16 @@ export async function startServer() {
     console.warn('   Continuing without Supabase - features will use local storage');
   }
 
-  // Initialize database and services
+  // Initialize database and services with timeout
   let dbServices = null;
   try {
-    dbServices = await initDatabase({ userId: null }); // Will be set per-request if user authenticated
+    const dbInitPromise = initDatabase({ userId: null });
+    const dbTimeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database initialization timed out')), 5000));
+
+    dbServices = await Promise.race([dbInitPromise, dbTimeoutPromise]); // Will be set per-request if user authenticated
     console.log('✅ Database and services initialized');
   } catch (error) {
-    console.warn('⚠️ Database initialization failed:', error.message);
+    console.warn('⚠️ Database initialization failed or timed out:', error.message);
     console.warn('   Continuing without database - some features may be limited');
   }
 
@@ -2930,7 +2941,9 @@ export async function startServer() {
   });
 
   // Start server
-  const PORT = config.server.port;
+  const PORT = portArg || config.server.port;
+  console.log(`[DEBUG] Attempting to listen on port: ${PORT}`);
+
   const server = httpServer.listen(PORT, config.server.host, () => {
     // Write directly to stdout for Electron detection
     process.stdout.write(`Server running on port ${PORT}\n`);
