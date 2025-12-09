@@ -33,10 +33,18 @@ Set these in the newly created service before the first deploy:
 
 | Key | Value | Description |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` | Only if using Supabase for user auth/history |
-| `VITE_SUPABASE_ANON_KEY` | `your_anon_key` | Only if using Supabase |
-| `SUPABASE_URL` | `https://xxx.supabase.co` | Server-side Supabase URL |
-| `SUPABASE_SERVICE_KEY` | `your_service_key` | Server-side Supabase service key |
+| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` | **Build arg** - Frontend Supabase URL (passed as Docker build arg) |
+| `VITE_SUPABASE_ANON_KEY` | `your_anon_key` | **Build arg** - Frontend Supabase anon key (passed as Docker build arg) |
+| `SUPABASE_URL` | `https://xxx.supabase.co` | Server-side Supabase URL (runtime env var) |
+| `SUPABASE_SERVICE_KEY` | `your_service_key` | Server-side Supabase service key (runtime env var) |
+
+**Important for Render Docker builds**: Since `frontend/.env` is gitignored, you must pass `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as **Docker build arguments** in Render:
+
+1. Go to your Render service → **Environment** tab
+2. Add these as **Build Environment Variables** (not Runtime):
+   - `VITE_SUPABASE_URL` = `https://xxx.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = `your_anon_key`
+3. Render will automatically pass them as `--build-arg` during Docker build
 
 > **Important**: The blueprint marks secrets with `sync: false`, so Render will prompt you to enter them.
 
