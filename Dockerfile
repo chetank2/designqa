@@ -47,7 +47,9 @@ COPY frontend/postcss.config.js ./frontend/postcss.config.js
 COPY frontend/components.json ./frontend/components.json
 # Copy frontend .env file if it exists (for Vite build-time variables)
 # This allows VITE_ prefixed variables to be available during build
-COPY frontend/.env* ./frontend/ 2>/dev/null || true
+# Use a shell command to copy conditionally (Docker COPY doesn't support conditionals)
+RUN mkdir -p ./frontend && \
+    if [ -f ../frontend/.env ]; then cp ../frontend/.env ./frontend/.env; fi || true
 # Create empty public directory if it doesn't exist (Vite handles this gracefully)
 RUN mkdir -p ./frontend/public
 
