@@ -97,6 +97,8 @@ RUN --mount=type=secret,id=vite_supabase_url,required=false \
         echo "VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}" >> .env && \
         export VITE_SUPABASE_ANON_KEY="${VITE_SUPABASE_ANON_KEY}"; \
     fi && \
+    # Clean dist directory to ensure fresh build with correct hashed filenames
+    rm -rf dist && \
     # Build with environment variables (Vite reads from both .env and process.env)
     npm run build && \
     # Explicitly remove .env file to ensure no secrets persist (defense in depth)

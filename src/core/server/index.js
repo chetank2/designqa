@@ -3028,21 +3028,40 @@ export async function startServer(portArg) {
 
     // Start periodic MCP status checks
     setInterval(async () => {
+      // Don't check if we are in API-only mode
+      if (config.mcp?.mode === 'api') {
+        return;
+      }
+
       try {
         const wasConnected = mcpConnected;
         if (figmaClient) {
+          // If we recently had auth errors, maybe skip or backoff?
+          // For now, just try to connect
           mcpConnected = await figmaClient.connect();
 
           if (wasConnected !== mcpConnected) {
             console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
           }
         } else {
-          mcpConnected = null;
+          try {
+            // Try to re-initialize client if it was missing 
+            const { getMCPClient } = await import('../../config/mcp-config.js');
+            figmaClient = await getMCPClient();
+          } catch (e) {
+            mcpConnected = null;
+          }
         }
       } catch (error) {
         if (mcpConnected) {
           mcpConnected = false;
           console.log('🔌 MCP Status changed: Disconnected');
+        }
+
+        // Log error only if it's NOT a 401 to avoid spamming logs when config is wrong
+        // 401 means "Invalid Token", which won't fix itself by retrying
+        if (!error.message.includes('401') && !error.message.includes('Unauthorized')) {
+          console.warn('MCP Status Check Failed:', error.message);
         }
       }
     }, 30000); // Check every 30 seconds
