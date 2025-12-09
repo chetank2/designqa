@@ -1,11 +1,15 @@
-# Multi-stage build for Railway deployment
+# Multi-stage build for Railway/Render deployment
 # syntax=docker/dockerfile:1.4
 FROM node:20-slim AS builder
 
-# Build arguments for non-sensitive Vite environment variables
+# Build arguments for Vite environment variables
+# For Render: Pass these as build args (--build-arg VITE_SUPABASE_URL=...)
+# For local/CI: Use Docker secrets instead (more secure)
 ARG VITE_API_URL
 ARG VITE_WS_URL
 ARG VITE_SERVER_PORT
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
 
 # Set environment to skip Chromium download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -17,6 +21,8 @@ ENV DOCKER_BUILD=true
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
 ENV VITE_SERVER_PORT=${VITE_SERVER_PORT}
+# Note: Sensitive values (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are handled in RUN command
+# to support both BuildKit secrets (preferred) and ARG fallback (for Render)
 
 # Install only essential build dependencies (no Chromium)
 # Include xz-utils for lzma-native native module compilation
@@ -59,23 +65,39 @@ COPY frontend/components.json ./frontend/components.json
 # Create empty public directory if it doesn't exist (Vite handles this gracefully)
 RUN mkdir -p ./frontend/public
 
-# Build frontend with secure secret handling
-# Secrets are mounted securely and not persisted in image layers
-# Usage: docker build --secret id=vite_supabase_url,src=./secrets/vite_supabase_url.txt --secret id=vite_supabase_anon_key,src=./secrets/vite_supabase_anon_key.txt
-# For local development, you can create secrets files or use build args (less secure but acceptable for local)
+# Build frontend with flexible secret handling
+# Supports: BuildKit secrets (secure, for local/CI) > ARG > Environment variables (for Render)
+# Usage with secrets (preferred): docker build --secret id=vite_supabase_url,src=./secrets/vite_supabase_url.txt --secret id=vite_supabase_anon_key,src=./secrets/vite_supabase_anon_key.txt
+# Usage with ARG: docker build --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_ANON_KEY=...
+# Render: Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY as environment variables in Render dashboard
+# Vite automatically reads VITE_* variables from process.env during build
 RUN --mount=type=secret,id=vite_supabase_url,required=false \
     --mount=type=secret,id=vite_supabase_anon_key,required=false \
     echo "Building frontend..." && \
     cd frontend && \
-    # Create .env file from secrets (secrets are not persisted in image layers)
+    # Create .env file if secrets or ARG are provided (for local builds)
+    # Render: Vite will automatically read VITE_* from process.env, so .env is optional
     touch .env && \
+    # Use BuildKit secrets if available (most secure)
     if [ -f /run/secrets/vite_supabase_url ]; then \
-        echo "VITE_SUPABASE_URL=$(cat /run/secrets/vite_supabase_url)" >> .env; \
+        echo "Using BuildKit secret for VITE_SUPABASE_URL" && \
+        echo "VITE_SUPABASE_URL=$(cat /run/secrets/vite_supabase_url)" >> .env && \
+        export VITE_SUPABASE_URL="$(cat /run/secrets/vite_supabase_url)"; \
+    elif [ -n "${VITE_SUPABASE_URL:-}" ]; then \
+        echo "Using ARG/env var for VITE_SUPABASE_URL" && \
+        echo "VITE_SUPABASE_URL=${VITE_SUPABASE_URL}" >> .env && \
+        export VITE_SUPABASE_URL="${VITE_SUPABASE_URL}"; \
     fi && \
     if [ -f /run/secrets/vite_supabase_anon_key ]; then \
-        echo "VITE_SUPABASE_ANON_KEY=$(cat /run/secrets/vite_supabase_anon_key)" >> .env; \
+        echo "Using BuildKit secret for VITE_SUPABASE_ANON_KEY" && \
+        echo "VITE_SUPABASE_ANON_KEY=$(cat /run/secrets/vite_supabase_anon_key)" >> .env && \
+        export VITE_SUPABASE_ANON_KEY="$(cat /run/secrets/vite_supabase_anon_key)"; \
+    elif [ -n "${VITE_SUPABASE_ANON_KEY:-}" ]; then \
+        echo "Using ARG/env var for VITE_SUPABASE_ANON_KEY" && \
+        echo "VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}" >> .env && \
+        export VITE_SUPABASE_ANON_KEY="${VITE_SUPABASE_ANON_KEY}"; \
     fi && \
-    # Build with environment variables (secrets are only available during this RUN command)
+    # Build with environment variables (Vite reads from both .env and process.env)
     npm run build && \
     # Explicitly remove .env file to ensure no secrets persist (defense in depth)
     rm -f .env && \
