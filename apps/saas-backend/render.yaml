@@ -4,7 +4,7 @@ services:
     env: docker
     plan: free
     region: oregon
-    dockerfilePath: Dockerfile
+    dockerfilePath: apps/saas-backend/Dockerfile
     dockerContext: .
     autoDeploy: true
     healthCheckPath: /api/health
