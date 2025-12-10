@@ -1,10 +1,10 @@
-import { MCPClient } from '../figma/MCPClient';
+import { RemoteMCPClient } from '../figma/RemoteMCPClient';
 
 export interface Session {
     id: string;
     userId: string;
     token: string;
-    client: MCPClient;
+    client: RemoteMCPClient;
     createdAt: number;
     lastUsed: number;
 }

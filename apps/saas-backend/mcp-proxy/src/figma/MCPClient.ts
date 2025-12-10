@@ -8,6 +8,7 @@ export class MCPClient {
     private transport: MCPTransport;
     private pendingRequests = new Map<string | number, { resolve: (val: any) => void; reject: (err: any) => void }>();
     private isConnected: boolean = false;
+    private connectionTimeoutMs = 15000;
 
     constructor(token: string, url: string = ENV.FIGMA_MCP_URL) {
         this.transport = new MCPTransport(url, token);
@@ -36,8 +37,13 @@ export class MCPClient {
         });
     }
 
-    public connect() {
+    public async connect() {
+        if (this.isConnected) {
+            return;
+        }
+        const waitPromise = this.waitForConnection();
         this.transport.connect();
+        await waitPromise;
     }
 
     public close() {
@@ -46,10 +52,7 @@ export class MCPClient {
 
     public async sendMessage(method: string, params?: any): Promise<any> {
         if (!this.isConnected) {
-            // Ideally wait for connection or throw
-            // For now, throw
-            // throw new Error('Not connected to MCP');
-            // Or maybe wait a bit?
+            await this.waitForConnection();
         }
 
         const id = uuidv4();
@@ -72,6 +75,51 @@ export class MCPClient {
                     reject(new Error('Request timeout'));
                 }
             }, 30000); // 30s timeout
+        });
+    }
+
+    private waitForConnection(timeout: number = this.connectionTimeoutMs): Promise<void> {
+        if (this.isConnected) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const handleOpen = () => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                resolve();
+            };
+            const handleError = (err: Error) => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                reject(err);
+            };
+            const handleClose = () => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                reject(new Error('Connection closed before establishing WebSocket'));
+            };
+            const cleanup = () => {
+                this.transport.removeListener('open', handleOpen);
+                this.transport.removeListener('error', handleError);
+                this.transport.removeListener('close', handleClose);
+                clearTimeout(timer);
+            };
+
+            const timer = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                reject(new Error('Timed out waiting for MCP connection'));
+            }, timeout);
+
+            this.transport.once('open', handleOpen);
+            this.transport.once('error', handleError);
+            this.transport.once('close', handleClose);
         });
     }
 

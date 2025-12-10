@@ -31,10 +31,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Get initial session with error handling
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        // If refresh token is invalid, clear it
+        if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid')) {
+          console.warn('Invalid refresh token, clearing session');
+          supabase.auth.signOut();
+        }
+        setLoading(false);
+        return;
+      }
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch((error) => {
+      console.warn('Error getting session:', error);
+      // Clear invalid tokens
+      if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid')) {
+        supabase.auth.signOut();
+      }
       setLoading(false);
     });
 

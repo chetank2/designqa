@@ -7,6 +7,69 @@
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Redact sensitive tokens from strings
+ * Replaces Figma tokens (figd_ prefix) and long base64 strings with ***REDACTED***
+ * @param {string} text - Text that may contain tokens
+ * @returns {string} Text with tokens redacted
+ */
+export function redactToken(text) {
+  if (typeof text !== 'string') {
+    return text;
+  }
+
+  // Redact Figma PAT tokens (figd_ prefix)
+  text = text.replace(/figd_[a-zA-Z0-9_-]{20,}/g, '***REDACTED_TOKEN***');
+
+  // Redact long base64 strings (likely encrypted tokens/secrets)
+  // Match base64 strings longer than 32 characters
+  text = text.replace(/[A-Za-z0-9+/]{32,}={0,2}/g, (match) => {
+    // Only redact if it looks like a token (long enough and base64-like)
+    if (match.length > 32) {
+      return '***REDACTED_TOKEN***';
+    }
+    return match;
+  });
+
+  // Redact Bearer tokens in Authorization headers
+  text = text.replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer ***REDACTED_TOKEN***');
+
+  // Redact client secrets (common patterns)
+  text = text.replace(/client[_-]?secret["\s:=]+([A-Za-z0-9._-]+)/gi, 'client_secret="***REDACTED***"');
+
+  return text;
+}
+
+/**
+ * Redact tokens from objects recursively
+ * @param {any} obj - Object that may contain tokens
+ * @returns {any} Object with tokens redacted
+ */
+export function redactTokensFromObject(obj) {
+  if (typeof obj === 'string') {
+    return redactToken(obj);
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => redactTokensFromObject(item));
+  }
+
+  if (obj && typeof obj === 'object') {
+    const redacted = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip redaction for certain safe keys
+      if (['id', 'userId', 'user_id', 'timestamp', 'created_at', 'updated_at'].includes(key.toLowerCase())) {
+        redacted[key] = value;
+      } else {
+        redacted[key] = redactTokensFromObject(value);
+      }
+    }
+    return redacted;
+  }
+
+  return obj;
+}
+
 class Logger {
   constructor() {
     this.levels = {
@@ -56,15 +119,19 @@ class Logger {
     const color = this.colors[level];
     const reset = this.colors.RESET;
 
+    // Redact tokens from message and meta
+    const redactedMessage = redactToken(message);
+    const redactedMeta = redactTokensFromObject(meta);
+
     // Console format (with colors and emojis)
-    const consoleMessage = `${color}${emoji} [${timestamp}] ${level}:${reset} ${message}`;
+    const consoleMessage = `${color}${emoji} [${timestamp}] ${level}:${reset} ${redactedMessage}`;
     
     // File format (no colors/emojis, structured)
     const fileMessage = JSON.stringify({
       timestamp,
       level,
-      message,
-      ...meta
+      message: redactedMessage,
+      ...redactedMeta
     });
 
     return { consoleMessage, fileMessage };

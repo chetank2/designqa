@@ -176,6 +176,19 @@ class ApiService {
     return this.post('/api/settings/test-connection', data)
   }
 
+  // Figma OAuth API methods
+  async saveFigmaCredentials(clientId: string, clientSecret: string): Promise<any> {
+    return this.post('/api/auth/figma/setup', { clientId, clientSecret })
+  }
+
+  async connectFigma(): Promise<{ success: boolean; url: string }> {
+    return this.get('/api/auth/figma/connect')
+  }
+
+  async getFigmaStatus(): Promise<{ success: boolean; hasCredentials: boolean; connected: boolean }> {
+    return this.get('/api/auth/figma/status')
+  }
+
   async getFigmaData(comparisonId: string): Promise<any> {
     return this.get(`/api/figma-data/${comparisonId}`)
   }
@@ -641,6 +654,19 @@ export const extractWebOnly = async (
 // Export convenience functions that use the singleton
 export const testConnection = async (data: { figmaPersonalAccessToken: string }) => {
   return apiService.testConnection(data);
+};
+
+// Export OAuth convenience functions
+export const saveFigmaCredentials = async (clientId: string, clientSecret: string) => {
+  return apiService.saveFigmaCredentials(clientId, clientSecret);
+};
+
+export const connectFigma = async () => {
+  return apiService.connectFigma();
+};
+
+export const getFigmaStatus = async () => {
+  return apiService.getFigmaStatus();
 };
 
 // Screenshot Comparison API Functions

@@ -10,8 +10,20 @@ export class RemoteMCPClient {
     this.sessionId = null;
     this.initialized = false;
     this.baseUrl = config.remoteUrl || 'https://mcp.figma.com/mcp';
-    this.token = config.figmaToken; // Figma Personal Access Token
+
+    // Support both static token and dynamic provider
+    this.token = config.figmaToken;
+    this.tokenProvider = config.tokenProvider; // async () => token
+    this.userId = config.userId;
+
     this.config = config;
+  }
+
+  async getToken() {
+    if (this.tokenProvider) {
+      return await this.tokenProvider();
+    }
+    return this.token;
   }
 
   /**
@@ -21,7 +33,9 @@ export class RemoteMCPClient {
     try {
       console.log('🔄 Connecting to remote Figma MCP...');
 
-      if (!this.token) {
+      const token = await this.getToken();
+
+      if (!token) {
         throw new Error('Figma token required for remote MCP connection');
       }
 
@@ -31,7 +45,7 @@ export class RemoteMCPClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json, text/event-stream',
-          'Authorization': `Bearer ${this.token}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -75,7 +89,7 @@ export class RemoteMCPClient {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json, text/event-stream',
-            'Authorization': `Bearer ${this.token}`,
+            'Authorization': `Bearer ${token}`,
             ...(this.sessionId && { 'mcp-session-id': this.sessionId })
           },
           body: JSON.stringify({
@@ -110,7 +124,6 @@ export class RemoteMCPClient {
       if (error.message.includes('401')) {
         console.error('ℹ️  Tip: Check your FIGMA_MCP_SERVICE_TOKEN or FIGMA_MCP_URL environment variables.');
         console.error('   Current URL:', this.baseUrl);
-        console.error('   Token present:', !!this.token);
       }
       this.initialized = false;
       throw error;
@@ -119,8 +132,9 @@ export class RemoteMCPClient {
 
   /**
    * Send request with authentication
+   * Handles 401 errors by attempting token refresh and retry
    */
-  async sendRequest(request) {
+  async sendRequest(request, retryCount = 0) {
     if (!this.initialized) {
       await this.connect();
     }
@@ -128,10 +142,16 @@ export class RemoteMCPClient {
     try {
       console.log(`🔧 Sending remote request: ${request.method}`);
 
+      const token = await this.getToken();
+
+      if (!token) {
+        throw new Error('Figma token required for remote MCP connection');
+      }
+
       const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json, text/event-stream',
-        'Authorization': `Bearer ${this.token}`
+        'Authorization': `Bearer ${token}`
       };
 
       // Add session ID if available
@@ -147,6 +167,29 @@ export class RemoteMCPClient {
 
       if (!response.ok) {
         const errorText = await response.text();
+        
+        // Handle 401 Unauthorized - try token refresh if provider available
+        if (response.status === 401 && this.tokenProvider && retryCount === 0) {
+          console.log('🔄 Received 401, attempting token refresh...');
+          
+          try {
+            // Get fresh token from provider (will trigger refresh if needed)
+            const newToken = await this.tokenProvider();
+            
+            if (newToken && newToken !== token) {
+              console.log('✅ Token refreshed, retrying request...');
+              // Update token and retry once
+              this.token = newToken;
+              return this.sendRequest(request, retryCount + 1);
+            } else {
+              throw new Error('Token refresh did not return a new token');
+            }
+          } catch (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError.message);
+            throw new Error(`Authentication failed: Token expired and refresh failed. Please reconnect to Figma. Original error: HTTP ${response.status}: ${errorText}`);
+          }
+        }
+        
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -247,6 +290,25 @@ export class RemoteMCPClient {
       args.nodeId = nodeId;
     }
     return await this.callTool('get_figma_data', args);
+  }
+
+  /**
+   * Analyze components
+   */
+  async analyzeComponents(fileKey) {
+    return await this.callTool('analyze_components', { fileKey });
+  }
+
+  /**
+   * Export assets
+   */
+  async exportAssets(fileKey, nodeIds, format = 'png', scale = 2) {
+    return await this.callTool('export_assets', {
+      fileKey,
+      nodeIds,
+      format,
+      scale
+    });
   }
 
   /**

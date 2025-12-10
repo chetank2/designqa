@@ -11,6 +11,7 @@ import fs from 'fs';
 import multer from 'multer';
 import fetch from 'node-fetch';
 import { v4 as uuidv4 } from 'uuid';
+import cookieParser from 'cookie-parser';
 import FigmaMCPClient from '../../figma/mcpClient.js';
 import UnifiedWebExtractor from '../../web/UnifiedWebExtractor.js';
 import ComparisonEngine from '../../compare/comparisonEngine.js';
@@ -73,7 +74,12 @@ async function getUserFigmaApiKey(userId) {
     if (data && data.api_key) {
       const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY ||
         process.env.LOCAL_CREDENTIAL_KEY ||
-        'local-credential-encryption-key-change-in-production';
+        (process.env.NODE_ENV === 'production' 
+          ? (() => { 
+              console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
+              throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
+            })()
+          : 'local-credential-encryption-key-change-in-production');
       return decrypt(data.api_key, encryptionKey);
     }
   } catch (error) {
@@ -115,6 +121,39 @@ export async function startServer(portArg) {
     // Fallback to legacy config for now
     const legacyConfig = await import('../../config.js');
     config = legacyConfig.config;
+  }
+  
+  // Ensure config has required structure
+  if (!config) {
+    config = {};
+  }
+  if (!config.server) {
+    config.server = {
+      host: process.env.HOST || '0.0.0.0',
+      port: parseInt(process.env.PORT || '3847', 10)
+    };
+  }
+  if (!config.server.host) {
+    config.server.host = process.env.HOST || '0.0.0.0';
+  }
+  if (!config.server.port) {
+    config.server.port = parseInt(process.env.PORT || '3847', 10);
+  }
+  if (!config.mcp) {
+    config.mcp = {
+      url: process.env.MCP_PROXY_URL || 'http://localhost:3001',
+      endpoint: process.env.MCP_ENDPOINT || '/sse',
+      mode: process.env.MCP_MODE || 'figma'
+    };
+  }
+  if (!config.mcp.url) {
+    config.mcp.url = process.env.MCP_PROXY_URL || 'http://localhost:3001';
+  }
+  if (!config.mcp.endpoint) {
+    config.mcp.endpoint = process.env.MCP_ENDPOINT || '/sse';
+  }
+  if (!config.mcp.mode) {
+    config.mcp.mode = process.env.MCP_MODE || 'figma';
   }
 
   const figmaConnectionMode = getMCPProvider();
@@ -251,6 +290,26 @@ export async function startServer(portArg) {
   // Configure enhanced middleware
   configureSecurityMiddleware(app, config);
 
+  // HTTPS enforcement in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+      // Check if request is already secure (via proxy headers)
+      const isSecure = req.secure || 
+                       req.headers['x-forwarded-proto'] === 'https' ||
+                       req.headers['x-forwarded-ssl'] === 'on';
+      
+      if (!isSecure && req.method !== 'GET') {
+        // Redirect POST/PUT/DELETE to HTTPS
+        return res.redirect(301, `https://${req.get('host')}${req.url}`);
+      }
+      
+      next();
+    });
+  }
+
+  // Cookie parser middleware (required for OAuth state management)
+  app.use(cookieParser());
+
   // Body parsing middleware - MUST come before routes
   // Increased limits to handle large payloads (but multipart/form-data uses multer)
   app.use(express.json({ limit: '50mb' }));
@@ -304,10 +363,33 @@ export async function startServer(portArg) {
   }
   try {
     const extensionRoutes = await import('../../routes/extensionRoutes.js');
+    // Ensure config has security structure
+    if (!config.security) {
+      config.security = { allowedHosts: [] };
+    }
     app.use('/api/extension', extensionRoutes.createExtensionRoutes(config));
     console.log('✅ Extension routes registered');
   } catch (error) {
     console.warn('⚠️ Failed to load extension routes:', error.message);
+  }
+
+  // Auth Routes (OAuth for Figma)
+  try {
+    const authRoutes = await import('../../routes/auth-routes.js');
+    app.use('/api/auth', healthLimiter, authRoutes.default);
+    console.log('✅ Auth routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load auth routes:', error.message);
+  }
+
+  // Desktop Routes
+  try {
+    const desktopRoutes = await import('../../routes/desktop.js');
+    app.post('/api/desktop/register', healthLimiter, desktopRoutes.default.registerDesktop);
+    app.get('/api/desktop/capabilities/:userId', healthLimiter, desktopRoutes.default.getDesktopCapabilities);
+    console.log('✅ Desktop routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load desktop routes:', error.message);
   }
 
   // MCP Routes
@@ -469,12 +551,15 @@ export async function startServer(portArg) {
   const stylesPath = path.join(__dirname, '../../reporting/styles');
   app.use('/styles', express.static(stylesPath));
 
-  // Initialize MCP connection on startup (if enabled)
-  if (figmaClient) {
+  // Initialize MCP connection on startup (if enabled) - non-blocking
+  if (!isApiOnlyFigma && figmaClient) {
+    // Don't await - let it connect in background
     figmaClient.connect().then(connected => {
       mcpConnected = connected;
+      console.log(`🔌 MCP connection attempt: ${connected ? 'Connected' : 'Disconnected'}`);
     }).catch(error => {
-      console.warn('⚠️ MCP connection failed:', error.message);
+      console.warn('⚠️ MCP connection failed (non-blocking):', error.message);
+      mcpConnected = false;
     });
   }
 
@@ -622,27 +707,69 @@ export async function startServer(portArg) {
         available: !isApiOnlyFigma && !!figmaClient,
         connected: !!mcpConnected,
         mode: figmaConnectionMode,
-        error: null
+        error: null,
+        message: ''
       };
+
+      if (isApiOnlyFigma) {
+        mcpStatus.available = false;
+        mcpStatus.connected = false;
+        mcpStatus.error = 'MCP disabled (using Figma API)';
+        mcpStatus.message = 'MCP is disabled (API-only mode)';
+        return res.json({
+          success: false,
+          status: 'disabled',
+          ...mcpStatus,
+          data: {
+            connected: false,
+            serverUrl: null,
+            tools: [],
+            toolsCount: 0
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
 
       if (figmaClient) {
         try {
           const connectionTest = await figmaClient.connect();
           mcpStatus.available = connectionTest;
           mcpStatus.connected = connectionTest;
+          if (connectionTest) {
+            mcpStatus.message = 'MCP connected successfully';
+          }
         } catch (error) {
+          mcpStatus.available = false;
+          mcpStatus.connected = false;
           mcpStatus.error = error.message;
+          
+          // Provide helpful error message for 401 errors
+          if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+            mcpStatus.message = 'MCP authentication failed. Figma MCP requires OAuth SSO authentication, not Personal Access Tokens. Consider using API mode (FIGMA_CONNECTION_MODE=api) or implementing OAuth flow.';
+          } else {
+            mcpStatus.message = `MCP connection failed: ${error.message}`;
+          }
         }
-      } else if (isApiOnlyFigma) {
-        mcpStatus.error = 'MCP disabled (using Figma API)';
+      } else {
+        mcpStatus.available = false;
+        mcpStatus.message = 'MCP client not initialized';
       }
 
-      res.json(mcpStatus);
+      res.json({
+        success: mcpStatus.available,
+        status: mcpStatus.available ? 'connected' : 'error',
+        ...mcpStatus,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
       res.status(500).json({
+        success: false,
+        status: 'error',
         available: false,
         connected: false,
-        error: error.message
+        error: error.message,
+        message: `MCP status check failed: ${error.message}`,
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -850,13 +977,14 @@ export async function startServer(portArg) {
 
       res.json({
         success: true,
-        data: systems
+        data: systems || []
       });
     } catch (error) {
       logger.error('Failed to list design systems', { error: error.message });
-      res.status(500).json({
-        success: false,
-        error: error.message
+      // Return empty array instead of 500 error for better UX
+      res.json({
+        success: true,
+        data: []
       });
     }
   });
@@ -1102,17 +1230,19 @@ export async function startServer(portArg) {
             data: credentials || []
           });
         } else {
-          return res.status(401).json({
-            success: false,
-            error: 'Authentication required for Supabase storage'
+          // Return empty array instead of 401 for better UX when not authenticated
+          return res.json({
+            success: true,
+            data: []
           });
         }
       }
     } catch (error) {
       logger.error('Failed to list credentials', { error: error.message });
-      res.status(500).json({
-        success: false,
-        error: error.message
+      // Return empty array instead of 500 error for better UX
+      res.json({
+        success: true,
+        data: []
       });
     }
   });
@@ -1558,8 +1688,43 @@ export async function startServer(portArg) {
       success: true,
       data: {
         mcpServer: {
-          url: config.mcp.url,
-          endpoint: config.mcp.endpoint,
+          url: config.mcp?.url || process.env.MCP_PROXY_URL || 'http://localhost:3001',
+          endpoint: config.mcp?.endpoint || process.env.MCP_ENDPOINT || '/sse',
+          connected: mcpConnected
+        },
+        figmaApiKey: apiKey ? '***' + apiKey.slice(-4) : '', // Show last 4 chars only
+        hasApiKey
+      }
+    });
+  });
+
+  // Alias for /api/settings/current (used by frontend)
+  app.get('/api/settings/current', healthLimiter, async (req, res) => {
+    // Reuse the same logic as /api/settings
+    let apiKey = '';
+    let hasApiKey = false;
+
+    // Check for user-specific key first
+    if (req.user) {
+      const userKey = await getUserFigmaApiKey(req.user.id);
+      if (userKey) {
+        apiKey = userKey;
+        hasApiKey = true;
+      }
+    }
+
+    // Fallback to global key
+    if (!hasApiKey) {
+      apiKey = loadFigmaApiKey();
+      hasApiKey = !!apiKey;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        mcpServer: {
+          url: config.mcp?.url || process.env.MCP_PROXY_URL || 'http://localhost:3001',
+          endpoint: config.mcp?.endpoint || process.env.MCP_ENDPOINT || '/sse',
           connected: mcpConnected
         },
         figmaApiKey: apiKey ? '***' + apiKey.slice(-4) : '', // Show last 4 chars only
@@ -1703,10 +1868,12 @@ export async function startServer(portArg) {
         const extractor = new UnifiedFigmaExtractor(config);
 
         // Extract data using best available method
+        const apiKey = await getUserFigmaApiKey(req.user?.id);
         const extractionResult = await extractor.extract(figmaUrl, {
           preferredMethod,
           timeout: 30000,
-          apiKey: await getUserFigmaApiKey(req.user?.id)
+          apiKey: apiKey,
+          userId: req.user?.id
         });
 
         if (!extractionResult.success) {
@@ -3068,17 +3235,29 @@ export async function startServer(portArg) {
   });
 
   // Start server
-  const PORT = portArg || config.server.port;
-  console.log(`[DEBUG] Attempting to listen on port: ${PORT}`);
+  const PORT = portArg || config.server?.port || parseInt(process.env.PORT || '3847', 10);
+  const HOST = config.server?.host || process.env.HOST || '0.0.0.0';
+  console.log(`[DEBUG] Attempting to listen on port: ${PORT}, host: ${HOST}`);
 
-  const server = httpServer.listen(PORT, config.server.host, () => {
+  // Handle server errors
+  httpServer.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use`);
+    } else {
+      console.error('❌ Server error:', error.message);
+    }
+  });
+
+  const server = httpServer.listen(PORT, HOST, () => {
     process.stdout.write(`Server running on port ${PORT}\n`);
 
-    console.log(`🚀 Server running at http://${config.server.host}:${PORT}`);
-    console.log(`📱 Frontend available at http://${config.server.host}:${PORT}`);
+    console.log(`🚀 Server running at http://${HOST}:${PORT}`);
+    console.log(`📱 Frontend available at http://${HOST}:${PORT}`);
     console.log(`🔌 MCP Status: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
     console.log(`🔌 WebSocket server ready for connections`);
     console.log(`🔧 Enhanced features: Browser Pool, Security, Rate Limiting`);
+    
+    // Don't try to connect MCP here - it's already attempted above
 
     // Start periodic MCP status checks
     setInterval(async () => {

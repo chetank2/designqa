@@ -4,17 +4,23 @@
  */
 
 import { SupabaseStorageProvider } from '../storage/SupabaseStorageProvider.js';
+import { LocalStorageProvider } from '../storage/LocalStorageProvider.js';
 
 let storageProviderInstance = null;
 let storageMode = null;
 
 /**
  * Detect storage mode based on environment
- * @returns {'supabase'} Storage mode (always Supabase for cloud deployments)
+ * @returns {'supabase'|'local'} Storage mode
  */
 export function detectStorageMode() {
-  // Cloud deployments always use Supabase
-  return 'supabase';
+  // Check if Supabase is configured
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  if (supabaseUrl) {
+    return 'supabase';
+  }
+  // Fall back to local storage if Supabase not configured
+  return 'local';
 }
 
 /**
@@ -34,18 +40,21 @@ export function getStorageProvider(userId = null) {
     return storageProviderInstance;
   }
   
-  // Create new instance based on mode (always Supabase for cloud deployments)
+  // Create new instance based on mode
   storageMode = currentMode;
   
   if (storageMode === 'supabase') {
     try {
       storageProviderInstance = new SupabaseStorageProvider(userId);
     } catch (error) {
-      console.error('❌ Failed to initialize Supabase storage:', error.message);
-      throw new Error('Supabase storage is required for cloud deployments. Please configure SUPABASE_URL and related environment variables.');
+      console.warn('⚠️ Failed to initialize Supabase storage, falling back to local:', error.message);
+      // Fall back to local storage
+      storageMode = 'local';
+      storageProviderInstance = new LocalStorageProvider();
     }
   } else {
-    throw new Error(`Unsupported storage mode: ${storageMode}. Only 'supabase' is supported for cloud deployments.`);
+    // Use local storage
+    storageProviderInstance = new LocalStorageProvider();
   }
   
   return storageProviderInstance;

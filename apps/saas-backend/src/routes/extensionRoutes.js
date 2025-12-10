@@ -5,7 +5,10 @@ import { validateExtractionUrl } from '../server/middleware.js';
 
 export const createExtensionRoutes = (config) => {
   const router = express.Router();
-  const validateUrl = validateExtractionUrl(config.security?.allowedHosts || []);
+  // Ensure config.security exists
+  const securityConfig = config?.security || {};
+  const allowedHosts = securityConfig.allowedHosts || [];
+  const validateUrl = validateExtractionUrl(allowedHosts);
 
   router.post('/global-styles', validateUrl, async (req, res) => {
     try {

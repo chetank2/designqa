@@ -9,7 +9,7 @@ Base URL: `https://mcp-proxy.onrender.com` (Example)
 
 ## Environment Variables
 
-- `FIGMA_MCP_URL`: WebSocket URL for Figma MCP (default: `wss://mcp.figma.com/transports/websocket`)
+- `FIGMA_MCP_URL`: HTTPS URL for Figma MCP (default: `https://mcp.figma.com/mcp`)
 - `FIGMA_CLIENT_ID`: OAuth Client ID
 - `FIGMA_CLIENT_SECRET`: OAuth Client Secret
 - `FIGMA_PAT`: Fallback Personal Access Token

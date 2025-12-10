@@ -10,6 +10,12 @@ export class UnifiedFigmaExtractor {
     this.config = config;
     this.extractionMethods = [
       {
+        name: 'desktop-mcp',
+        extract: this.extractViaDesktopMCP.bind(this),
+        priority: 0,
+        description: 'Figma Desktop MCP (Local)'
+      },
+      {
         name: 'figma-mcp',
         extract: this.extractViaMCP.bind(this),
         priority: 1,
@@ -107,25 +113,133 @@ export class UnifiedFigmaExtractor {
   }
 
   /**
-   * Extract via Figma Dev Mode MCP
+   * Extract via Desktop MCP (Local WebSocket)
+   * @param {string} figmaUrl - Figma URL
+   * @param {Object} options - Extraction options
+   * @returns {Promise<Object>}
+   */
+  async extractViaDesktopMCP(figmaUrl, options = {}) {
+    try {
+      // Check if Desktop MCP is available
+      const { DesktopMCPClient } = await import('@designqa/mcp-client');
+      const { discoverMCPPort, isFigmaRunning } = await import('@designqa/mcp-client/discovery');
+
+      const figmaRunning = await isFigmaRunning();
+      if (!figmaRunning) {
+        throw new Error('Figma Desktop app is not running');
+      }
+
+      const discovery = await discoverMCPPort();
+      if (!discovery.port) {
+        throw new Error('Desktop MCP port not found');
+      }
+
+      // Create DesktopMCPClient
+      const desktopClient = new DesktopMCPClient({
+        port: discovery.port,
+        autoDiscover: false
+      });
+
+      // Connect and initialize
+      await desktopClient.connect();
+      await desktopClient.initialize();
+
+      // Extract data
+      const fileId = this.parseFileId(figmaUrl);
+      const nodeId = options.nodeId || this.parseNodeId(figmaUrl);
+
+      if (!fileId) {
+        throw new Error('Cannot extract file ID from Figma URL');
+      }
+
+      // Use MCP tools to get data
+      const metadata = await desktopClient.callTool('get_metadata', { fileKey: fileId, nodeId });
+      const code = await desktopClient.callTool('get_code', { fileKey: fileId, nodeId });
+      const variables = await desktopClient.callTool('get_variable_defs', { fileKey: fileId, nodeId });
+
+      const mcpData = {
+        metadata: metadata,
+        code: code,
+        variables: variables,
+        fileKey: fileId,
+        nodeId: nodeId
+      };
+
+      // Disconnect
+      await desktopClient.disconnect();
+
+      if (!mcpData || !mcpData.metadata) {
+        throw new Error('Desktop MCP extraction returned no data');
+      }
+
+      return mcpData;
+    } catch (error) {
+      // If desktop MCP fails, throw error to trigger fallback
+      throw new Error(`Desktop MCP extraction failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Extract via Figma Dev Mode MCP (Remote/Proxy)
    * @param {string} figmaUrl - Figma URL
    * @param {Object} options - Extraction options
    * @returns {Promise<Object>}
    */
   async extractViaMCP(figmaUrl, options = {}) {
-    // Import MCP client dynamically to avoid circular dependencies
-    const FigmaMCPClient = (await import('../../figma/mcpClient.js')).default;
+    // Use the configured MCP client (supports Proxy, Remote, or Local)
+    const { getMCPClient } = await import('../../config/mcp-config.js');
     
-    const mcpClient = new FigmaMCPClient();
+    const mcpClient = await getMCPClient({
+      userId: options.userId,
+      figmaToken: options.apiKey,
+      mode: 'figma'
+    });
     
-    // Try to connect
-    const isConnected = await mcpClient.connect();
-    if (!isConnected) {
-      throw new Error('Cannot connect to Figma Dev Mode MCP server');
+    if (!mcpClient) {
+      throw new Error('MCP client not available. Check MCP configuration.');
+    }
+    
+    // Try to connect if not already connected
+    if (!mcpClient.initialized) {
+      const isConnected = await mcpClient.connect();
+      if (!isConnected) {
+        throw new Error('Cannot connect to Figma MCP server');
+      }
     }
 
-    // Extract data - let MCP client handle nodeId parsing from URL
-    const mcpData = await mcpClient.extractFigmaData(figmaUrl);
+    // Extract data - handle different client types
+    let mcpData;
+    
+    // Check if client has extractFigmaData method (legacy FigmaMCPClient)
+    if (typeof mcpClient.extractFigmaData === 'function') {
+      mcpData = await mcpClient.extractFigmaData(figmaUrl);
+    } else {
+      // For ProxyMCPClient or RemoteMCPClient, extract via proxy/API
+      const fileId = this.parseFileId(figmaUrl);
+      const nodeId = options.nodeId || this.parseNodeId(figmaUrl);
+      
+      if (!fileId) {
+        throw new Error('Cannot extract file ID from Figma URL');
+      }
+      
+      // Use proxy comparison endpoint if available
+      if (typeof mcpClient.runComparison === 'function') {
+        mcpData = await mcpClient.runComparison(nodeId, fileId);
+      } else {
+        // Fallback: use MCP tools directly
+        const metadata = await mcpClient.callTool('get_metadata', { nodeId, fileKey: fileId });
+        const code = await mcpClient.callTool('get_code', { nodeId, fileKey: fileId });
+        const variables = await mcpClient.callTool('get_variable_defs', { nodeId, fileKey: fileId });
+        
+        mcpData = {
+          metadata: metadata,
+          code: code,
+          variables: variables,
+          fileKey: fileId,
+          nodeId: nodeId
+        };
+      }
+    }
     
     if (!mcpData || !mcpData.metadata) {
       throw new Error('MCP extraction returned no data');

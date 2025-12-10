@@ -21,13 +21,13 @@ export class SupabaseAdapter extends DatabaseAdapter {
       if (!this.supabase) {
         throw new Error('Supabase client not configured');
       }
-      
+
       // Test connection
       const { error } = await this.supabase.from('profiles').select('id').limit(1);
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned, which is OK
         throw error;
       }
-      
+
       this.connected = true;
       return true;
     } catch (error) {
@@ -206,6 +206,50 @@ export class SupabaseAdapter extends DatabaseAdapter {
 
   generateUUID() {
     return randomUUID();
+  }
+
+  /**
+   * Upsert Figma credentials
+   */
+  async upsertFigmaCredentials(data) {
+    if (!this.connected) throw new Error('Not connected');
+
+    // Check if entry exists
+    const { data: existing } = await this.supabase
+      .from('figma_credentials')
+      .select('id')
+      .eq('user_id', data.user_id)
+      .single();
+
+    if (existing) {
+      return this.update('figma_credentials', data, { id: existing.id });
+    } else {
+      return this.insert('figma_credentials', data);
+    }
+  }
+
+  /**
+   * Get Figma credentials
+   */
+  async getFigmaCredentials(userId) {
+    if (!this.connected) throw new Error('Not connected');
+
+    const { data, error } = await this.supabase
+      .from('figma_credentials')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data ? this.toCamelCase(data) : null;
+  }
+
+  /**
+   * Update Figma tokens
+   */
+  async updateFigmaTokens(data) {
+    if (!this.connected) throw new Error('Not connected');
+    return this.update('figma_credentials', data, { user_id: data.user_id });
   }
 }
 

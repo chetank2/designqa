@@ -341,7 +341,12 @@ export class LocalStorageProvider extends StorageProvider {
     // In production, this should be stored securely (e.g., keychain on macOS)
     const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || 
                          process.env.LOCAL_CREDENTIAL_KEY ||
-                         'local-credential-encryption-key-change-in-production';
+                         (process.env.NODE_ENV === 'production'
+                           ? (() => {
+                               console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
+                               throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
+                             })()
+                           : 'local-credential-encryption-key-change-in-production');
     
     let encryptedData;
     
@@ -492,7 +497,12 @@ export class LocalStorageProvider extends StorageProvider {
     // Use same encryption key as saveCredential
     const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || 
                          process.env.LOCAL_CREDENTIAL_KEY ||
-                         'local-credential-encryption-key-change-in-production';
+                         (process.env.NODE_ENV === 'production'
+                           ? (() => {
+                               console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
+                               throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
+                             })()
+                           : 'local-credential-encryption-key-change-in-production');
     
     const username = decrypt(credential.username_encrypted, encryptionKey);
     const password = decrypt(credential.password_encrypted, encryptionKey);

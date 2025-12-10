@@ -1,5 +1,11 @@
 {
   "name": "my-product",
   "private": true,
-  "workspaces": ["packages/*", "apps/*"]
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "build:desktop:mac": "cd apps/desktop-mac && npm run build && npm run package",
+    "build:desktop:win": "cd apps/desktop-win && npm run build && npm run package",
+    "build:desktop:all": "npm run build:desktop:mac && npm run build:desktop:win",
+    "build:mcp-client": "cd packages/mcp-client && npm run build"
+  }
 }

@@ -18,6 +18,7 @@ import { checkApiHealth } from '../components/ui/OnlineStatus'
 import { getApiBaseUrl } from '../config/ports'
 import MCPStatus from '../components/ui/MCPStatus'
 import FigmaApiSettings from '../components/forms/FigmaApiSettings'
+import FigmaOAuthSettings from '../components/forms/FigmaOAuthSettings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,9 +34,10 @@ import SignOutButton from '../components/auth/SignOutButton'
 import { supabase } from '../lib/supabase'
 import DesignSystemsManager from '../components/settings/DesignSystemsManager'
 import CredentialsManager from '../components/settings/CredentialsManager'
+import DesktopMCPSettings from '../components/settings/DesktopMCPSettings'
 
 
-type MCPConnectionMethod = 'api' | 'figma';
+type MCPConnectionMethod = 'api' | 'figma' | 'desktop' | 'proxy';
 
 interface SettingsForm {
   // General Settings
@@ -85,12 +87,22 @@ const SETTINGS_PLACEHOLDERS = {
 
 const normalizeConnectionMethod = (value?: string): MCPConnectionMethod => {
   switch (value) {
+    case 'desktop':
+    case 'local':
+    case 'figma-desktop':
+      return 'desktop';
+    case 'proxy':
+    case 'mcp-proxy':
+      return 'proxy';
+    case 'mcp_server_remote':
+    case 'figma':
+    case 'remote':
+    case 'figma-cloud':
+    case 'cloud':
+      return 'figma';
     case 'direct_api':
     case 'api':
       return 'api';
-    case 'mcp_server_remote':
-    case 'figma':
-      return 'figma';
     default:
       return 'figma'; // Default to Remote MCP for cloud deployments
   }
@@ -563,8 +575,10 @@ export default function Settings() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="api">Figma API</SelectItem>
+                              <SelectItem value="desktop">Desktop MCP</SelectItem>
+                              <SelectItem value="proxy">Proxy MCP</SelectItem>
                               <SelectItem value="figma">Remote MCP (Figma)</SelectItem>
+                              <SelectItem value="api">Figma API</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
@@ -581,12 +595,21 @@ export default function Settings() {
 
                     {/* Connection Method Info Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
-                        <h4 className="font-medium text-blue-900 mb-2 flex items-center">
-                          🔑 Figma API
+                      <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+                        <h4 className="font-medium text-green-900 mb-2 flex items-center">
+                          🖥️ Desktop MCP
                         </h4>
-                        <p className="text-sm text-blue-700">
-                          Uses your personal Figma access token. Simple and reliable for direct REST API calls.
+                        <p className="text-sm text-green-700">
+                          Connects to Figma Desktop app via local MCP server. Fastest and most reliable when Figma Desktop is running.
+                        </p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg bg-orange-50 border-orange-200">
+                        <h4 className="font-medium text-orange-900 mb-2 flex items-center">
+                          🔗 Proxy MCP
+                        </h4>
+                        <p className="text-sm text-orange-700">
+                          Uses a local MCP proxy server. Useful for development and testing with custom MCP configurations.
                         </p>
                       </div>
 
@@ -598,40 +621,79 @@ export default function Settings() {
                           Uses Figma&apos;s hosted MCP service at https://mcp.figma.com/mcp (requires your token). Recommended for cloud deployments.
                         </p>
                       </div>
+
+                      <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                        <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                          🔑 Figma API
+                        </h4>
+                        <p className="text-sm text-blue-700">
+                          Uses your personal Figma access token. Simple and reliable for direct REST API calls.
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* API Token Settings (shown for api method) */}
-                <Controller
-                  name="mcpConnectionMethod"
-                  control={control}
-                  render={({ field: methodField }) => (
-                    methodField.value === 'api' ? (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Figma API Token</CardTitle>
-                          <CardDescription>
-                            Enter your personal Figma access token. This will be encrypted and stored securely for your user account.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <Controller
-                            name="figmaPersonalAccessToken"
-                            control={control}
-                            render={({ field }) => (
-                              <FigmaApiSettings
-                                value={field.value}
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
+                {/* Authentication Methods */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Figma Authentication</CardTitle>
+                    <CardDescription>
+                      Choose your authentication method. OAuth is recommended for automatic token refresh.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* OAuth Settings */}
+                    <div className="space-y-4">
+                      <FigmaOAuthSettings />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+
+                    {/* PAT Settings (shown for api method) */}
+                    <Controller
+                      name="mcpConnectionMethod"
+                      control={control}
+                      render={({ field: methodField }) => (
+                        methodField.value === 'api' ? (
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium mb-2">Personal Access Token (Legacy)</h4>
+                              <p className="text-xs text-muted-foreground mb-4">
+                                Use a personal access token for direct API access. OAuth is recommended for better security and automatic token refresh.
+                              </p>
+                              <Controller
+                                name="figmaPersonalAccessToken"
+                                control={control}
+                                render={({ field }) => (
+                                  <FigmaApiSettings
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                  />
+                                )}
                               />
-                            )}
-                          />
-                        </CardContent>
-                      </Card>
-                    ) : <></>
-                  )}
-                />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
+                            <p className="text-sm text-blue-800">
+                              <strong>Note:</strong> When using Remote MCP, OAuth tokens are preferred. If you have OAuth configured above, it will be used automatically. Otherwise, your Personal Access Token will be used as a fallback.
+                            </p>
+                          </div>
+                        )
+                      )}
+                    />
+                  </CardContent>
+                </Card>
 
 
                 {/* Export Settings */}
@@ -732,6 +794,9 @@ export default function Settings() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Desktop MCP Settings */}
+                <DesktopMCPSettings />
               </div>
             </TabsContent>
 

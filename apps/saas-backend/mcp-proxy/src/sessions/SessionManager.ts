@@ -1,5 +1,5 @@
 import { Session, SessionStoreMemory } from './SessionStoreMemory';
-import { MCPClient } from '../figma/MCPClient';
+import { RemoteMCPClient } from '../figma/RemoteMCPClient';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 
@@ -12,14 +12,14 @@ export class SessionManager {
         this.cleanupInterval = setInterval(() => this.cleanup(), 60 * 60 * 1000); // 1 hour
     }
 
-    public createSession(userId: string, token: string): Session {
+    public async createSession(userId: string, token: string): Promise<Session> {
         // Check if session exists for user? For now, allow multiple or just new one.
         // Ideally we might reuse if token matches?
         // Let's create new for now.
 
         const id = uuidv4();
-        const client = new MCPClient(token);
-        client.connect();
+        const client = new RemoteMCPClient(token);
+        await client.connect();
 
         const session: Session = {
             id,

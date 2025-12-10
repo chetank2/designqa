@@ -15,7 +15,7 @@ router.post('/start', async (req: Request, res: Response) => {
     const uid = userId || 'anonymous';
 
     try {
-        const session = sessionManager.createSession(uid, token);
+        const session = await sessionManager.createSession(uid, token);
         res.json({ sessionId: session.id, status: 'connected' });
     } catch (e: any) {
         res.status(500).json({ error: e.message });

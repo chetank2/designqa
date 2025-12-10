@@ -41,7 +41,7 @@ services:
     plan: free
     envVars:
       - key: FIGMA_MCP_URL
-        value: wss://mcp.figma.com/transports/websocket
+        value: https://mcp.figma.com/mcp
       - key: FIGMA_CLIENT_ID
         sync: false
       - key: FIGMA_CLIENT_SECRET

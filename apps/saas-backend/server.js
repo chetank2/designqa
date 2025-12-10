@@ -5,6 +5,29 @@
  * Cloud-only implementation for Railway deployment
  */
 
+// Load environment variables from .env file (for local development)
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync } from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Try to load .env file from backend directory, then root
+const envPaths = [
+  join(__dirname, '.env'),
+  join(__dirname, '../../.env')
+];
+
+for (const envPath of envPaths) {
+  if (existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    console.log(`📄 Loaded environment from: ${envPath}`);
+    break;
+  }
+}
+
 import { startServer } from './src/core/server/index.js';
 import { shutdownBrowserPool } from './src/browser/BrowserPool.js';
 import { shutdownResourceManager } from './src/utils/ResourceManager.js';
