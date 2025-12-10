@@ -1,8 +1,8 @@
 {
     "version": 2,
-    "installCommand": "npm install --include=dev && (cd frontend && npm install --include=dev)",
-    "buildCommand": "npm run build",
-    "outputDirectory": "frontend/dist",
+    "installCommand": "pnpm install --frozen-lockfile",
+    "buildCommand": "cd apps/saas-frontend && pnpm build",
+    "outputDirectory": "apps/saas-frontend/dist",
     "framework": null,
     "rewrites": [
         {
