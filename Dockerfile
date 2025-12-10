@@ -40,6 +40,7 @@ WORKDIR /app
 COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml* ./
+COPY tsconfig.base.json ./
 COPY apps/saas-frontend/package.json ./apps/saas-frontend/
 COPY apps/saas-backend/package.json ./apps/saas-backend/
 COPY packages/compare-engine/package.json ./packages/compare-engine/
