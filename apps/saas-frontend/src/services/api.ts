@@ -2,6 +2,7 @@ import { getApiBaseUrl } from '../utils/environment';
 import axios from 'axios';
 import { AuthenticationConfig, ComparisonResult } from '../types';
 import { FigmaData, WebData } from '../../../src/types/extractor';
+import { supabase } from '../lib/supabase';
 
 // API Configuration
 const API_CONFIG = {
@@ -56,6 +57,19 @@ class ApiService {
     // Get the correct API URL
     const apiUrl = this.getApiUrl(url);
 
+    // Get Supabase session token for authentication
+    let authHeader = '';
+    if (supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          authHeader = `Bearer ${session.access_token}`;
+        }
+      } catch (error) {
+        console.warn('Failed to get auth token:', error);
+      }
+    }
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(new Error(`Client request timeout after ${this.timeout}ms`)), this.timeout)
 
@@ -66,6 +80,7 @@ class ApiService {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          ...(authHeader ? { 'Authorization': authHeader } : {}),
           ...options.headers,
         },
       })
