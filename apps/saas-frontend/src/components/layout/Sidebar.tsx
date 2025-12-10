@@ -13,7 +13,7 @@ import {
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { VersionBadge } from '../ui/VersionBadge'
+import { getFrontendVersion } from '../../services/version'
 
 interface SidebarProps {
   isOpen: boolean
@@ -133,7 +133,7 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
       <div className="p-4 border-t border-border/40 bg-muted/5 backdrop-blur-sm">
         {isOpen && (
           <div className="flex items-center justify-start px-2">
-            <VersionBadge className="scale-90 origin-left" />
+            <span className="text-xs text-muted-foreground">v{getFrontendVersion()}</span>
           </div>
         )}
       </div>

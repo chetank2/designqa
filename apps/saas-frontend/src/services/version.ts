@@ -39,7 +39,7 @@ export async function fetchVersion(): Promise<VersionResponse> {
   } catch (error) {
     console.error('Failed to fetch version:', error);
     // Use version from root package.json (injected by Vite at build time)
-    const fallbackVersion = import.meta.env.PACKAGE_VERSION || '2.0.0';
+    const fallbackVersion = import.meta.env.PACKAGE_VERSION || '2.0.1';
     return {
       success: false,
       data: {
