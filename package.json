@@ -1,11 +1,18 @@
 {
   "name": "my-product",
+  "version": "2.0.1",
   "private": true,
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "build:desktop:mac": "cd apps/desktop-mac && npm run build && npm run package",
     "build:desktop:win": "cd apps/desktop-win && npm run build && npm run package",
     "build:desktop:all": "npm run build:desktop:mac && npm run build:desktop:win",
-    "build:mcp-client": "cd packages/mcp-client && npm run build"
+    "build:mcp-client": "cd packages/mcp-client && npm run build",
+    "version:sync": "node scripts/sync-version.js",
+    "version:set": "node scripts/sync-version.js --set",
+    "version:check": "node scripts/sync-version.js --check"
   }
 }

@@ -632,8 +632,20 @@ export async function startServer(portArg) {
       }
 
       if (!packageJson) {
-        // Fallback to hardcoded version if package.json not found
-        packageJson = { version: '1.1.0', name: 'figma-web-comparison-tool' };
+        // Fallback: try reading from root package.json (single source of truth)
+        const rootPackagePath = path.join(__dirname, '../../../../package.json');
+        try {
+          if (fs.existsSync(rootPackagePath)) {
+            packageJson = JSON.parse(fs.readFileSync(rootPackagePath, 'utf8'));
+            packageJson.name = packageJson.name || 'figma-web-comparison-tool';
+          } else {
+            // Last resort fallback
+            packageJson = { version: '2.0.1', name: 'figma-web-comparison-tool' };
+          }
+        } catch (e) {
+          // Last resort fallback
+          packageJson = { version: '2.0.1', name: 'figma-web-comparison-tool' };
+        }
       }
 
       res.json({

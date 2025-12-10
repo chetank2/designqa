@@ -1,6 +1,6 @@
 {
   "name": "@designqa/desktop-mac",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "description": "DesignQA Desktop App for macOS",
   "main": "dist/main/index.js",
   "type": "module",
@@ -8,9 +8,10 @@
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
     "dev:main": "tsc --watch --project tsconfig.main.json",
     "dev:renderer": "vite",
-    "build": "npm run build:main && npm run build:renderer",
+    "build": "npm run copy:backend && npm run build:main && npm run build:renderer",
     "build:main": "tsc --project tsconfig.main.json",
     "build:renderer": "vite build",
+    "copy:backend": "node scripts/copy-backend.js",
     "package": "electron-builder --mac",
     "package:all": "electron-builder --mac --win"
   },
@@ -37,7 +38,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "hardenedRuntime": true,
@@ -46,7 +50,16 @@
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "saas-backend/src/**/*",
+      "saas-backend/package.json",
+      "saas-backend/config.json",
+      "!saas-backend/node_modules/**/*",
+      "!saas-backend/dist/**/*",
+      "!saas-backend/tests/**/*"
+    ],
+    "asarUnpack": [
+      "saas-backend/src/**/*"
     ],
     "directories": {
       "output": "build"

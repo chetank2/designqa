@@ -38,10 +38,12 @@ export async function fetchVersion(): Promise<VersionResponse> {
     return data;
   } catch (error) {
     console.error('Failed to fetch version:', error);
+    // Use version from root package.json (injected by Vite at build time)
+    const fallbackVersion = import.meta.env.PACKAGE_VERSION || '2.0.0';
     return {
       success: false,
       data: {
-        version: '1.1.0',
+        version: fallbackVersion,
         name: 'figma-web-comparison-tool',
         buildTime: new Date().toISOString(),
         phase: 'Phase 13 - Local Build',
@@ -68,6 +70,6 @@ export function checkVersionMatch(frontendVersion: string, backendVersion: strin
  * Get frontend version from package.json (build time)
  */
 export function getFrontendVersion(): string {
-  // This will be replaced by Vite during build
-  return import.meta.env.PACKAGE_VERSION || '1.1.0';
+  // Version from root package.json (injected by Vite at build time)
+  return import.meta.env.PACKAGE_VERSION || '2.0.1';
 }
