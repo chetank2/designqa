@@ -48,7 +48,20 @@ export default function DesktopMCPSettings() {
         if (result.success) {
           setCapabilities(result);
         }
+        return;
       }
+
+      if (response.status === 404) {
+        // Backend deployment may not have the desktop capabilities route yet.
+        setCapabilities({
+          desktopMCPAvailable: false,
+          message: 'Desktop MCP is not available on this environment yet.'
+        });
+        return;
+      }
+
+      const errorText = await response.text();
+      throw new Error(errorText || `Request failed with status ${response.status}`);
     } catch (err) {
       console.error('Failed to load desktop capabilities:', err);
       setError('Failed to check desktop MCP availability');

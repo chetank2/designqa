@@ -44,9 +44,6 @@ importers:
       '@myapp/compare-engine':
         specifier: workspace:*
         version: link:../../packages/compare-engine
-      electron:
-        specifier: ^28.0.0
-        version: 28.3.3
       express:
         specifier: ^4.18.2
         version: 4.22.1
@@ -63,6 +60,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      electron:
+        specifier: ^28.0.0
+        version: 28.3.3
       electron-builder:
         specifier: ^24.9.1
         version: 24.13.3(electron-builder-squirrel-windows@24.13.3)
