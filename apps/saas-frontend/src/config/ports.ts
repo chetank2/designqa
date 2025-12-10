@@ -57,6 +57,7 @@ export function getServerPort(): number {
 
 // Get the API base URL with the correct port
 export function getApiBaseUrl(): string {
+  // Priority 1: Explicit environment variable (build-time)
   const envApiUrl = (typeof import.meta !== 'undefined' && import.meta.env)
     ? import.meta.env.VITE_API_URL
     : undefined;
@@ -65,16 +66,28 @@ export function getApiBaseUrl(): string {
     return envApiUrl;
   }
 
+  // Priority 2: Runtime environment variable (for dynamic configuration)
   if (typeof window !== 'undefined') {
     const runtimeApiUrl = (window as any).__env?.VITE_API_URL;
     if (runtimeApiUrl) {
       return runtimeApiUrl;
     }
 
+    // Priority 3: Use current origin (works for same-domain deployments like Render)
     const origin = window.location?.origin;
     if (origin && origin !== 'null' && !origin.startsWith('file://')) {
+      // In production, use the same origin (frontend and backend on same domain)
+      // This handles Render deployments where both are served from the same domain
       return origin;
     }
+  }
+
+  // Fallback: Only use localhost in development
+  // In production builds without VITE_API_URL, this shouldn't be reached
+  // but we keep it as a safety fallback
+  const isProduction = import.meta.env?.MODE === 'production' || import.meta.env?.PROD;
+  if (isProduction && typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
   }
 
   return `http://localhost:${APP_SERVER_PORT}`;
