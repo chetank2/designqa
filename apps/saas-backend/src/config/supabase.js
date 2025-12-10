@@ -42,6 +42,30 @@ export function createServiceClient() {
     });
 }
 /**
+ * Get Supabase client based on service role flag
+ * @param {boolean} useServiceRole - If true, returns service client (bypasses RLS). If false, returns public client.
+ * @returns {Object|null} Supabase client instance or null if not configured
+ */
+export function getSupabaseClient(useServiceRole = false) {
+    try {
+        if (useServiceRole) {
+            if (!supabaseUrl || !supabaseServiceKey) {
+                return null;
+            }
+            return createServiceClient();
+        } else {
+            if (!supabaseUrl || !supabaseAnonKey) {
+                return null;
+            }
+            return createPublicClient();
+        }
+    } catch (error) {
+        console.warn('Failed to create Supabase client:', error.message);
+        return null;
+    }
+}
+
+/**
  * Default public client instance
  */
 export const supabase = supabaseUrl && supabaseAnonKey
