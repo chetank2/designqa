@@ -157,7 +157,7 @@ export async function getDesktopCapabilities(req, res) {
  * Validate desktop JWT token
  * Middleware for protecting desktop-specific routes
  */
-export function validateDesktopToken(req, res, next) {
+export async function validateDesktopToken(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
