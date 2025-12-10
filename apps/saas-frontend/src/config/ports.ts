@@ -13,6 +13,62 @@ const resolveConfiguredPort = (): number => {
   return Number.isFinite(parsed) ? parsed : 3847;
 };
 
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
+
+const safeHostname = (value?: string): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).hostname;
+  } catch (error) {
+    try {
+      return new URL(`http://${value}`).hostname;
+    } catch (_err) {
+      return null;
+    }
+  }
+};
+
+const isLocalHostname = (host?: string | null): boolean => {
+  if (!host) {
+    return false;
+  }
+
+  return LOCAL_HOSTNAMES.has(host) || host.endsWith('.local');
+};
+
+const shouldUseConfiguredUrl = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  const origin = window.location?.origin;
+  if (!origin || origin === 'null' || origin.startsWith('file://')) {
+    return true;
+  }
+
+  const originHost = safeHostname(origin);
+  const configuredHost = safeHostname(url);
+
+  if (!originHost || !configuredHost) {
+    return true;
+  }
+
+  // If we are served from a non-local domain but the configured URL points to localhost,
+  // prefer the current origin to avoid CORS issues.
+  if (!isLocalHostname(originHost) && isLocalHostname(configuredHost)) {
+    return false;
+  }
+
+  return true;
+};
+
 export const APP_SERVER_PORT = resolveConfiguredPort();
 
 // Default port for the backend server (web app) - Unified Architecture  
@@ -62,14 +118,14 @@ export function getApiBaseUrl(): string {
     ? import.meta.env.VITE_API_URL
     : undefined;
 
-  if (envApiUrl) {
+  if (envApiUrl && shouldUseConfiguredUrl(envApiUrl)) {
     return envApiUrl;
   }
 
   // Priority 2: Runtime environment variable (for dynamic configuration)
   if (typeof window !== 'undefined') {
     const runtimeApiUrl = (window as any).__env?.VITE_API_URL;
-    if (runtimeApiUrl) {
+    if (runtimeApiUrl && shouldUseConfiguredUrl(runtimeApiUrl)) {
       return runtimeApiUrl;
     }
 
@@ -93,13 +149,13 @@ export function getApiBaseUrl(): string {
 export function getWebSocketUrl(): string {
   const env = import.meta.env;
   
-  if (env.VITE_WS_URL) {
+  if (env.VITE_WS_URL && shouldUseConfiguredUrl(env.VITE_WS_URL)) {
     return env.VITE_WS_URL;
   }
 
   if (typeof window !== 'undefined') {
     const runtimeWsUrl = (window as any).__env?.VITE_WS_URL;
-    if (runtimeWsUrl) {
+    if (runtimeWsUrl && shouldUseConfiguredUrl(runtimeWsUrl)) {
       return runtimeWsUrl;
     }
 
