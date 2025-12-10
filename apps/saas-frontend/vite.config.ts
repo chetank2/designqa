@@ -8,6 +8,7 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
 
 // SINGLE SOURCE OF TRUTH: API port (validated by scripts/validate-ports.mjs)
 const API_PORT = Number(process.env.VITE_SERVER_PORT || process.env.PORT || 3847);
+const API_URL = process.env.VITE_API_URL || `http://localhost:${API_PORT}`;
 
 // printConfig function to log configuration
 function printConfig(config: any) {
@@ -114,7 +115,7 @@ export default defineConfig({
     'process.env': {},
     '__SERVER_PORT__': `${API_PORT}`,
     'import.meta.env.VITE_SERVER_PORT': `"${API_PORT}"`,
-    'import.meta.env.VITE_API_URL': `"http://localhost:${API_PORT}"`,
+    'import.meta.env.VITE_API_URL': `"${API_URL}"`,
     'import.meta.env.PACKAGE_VERSION': `"${packageJson.version}"`
   }
-}); 
+});
