@@ -5,7 +5,14 @@
 
 // Simple fallback for Node.js testing
 export function getApiBaseUrl() {
-  // Default API base URL for unified architecture - Fixed port like Figma
+  // In browser context, use window.location.origin
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const origin = window.location.origin;
+    if (origin && origin !== 'null' && !origin.startsWith('file://')) {
+      return origin;
+    }
+  }
+  // Fallback for Node.js or when window is not available
   return process.env.VITE_API_URL || 'http://localhost:3847';
 }
 

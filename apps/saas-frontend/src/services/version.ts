@@ -1,7 +1,7 @@
 /**
  * Version Service - Fetches version info from backend
  */
-import { getApiBaseUrl } from '../utils/environment.js';
+import { getApiBaseUrl } from '../config/ports';
 
 export interface VersionInfo {
   version: string;

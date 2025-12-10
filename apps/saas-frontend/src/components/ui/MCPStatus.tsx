@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { getApiBaseUrl } from '../../utils/environment';
+import { getApiBaseUrl } from '../../config/ports';
 
 interface MCPStatusProps {
   showDetails?: boolean;
@@ -31,8 +31,9 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
     },
     retry: 2,
     retryDelay: 1000,
-    refetchInterval: 60000, // Refetch every minute
-    refetchOnWindowFocus: false
+    refetchInterval: false, // Disable automatic polling - only refetch on mount and manual refresh
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000 // Consider data fresh for 5 minutes
   });
   
   // keep in sync with server status events without violating hook order
