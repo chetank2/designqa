@@ -5,7 +5,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, dirname, extname } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,6 +13,10 @@ const __dirname = dirname(__filename);
 
 const errors = [];
 const warnings = [];
+
+function stripAlias(token) {
+  return token.replace(/\s+as\s+[A-Za-z0-9_$]+$/i, '').trim();
+}
 
 /**
  * Extract exports from a file
@@ -34,7 +38,7 @@ function extractExports(filePath, content) {
   // export { ... }
   const exportListRegex = /export\s*\{([^}]+)\}/g;
   while ((match = exportListRegex.exec(content)) !== null) {
-    const items = match[1].split(',').map(s => s.trim().split('as')[0].trim());
+    const items = match[1].split(',').map(stripAlias);
     items.forEach(item => {
       if (item && item !== 'default') {
         exports.named.add(item);
@@ -65,14 +69,18 @@ function extractImports(filePath, content) {
   const namedImportRegex = /import\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g;
   let match;
   while ((match = namedImportRegex.exec(content)) !== null) {
-    const items = match[1].split(',').map(s => s.trim().split('as')[0].trim());
+    const items = match[1].split(',').map(stripAlias);
     const fromPath = match[2];
+    const isLocal = fromPath.startsWith('.');
+    const resolvedFrom = resolveImportPath(filePath, fromPath);
     items.forEach(item => {
       if (item && item !== 'default') {
         imports.push({
           name: item,
-          from: resolveImportPath(filePath, fromPath),
-          type: 'named'
+          from: resolvedFrom,
+          type: 'named',
+          isLocal,
+          source: fromPath
         });
       }
     });
@@ -83,12 +91,16 @@ function extractImports(filePath, content) {
   while ((match = defaultImportRegex.exec(content)) !== null) {
     const name = match[1];
     const fromPath = match[2];
+    const isLocal = fromPath.startsWith('.');
+    const resolvedFrom = resolveImportPath(filePath, fromPath);
     // Skip if it's actually a named import (has {})
     if (!match[0].includes('{')) {
       imports.push({
         name,
-        from: resolveImportPath(filePath, fromPath),
-        type: 'default'
+        from: resolvedFrom,
+        type: 'default',
+        isLocal,
+        source: fromPath
       });
     }
   }
@@ -102,20 +114,7 @@ function extractImports(filePath, content) {
 function resolveImportPath(fromFile, importPath) {
   if (importPath.startsWith('.')) {
     const fromDir = dirname(fromFile);
-    let resolved = join(fromDir, importPath);
-    
-    // Try different extensions
-    const extensions = ['.js', '.ts', '/index.js', '/index.ts'];
-    for (const ext of extensions) {
-      if (importPath.endsWith('.js') || importPath.endsWith('.ts')) {
-        return resolved;
-      }
-      const withExt = resolved + ext;
-      if (statSync(withExt).isFile()) {
-        return withExt;
-      }
-    }
-    return resolved;
+    return join(fromDir, importPath);
   }
   return importPath; // External package
 }
@@ -124,18 +123,27 @@ function resolveImportPath(fromFile, importPath) {
  * Check if file exists
  */
 function fileExists(filePath) {
-  try {
-    const extensions = ['', '.js', '.ts', '/index.js', '/index.ts'];
-    for (const ext of extensions) {
-      const fullPath = filePath + ext;
-      if (statSync(fullPath).isFile()) {
-        return fullPath;
+  const hasExtension = filePath.endsWith('.js') || filePath.endsWith('.ts');
+  const candidates = hasExtension
+    ? [filePath]
+    : [
+        filePath,
+        `${filePath}.js`,
+        `${filePath}.ts`,
+        join(filePath, 'index.js'),
+        join(filePath, 'index.ts')
+      ];
+
+  for (const candidate of candidates) {
+    try {
+      if (statSync(candidate).isFile()) {
+        return candidate;
       }
+    } catch {
+      continue;
     }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 /**
@@ -143,25 +151,26 @@ function fileExists(filePath) {
  */
 function validateImports(filePath, imports, allExports) {
   imports.forEach(imp => {
-    if (imp.from.startsWith('.')) {
-      // Local import
-      const targetFile = fileExists(imp.from);
-      if (!targetFile) {
-        errors.push(`❌ ${filePath}: Cannot resolve import "${imp.name}" from "${imp.from}"`);
-        return;
-      }
+    if (!imp.isLocal) {
+      return;
+    }
 
-      const targetExports = allExports.get(targetFile);
-      if (!targetExports) {
-        warnings.push(`⚠️  ${filePath}: Could not parse exports from "${targetFile}"`);
-        return;
-      }
+    const targetFile = fileExists(imp.from);
+    if (!targetFile) {
+      errors.push(`❌ ${filePath}: Cannot resolve import "${imp.name}" from "${imp.source}"`);
+      return;
+    }
 
-      if (imp.type === 'named' && !targetExports.named.has(imp.name) && !targetExports.all) {
-        errors.push(`❌ ${filePath}: Import "${imp.name}" not exported from "${targetFile}"`);
-      } else if (imp.type === 'default' && !targetExports.default && !targetExports.all) {
-        errors.push(`❌ ${filePath}: Default import not exported from "${targetFile}"`);
-      }
+    const targetExports = allExports.get(targetFile);
+    if (!targetExports) {
+      warnings.push(`⚠️  ${filePath}: Could not parse exports from "${targetFile}"`);
+      return;
+    }
+
+    if (imp.type === 'named' && !targetExports.named.has(imp.name) && !targetExports.all) {
+      errors.push(`❌ ${filePath}: Import "${imp.name}" not exported from "${imp.source}"`);
+    } else if (imp.type === 'default' && !targetExports.default && !targetExports.all) {
+      errors.push(`❌ ${filePath}: Default import from "${imp.source}" is missing a default export`);
     }
   });
 }

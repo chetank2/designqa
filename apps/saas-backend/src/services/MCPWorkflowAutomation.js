@@ -3,7 +3,7 @@
  * Automated Figma comparison workflows using MCP
  */
 
-import { getMCPClient } from '../mcp/mcpClient.js';
+import { getMCPClient } from '../config/mcp-config.js';
 
 /**
  * MCP Workflow Types

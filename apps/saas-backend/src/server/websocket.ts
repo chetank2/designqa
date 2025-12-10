@@ -4,7 +4,12 @@
 
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import { Config } from '../config/index.js';
+type WebSocketConfig = {
+  cors: {
+    origins: string | string[];
+    credentials?: boolean;
+  };
+};
 
 export interface ComparisonProgress {
   id: string;
@@ -27,7 +32,7 @@ export class WebSocketManager {
   private io: SocketIOServer;
   private activeComparisons = new Map<string, Set<string>>(); // comparisonId -> socketIds
 
-  constructor(httpServer: HttpServer, config: Config) {
+  constructor(httpServer: HttpServer, config: WebSocketConfig) {
     this.io = new SocketIOServer(httpServer, {
       cors: {
         origin: config.cors.origins,
@@ -172,7 +177,7 @@ export class WebSocketManager {
 // Singleton instance
 let webSocketManager: WebSocketManager | null = null;
 
-export function initializeWebSocket(httpServer: HttpServer, config: Config): WebSocketManager {
+export function initializeWebSocket(httpServer: HttpServer, config: WebSocketConfig): WebSocketManager {
   if (!webSocketManager) {
     webSocketManager = new WebSocketManager(httpServer, config);
   }

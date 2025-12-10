@@ -148,6 +148,9 @@ COPY --from=builder /app/frontend/dist ./apps/saas-backend/frontend/dist
 # Set working directory to backend app
 WORKDIR /app/apps/saas-backend
 
+# Validate imports/exports before final image
+RUN npm run validate || (echo "❌ Import/export validation failed!" && exit 1)
+
 # Expose port
 EXPOSE 3847
 

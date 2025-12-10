@@ -35,6 +35,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { supabase } from '../../lib/supabase'
 
 // Add error type definition
 interface ComparisonError {
@@ -100,17 +101,10 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       const headers: HeadersInit = {}
       
       // Try to get auth token if user is signed in and Supabase is available
-      if (user) {
-        try {
-          const { supabase } = await import('../../lib/supabase')
-          if (supabase) {
-            const session = await supabase.auth.getSession()
-            if (session?.data.session?.access_token) {
-              headers['Authorization'] = `Bearer ${session.data.session.access_token}`
-            }
-          }
-        } catch (e) {
-          // Supabase not available, continue without auth header
+      if (user && supabase) {
+        const session = await supabase.auth.getSession()
+        if (session?.data.session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.data.session.access_token}`
         }
       }
       
@@ -142,17 +136,10 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       const headers: HeadersInit = {}
       
       // Try to get auth token if user is signed in (optional for local mode)
-      if (user) {
-        try {
-          const { supabase } = await import('../../lib/supabase')
-          if (supabase) {
-            const session = await supabase.auth.getSession()
-            if (session?.data.session?.access_token) {
-              headers['Authorization'] = `Bearer ${session.data.session.access_token}`
-            }
-          }
-        } catch (e) {
-          // Supabase not available, continue without auth (local mode)
+      if (user && supabase) {
+        const session = await supabase.auth.getSession()
+        if (session?.data.session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.data.session.access_token}`
         }
       }
       

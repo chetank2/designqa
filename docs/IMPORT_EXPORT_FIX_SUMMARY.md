@@ -72,6 +72,12 @@ This ensures:
 - Errors caught during Docker build, not at runtime
 - Faster feedback loop
 
+## December 10, 2025 Validation Hardening
+
+- ✅ `apps/saas-backend/scripts/validate-imports.js` now resolves absolute relative paths and safely strips `as` aliases so local import/export mismatches (like the missing middleware exports) are detected reliably
+- ✅ `apps/saas-backend/package.json` runs `npm run validate` before `npm run build:frontend`, making `npm run build` fail fast whenever mismatches creep in
+- ✅ Both Dockerfiles (`Dockerfile` at the repo root and `apps/saas-backend/Dockerfile`) execute the validation script during image builds so Render/Railway deploys can’t ship broken imports
+
 ## Files Verified
 
 All imports/exports checked and verified:

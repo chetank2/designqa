@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "npm run build:frontend",
+    "build": "npm run validate && npm run build:frontend",
     "build:frontend": "cd ../saas-frontend && pnpm build && mkdir -p ../saas-backend/frontend && cp -r dist ../saas-backend/frontend/dist",
     "build:railway": "npm run setup && npm run build",
     "setup": "npm install",

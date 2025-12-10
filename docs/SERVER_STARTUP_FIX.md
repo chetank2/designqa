@@ -32,6 +32,16 @@
 - **Problem**: Server errors weren't being caught properly
 - **Fix**: Added error handler for `httpServer.on('error')` and fixed config access in server.listen callback
 
+## Middleware Implementation Details (Dec 10, 2025 Update)
+
+The actual middleware file now lives at `apps/saas-backend/src/server/middleware.js` and includes:
+- `configureSecurityMiddleware(app, config)` – wires up CORS, Helmet (with COEP disabled for MCP streaming), compression, and `trust proxy` so Render/Railway headers are respected
+- `requestLogger` – a morgan instance that logs `:method :url :status …` while staying quiet during tests
+- `responseFormatter` – attaches `res.success()`/`res.error()` helpers used by export routes
+- `configureRateLimit(config)` – produces `{ generalLimiter, healthLimiter, extractionLimiter }` based on `security.rateLimit`
+- `validateExtractionUrl(allowedHosts)` – guards Figma/extension endpoints, allowing HTTP/S URLs and optionally enforcing `ALLOWED_HOSTS`
+- `notFoundHandler`/`errorHandler` – final Express middleware that normalizes API errors and 404s
+
 ## Server Status
 
 ✅ **Server is now running successfully on port 3847**
