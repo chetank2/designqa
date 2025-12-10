@@ -51,6 +51,10 @@ RUN npm install -g pnpm && \
     pnpm install --frozen-lockfile && \
     echo "Dependencies installed successfully"
 
+# Build compare-engine workspace package
+COPY packages/compare-engine ./packages/compare-engine
+RUN cd packages/compare-engine && pnpm run build
+
 # Copy frontend source files needed for build
 COPY apps/saas-frontend/src ./apps/saas-frontend/src
 COPY apps/saas-frontend/index.html ./apps/saas-frontend/index.html
@@ -134,6 +138,9 @@ COPY apps/saas-backend ./apps/saas-backend
 
 # Copy backend node_modules from builder (contains symlinks to root)
 COPY --from=builder /app/apps/saas-backend/node_modules ./apps/saas-backend/node_modules
+
+# Copy workspace packages (needed for dependencies like compare-engine)
+COPY --from=builder /app/packages/compare-engine ./packages/compare-engine
 
 # Ensure config.json exists
 RUN cp ./apps/saas-backend/config.example.json ./apps/saas-backend/config.json
