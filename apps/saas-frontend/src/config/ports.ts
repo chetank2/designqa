@@ -74,22 +74,18 @@ export function getApiBaseUrl(): string {
     }
 
     // Priority 3: Use current origin (works for same-domain deployments like Render)
+    // This MUST be checked before falling back to localhost
     const origin = window.location?.origin;
     if (origin && origin !== 'null' && !origin.startsWith('file://')) {
-      // In production, use the same origin (frontend and backend on same domain)
+      // Always use the current origin in browser context (production or development)
       // This handles Render deployments where both are served from the same domain
+      // Also works for local development when accessing via localhost
       return origin;
     }
   }
 
-  // Fallback: Only use localhost in development
-  // In production builds without VITE_API_URL, this shouldn't be reached
-  // but we keep it as a safety fallback
-  const isProduction = import.meta.env?.MODE === 'production' || import.meta.env?.PROD;
-  if (isProduction && typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
-  }
-
+  // Fallback: Only use localhost if we're in Node.js context or truly can't determine origin
+  // This should rarely be reached in browser context
   return `http://localhost:${APP_SERVER_PORT}`;
 }
 
