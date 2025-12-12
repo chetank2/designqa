@@ -3,11 +3,13 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
 
-// Read version from package.json
-const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
+// Read version from root package.json (single source of truth)
+const rootPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'))
+const packageJson = { version: rootPackageJson.version }
 
 // SINGLE SOURCE OF TRUTH: API port (validated by scripts/validate-ports.mjs)
-const API_PORT = Number(process.env.VITE_SERVER_PORT || process.env.PORT || 3847);
+// Backend runs on 3848 internally, frontend dev server on 3847 proxies to it
+const API_PORT = Number(process.env.VITE_SERVER_PORT || process.env.BACKEND_PORT || 3848);
 const API_URL = process.env.VITE_API_URL || `http://localhost:${API_PORT}`;
 
 // printConfig function to log configuration
@@ -30,7 +32,7 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   server: {
-    port: 5173,
+    port: 3847,
     host: true,
     proxy: {
       '/api': {
