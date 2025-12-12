@@ -11,6 +11,23 @@ export class FigmaAuthService {
         this.db = dbAdapter;
         this.encryptionKey = encryptionKey;
         this.algo = 'aes-256-gcm';
+        
+        // Log encryption key status (not the actual key) for debugging
+        if (!encryptionKey) {
+            console.warn('⚠️ FigmaAuthService: No encryption key provided. CREDENTIAL_ENCRYPTION_KEY environment variable may not be set.');
+        } else {
+            console.log('✅ FigmaAuthService: Encryption key configured');
+        }
+    }
+    
+    /**
+     * Check if encryption is properly configured
+     */
+    isEncryptionConfigured() {
+        return this.encryptionKey !== null && 
+               this.encryptionKey !== undefined && 
+               typeof this.encryptionKey === 'string' && 
+               this.encryptionKey.length > 0;
     }
 
     /**
@@ -24,6 +41,14 @@ export class FigmaAuthService {
             throw new Error('Client ID and Secret are required');
         }
 
+        // Check encryption configuration before attempting to encrypt
+        if (!this.isEncryptionConfigured()) {
+            throw new Error('Cannot save credentials: CREDENTIAL_ENCRYPTION_KEY environment variable is not configured on the server.');
+        }
+
+        console.log('Saving Figma credentials for user:', userId);
+        console.log('Encryption key configured:', this.isEncryptionConfigured());
+
         const encryptedSecret = encrypt(clientSecret, this.encryptionKey);
 
         // Upsert credentials
@@ -35,6 +60,7 @@ export class FigmaAuthService {
         });
 
         if (error) throw error;
+        console.log('Figma credentials saved successfully');
         return true;
     }
 
@@ -43,14 +69,73 @@ export class FigmaAuthService {
      * @param {string} userId
      */
     async getCredentials(userId) {
-        const data = await this.db.getFigmaCredentials(userId);
-        if (!data) return null;
+        try {
+            const data = await this.db.getFigmaCredentials(userId);
+            if (!data) {
+                console.log(`Figma credentials: No data found for user ${userId}`);
+                return null;
+            }
 
-        return {
-            clientId: data.client_id,
-            clientSecret: decrypt(data.client_secret, this.encryptionKey),
-            hasTokens: !!data.access_token
-        };
+            // Log raw data structure for debugging (without sensitive values)
+            console.log('Figma credentials raw data keys:', Object.keys(data));
+
+            // Handle potential missing or undefined fields from database
+            // Support both snake_case (from DB) and camelCase (after conversion)
+            const safeData = {
+                clientId: data.client_id || data.clientId || null,
+                clientSecret: data.client_secret || data.clientSecret || null,
+                accessToken: data.access_token || data.accessToken || null,
+                refreshToken: data.refresh_token || data.refreshToken || null,
+                expiresAt: data.expires_at || data.expiresAt || null
+            };
+
+            console.log('Figma credentials safeData:', {
+                hasClientId: !!safeData.clientId,
+                hasClientSecret: !!safeData.clientSecret,
+                clientSecretType: typeof safeData.clientSecret,
+                clientSecretLength: safeData.clientSecret?.length || 0,
+                hasAccessToken: !!safeData.accessToken,
+                hasRefreshToken: !!safeData.refreshToken
+            });
+
+            // Check encryption configuration before attempting decrypt
+            if (!this.isEncryptionConfigured()) {
+                console.error('Figma credentials: Encryption not configured. Cannot decrypt stored credentials.');
+                return {
+                    clientId: safeData.clientId,
+                    clientSecret: null,
+                    hasTokens: !!safeData.accessToken,
+                    error: 'Encryption key not configured on server'
+                };
+            }
+
+            // Safely decrypt client_secret only if it's a valid non-empty string
+            let decryptedSecret = null;
+            if (safeData.clientSecret && typeof safeData.clientSecret === 'string' && safeData.clientSecret.length > 0) {
+                try {
+                    decryptedSecret = decrypt(safeData.clientSecret, this.encryptionKey);
+                    console.log('Figma credentials: Client secret decrypted successfully');
+                } catch (error) {
+                    console.error('Failed to decrypt client secret:', error.message);
+                    // Return error info instead of silently failing
+                    return {
+                        clientId: safeData.clientId,
+                        clientSecret: null,
+                        hasTokens: !!safeData.accessToken,
+                        error: `Decryption failed: ${error.message}`
+                    };
+                }
+            }
+
+            return {
+                clientId: safeData.clientId,
+                clientSecret: decryptedSecret,
+                hasTokens: !!safeData.accessToken
+            };
+        } catch (error) {
+            console.error('Error in getCredentials:', error);
+            throw error;
+        }
     }
 
     /**
@@ -113,32 +198,58 @@ export class FigmaAuthService {
     async saveTokens(userId, tokenData) {
         const updates = {
             user_id: userId,
-            access_token: encrypt(tokenData.access_token, this.encryptionKey),
+            access_token: tokenData.access_token ? encrypt(tokenData.access_token, this.encryptionKey) : null,
             refresh_token: tokenData.refresh_token ? encrypt(tokenData.refresh_token, this.encryptionKey) : null,
-            expires_at: new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString(),
-            scope: tokenData.scope || 'files:read', // Save scope from token response or default
+            expires_at: tokenData.expires_in ? new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString() : null,
+            scope: tokenData.scope || 'files:read',
             updated_at: new Date().toISOString()
         };
 
-        const { error } = await this.db.updateFigmaTokens(updates);
-        if (error) throw error;
+        await this.db.updateFigmaTokens(updates);
     }
 
     /**
      * Get valid access token (refreshes if needed)
      */
     async getValidAccessToken(userId) {
-        const data = await this.db.getFigmaCredentials(userId);
-        if (!data || !data.access_token) return null;
+        try {
+            const data = await this.db.getFigmaCredentials(userId);
+            if (!data) return null;
 
-        // Check expiration (with 5 minute buffer)
-        const expiresAt = new Date(data.expires_at).getTime();
-        if (Date.now() + 300000 > expiresAt) {
-            // Token expiring soon, refresh it
-            return this.refreshAccessToken(userId, data);
+            // Handle field name variations (snake_case vs camelCase)
+            const accessToken = data.access_token || data.accessToken;
+            const expiresAt = data.expires_at || data.expiresAt;
+            const refreshToken = data.refresh_token || data.refreshToken;
+
+            if (!accessToken) return null;
+
+            // Check expiration (with 5 minute buffer)
+            if (expiresAt) {
+                const expiresAtTime = new Date(expiresAt).getTime();
+                if (Date.now() + 300000 > expiresAtTime) {
+                    // Token expiring soon, refresh it
+                    if (refreshToken) {
+                        return this.refreshAccessToken(userId, data);
+                    } else {
+                        return null; // Cannot refresh without refresh token
+                    }
+                }
+            }
+
+            // Decrypt and return access token
+            if (typeof accessToken === 'string' && accessToken.length > 0) {
+                try {
+                    return decrypt(accessToken, this.encryptionKey);
+                } catch (decryptError) {
+                    console.error('Failed to decrypt access token:', decryptError);
+                    return null;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error in getValidAccessToken:', error);
+            return null;
         }
-
-        return decrypt(data.access_token, this.encryptionKey);
     }
 
     /**
@@ -155,19 +266,24 @@ export class FigmaAuthService {
             }
         }
 
-        if (!currentData.refresh_token) {
+        // Handle field name variations
+        const refreshTokenField = currentData.refresh_token || currentData.refreshToken;
+        const clientSecretField = currentData.client_secret || currentData.clientSecret;
+
+        if (!refreshTokenField || typeof refreshTokenField !== 'string') {
             throw new Error('No refresh token available. Please reconnect to Figma.');
         }
 
-        if (!currentData.client_secret) {
+        if (!clientSecretField || typeof clientSecretField !== 'string') {
             throw new Error('Client secret not found. Please reconfigure your Figma App credentials.');
         }
 
-        const clientSecret = decrypt(currentData.client_secret, this.encryptionKey);
-        const refreshToken = decrypt(currentData.refresh_token, this.encryptionKey);
+        const clientSecret = decrypt(clientSecretField, this.encryptionKey);
+        const refreshToken = decrypt(refreshTokenField, this.encryptionKey);
+        const clientId = currentData.client_id || currentData.clientId;
 
         const params = new URLSearchParams();
-        params.append('client_id', currentData.client_id);
+        params.append('client_id', clientId);
         params.append('client_secret', clientSecret);
         params.append('refresh_token', refreshToken);
         params.append('grant_type', 'refresh_token');

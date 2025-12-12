@@ -43,6 +43,19 @@ async function main() {
     console.log('🚀 Starting DesignQA Server (SaaS Mode)...');
     console.log(`📡 Port: ${PORT}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    
+    // Check for required environment variables
+    const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || process.env.LOCAL_CREDENTIAL_KEY;
+    if (!encryptionKey) {
+      console.warn('');
+      console.warn('⚠️  WARNING: CREDENTIAL_ENCRYPTION_KEY is not set!');
+      console.warn('⚠️  Figma OAuth credentials cannot be stored/retrieved without this key.');
+      console.warn('⚠️  Set CREDENTIAL_ENCRYPTION_KEY in your environment variables.');
+      console.warn('⚠️  Generate a secure key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"');
+      console.warn('');
+    } else {
+      console.log('✅ Credential encryption key configured');
+    }
 
     // Start the server
     const server = await startServer(PORT);

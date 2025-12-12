@@ -27,8 +27,25 @@ function deriveKey(masterKey, salt) {
  * @returns {string} Encrypted value as base64
  */
 export function encrypt(plaintext, masterKey) {
-    if (!masterKey) {
-        throw new Error('Encryption key is required');
+    // Comprehensive validation
+    if (plaintext === undefined || plaintext === null) {
+        throw new Error(`Encrypt failed: plaintext is ${plaintext === undefined ? 'undefined' : 'null'}`);
+    }
+    if (typeof plaintext !== 'string') {
+        throw new Error(`Encrypt failed: plaintext must be a string, received: ${typeof plaintext}`);
+    }
+    
+    if (masterKey === undefined) {
+        throw new Error('Encrypt failed: masterKey is undefined. Ensure CREDENTIAL_ENCRYPTION_KEY environment variable is set.');
+    }
+    if (masterKey === null) {
+        throw new Error('Encrypt failed: masterKey is null. Ensure CREDENTIAL_ENCRYPTION_KEY environment variable is set.');
+    }
+    if (typeof masterKey !== 'string') {
+        throw new Error(`Encrypt failed: masterKey must be a string, received: ${typeof masterKey}`);
+    }
+    if (masterKey.length === 0) {
+        throw new Error('Encrypt failed: masterKey is an empty string. CREDENTIAL_ENCRYPTION_KEY must have a value.');
     }
 
     // Generate random salt and IV
@@ -64,8 +81,31 @@ export function encrypt(plaintext, masterKey) {
  * @returns {string} Decrypted plaintext
  */
 export function decrypt(encryptedData, masterKey) {
-    if (!masterKey) {
-        throw new Error('Encryption key is required');
+    // Comprehensive validation with detailed error messages
+    if (encryptedData === undefined) {
+        throw new Error('Decrypt failed: encryptedData is undefined. Check that the data was properly saved/retrieved.');
+    }
+    if (encryptedData === null) {
+        throw new Error('Decrypt failed: encryptedData is null. The encrypted value may not exist in the database.');
+    }
+    if (typeof encryptedData !== 'string') {
+        throw new Error(`Decrypt failed: encryptedData must be a string, received: ${typeof encryptedData} (value: ${JSON.stringify(encryptedData)?.slice(0, 100)})`);
+    }
+    if (encryptedData.length === 0) {
+        throw new Error('Decrypt failed: encryptedData is an empty string.');
+    }
+    
+    if (masterKey === undefined) {
+        throw new Error('Decrypt failed: masterKey is undefined. Ensure CREDENTIAL_ENCRYPTION_KEY environment variable is set.');
+    }
+    if (masterKey === null) {
+        throw new Error('Decrypt failed: masterKey is null. Ensure CREDENTIAL_ENCRYPTION_KEY environment variable is set.');
+    }
+    if (typeof masterKey !== 'string') {
+        throw new Error(`Decrypt failed: masterKey must be a string, received: ${typeof masterKey}`);
+    }
+    if (masterKey.length === 0) {
+        throw new Error('Decrypt failed: masterKey is an empty string. CREDENTIAL_ENCRYPTION_KEY must have a value.');
     }
 
     // Decode combined data

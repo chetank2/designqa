@@ -124,17 +124,57 @@ router.get('/figma/callback', async (req, res) => {
 router.get('/figma/status', async (req, res) => {
     try {
         const userId = req.user?.id;
-        if (!userId) return res.json({ success: false, connected: false });
+        if (!userId) {
+            console.log('Figma status: No user ID in request');
+            return res.json({ success: false, connected: false, hasCredentials: false });
+        }
 
-        const creds = await getAuthService().getCredentials(userId);
+        console.log(`Figma status: Checking credentials for user ${userId}`);
+        
+        const authService = getAuthService();
+        
+        // Check if encryption is configured
+        if (!authService.isEncryptionConfigured()) {
+            console.error('Figma status: Encryption key not configured');
+            return res.json({
+                success: false,
+                hasCredentials: false,
+                connected: false,
+                error: 'Server configuration error: encryption key not set'
+            });
+        }
+        
+        const creds = await authService.getCredentials(userId);
+
+        // Check if there was an error during credential retrieval
+        if (creds?.error) {
+            console.error('Figma status: Credential retrieval error:', creds.error);
+            return res.json({
+                success: false,
+                hasCredentials: !!creds.clientId,
+                connected: false,
+                error: creds.error
+            });
+        }
+
+        // Safe credential checking
+        const hasCredentials = creds !== null && creds !== undefined && !!creds.clientId;
+        const connected = hasCredentials && creds.hasTokens === true;
+
+        console.log(`Figma status result: hasCredentials=${hasCredentials}, connected=${connected}`);
 
         res.json({
             success: true,
-            hasCredentials: !!creds,
-            connected: !!creds?.hasTokens
+            hasCredentials,
+            connected
         });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error('Figma status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : ''
+        });
     }
 });
 

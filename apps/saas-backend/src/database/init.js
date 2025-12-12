@@ -35,6 +35,15 @@ export async function initDatabase(options = {}) {
                        process.env.LOCAL_CREDENTIAL_KEY ||
                        null;
 
+  // Warn if encryption key is not configured
+  if (!encryptionKey) {
+    console.warn('⚠️ WARNING: CREDENTIAL_ENCRYPTION_KEY is not set!');
+    console.warn('⚠️ Figma OAuth credentials cannot be encrypted/decrypted without this key.');
+    console.warn('⚠️ Set CREDENTIAL_ENCRYPTION_KEY environment variable to enable credential storage.');
+  } else {
+    console.log('✅ Credential encryption key configured');
+  }
+
   // Create services
   servicesInstance = createServices(adapterInstance, storageProvider, encryptionKey);
 
