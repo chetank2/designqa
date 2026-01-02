@@ -32,6 +32,9 @@ jobs:
         
     - name: Enable Corepack
       run: corepack enable
+
+    - name: Activate pnpm
+      run: corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
@@ -95,6 +98,9 @@ jobs:
         
     - name: Enable Corepack
       run: corepack enable
+
+    - name: Activate pnpm
+      run: corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
@@ -166,6 +172,9 @@ jobs:
         
     - name: Enable Corepack
       run: corepack enable
+
+    - name: Activate pnpm
+      run: corepack prepare pnpm@latest --activate
         
     - name: Verify pnpm
       run: pnpm --version
@@ -221,6 +230,9 @@ jobs:
         
     - name: Enable Corepack
       run: corepack enable
+
+    - name: Activate pnpm
+      run: corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
@@ -257,6 +269,9 @@ jobs:
         
     - name: Enable Corepack
       run: corepack enable
+
+    - name: Activate pnpm
+      run: corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
