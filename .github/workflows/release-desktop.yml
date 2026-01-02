@@ -59,14 +59,22 @@ jobs:
           echo "📦 Packaging Mac app..."
           pnpm run package
 
+      - name: List build artifacts
+        run: |
+          echo "📋 Listing build artifacts..."
+          ls -lh apps/desktop-mac/build/ || echo "Build directory not found"
+          find apps/desktop-mac/build -name "*.dmg" -o -name "*.zip" || echo "No DMG/ZIP files found"
+
       - name: Upload mac artifacts to release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
             apps/desktop-mac/build/*.dmg
             apps/desktop-mac/build/*.zip
+          fail_on_unmatched_files: false
 
   build-win:
     runs-on: windows-latest
