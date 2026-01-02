@@ -72,8 +72,8 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
-            apps/desktop-mac/build/*.dmg
-            apps/desktop-mac/build/*.zip
+            apps/desktop-mac/build/**/*.dmg
+            apps/desktop-mac/build/**/*.zip
           fail_on_unmatched_files: false
 
   build-win:
