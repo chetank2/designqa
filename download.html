@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download DesignQA Desktop App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        .download-section {
+            margin: 30px 0;
+        }
+        .download-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        .download-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .download-btn {
+            display: inline-block;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .download-btn.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        }
+        .download-btn.secondary:hover {
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+        }
+        .info {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 30px;
+            text-align: left;
+            border-radius: 4px;
+        }
+        .info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .info ul {
+            color: #666;
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        .version {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 DesignQA Desktop</h1>
+        <p class="subtitle">Download the desktop app for your platform</p>
+        
+        <div class="download-section">
+            <h2>📱 macOS</h2>
+            <div class="download-buttons">
+                <a href="https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA-2.0.1-arm64.dmg" 
+                   class="download-btn" 
+                   download>
+                    Download for Apple Silicon (M1/M2/M3/M4)
+                </a>
+                <a href="https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA-2.0.1.dmg" 
+                   class="download-btn secondary" 
+                   download>
+                    Download for Intel Mac
+                </a>
+            </div>
+        </div>
+
+        <div class="download-section">
+            <h2>🪟 Windows</h2>
+            <div class="download-buttons">
+                <a href="https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA%20Setup%202.0.1.exe" 
+                   class="download-btn" 
+                   download>
+                    Download for Windows
+                </a>
+            </div>
+        </div>
+
+        <div class="info">
+            <h3>📋 Installation Instructions</h3>
+            <ul>
+                <li><strong>macOS:</strong> Download DMG → Open → Drag to Applications → Right-click → Open (first time)</li>
+                <li><strong>Windows:</strong> Download EXE → Run installer → Follow wizard</li>
+            </ul>
+        </div>
+
+        <p class="version">Version 2.0.1</p>
+    </div>
+</body>
+</html>

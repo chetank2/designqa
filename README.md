@@ -1,6 +1,18 @@
-# Figma-Web Comparison Tool
+# DesignQA - Figma-Web Comparison Tool
 
 A tool for comparing Figma designs with web implementations.
+
+## 📥 Download Desktop App
+
+**Direct download links (no source code):**
+
+- **macOS (Apple Silicon):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA-2.0.1-arm64.dmg)
+- **macOS (Intel):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA-2.0.1.dmg)
+- **Windows:** [Download EXE](https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA%20Setup%202.0.1.exe)
+
+**Or visit:** [download.html](download.html) for a simple download page
+
+---
 
 ## Features
 
