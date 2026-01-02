@@ -1,20 +1,19 @@
 /**
  * MCP Configuration
  * Detects MCP connection mode and provides appropriate client instance
- * Priority: Desktop > Proxy > Remote
+ * Priority: Desktop > Remote
  */
 
 import FigmaMCPClient from '../figma/mcpClient.js';
 import { RemoteMCPClient } from '../figma/RemoteMCPClient.js';
-import { ProxyMCPClient } from '../figma/ProxyMCPClient.js';
 import { getSupabaseClient } from './supabase.js';
 import { getServices } from '../database/init.js';
 
 const PROVIDERS = {
   API: 'api',
   DESKTOP: 'desktop',
-  PROXY: 'proxy',
-  FIGMA: 'figma'
+  OAUTH: 'oauth',
+  FIGMA: 'figma' // legacy alias for OAuth remote MCP
 };
 
 let desktopMCPAvailable = null;
@@ -32,13 +31,38 @@ function normalizeProvider(value) {
   if (['desktop', 'local', 'figma-desktop'].includes(normalized)) {
     return PROVIDERS.DESKTOP;
   }
-  if (['proxy', 'mcp-proxy'].includes(normalized)) {
-    return PROVIDERS.PROXY;
+  if (['oauth', 'remote-mcp', 'remote_oauth'].includes(normalized)) {
+    return PROVIDERS.OAUTH;
   }
   if (['figma', 'figma-cloud', 'cloud', 'remote'].includes(normalized)) {
-    return PROVIDERS.FIGMA;
+    // Treat legacy "figma/cloud/remote" as OAuth-backed remote MCP.
+    return PROVIDERS.OAUTH;
   }
   return null;
+}
+
+/**
+ * Verify MCP server is reachable at the given port
+ * @param {number} port - Port to check
+ * @returns {Promise<boolean>} True if server is reachable
+ */
+async function verifyMCPServerReachable(port) {
+  try {
+    const url = `http://127.0.0.1:${port}/mcp`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'text/event-stream' },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    return response.status >= 200 && response.status < 500;
+  } catch (error) {
+    return false;
+  }
 }
 
 /**
@@ -52,6 +76,36 @@ async function checkDesktopMCPAvailability() {
   }
 
   try {
+    // If port is explicitly configured (or we want the default), verify it's reachable.
+    // Discovery often relies on platform tools (ps/lsof) that can be restricted in packaged apps.
+    const configuredPortRaw = process.env.FIGMA_MCP_PORT || '3845';
+    const configuredPort = parseInt(configuredPortRaw, 10);
+    if (Number.isFinite(configuredPort) && configuredPort > 0) {
+      // Verify the port is actually reachable before marking as available
+      console.log(`[MCP] Verifying Desktop MCP at port ${configuredPort}...`);
+      const isReachable = await verifyMCPServerReachable(configuredPort);
+      
+      if (isReachable) {
+        desktopMCPAvailable = true;
+        desktopMCPPort = configuredPort;
+        console.log(`[MCP] Desktop MCP verified at port ${configuredPort}`);
+        setTimeout(() => {
+          desktopMCPAvailable = null;
+          desktopMCPPort = null;
+        }, 30000);
+        return { available: true, port: configuredPort };
+      } else {
+        console.warn(`[MCP] Desktop MCP not reachable at port ${configuredPort}`);
+        desktopMCPAvailable = false;
+        desktopMCPPort = configuredPort;
+        setTimeout(() => {
+          desktopMCPAvailable = null;
+          desktopMCPPort = null;
+        }, 30000);
+        return { available: false, port: configuredPort };
+      }
+    }
+
     // Try to import DesktopMCPClient and discovery
     const { DesktopMCPClient } = await import('@designqa/mcp-client');
     const { discoverMCPPort, isFigmaRunning } = await import('@designqa/mcp-client/discovery');
@@ -67,16 +121,25 @@ async function checkDesktopMCPAvailability() {
     // Try to discover port
     const discovery = await discoverMCPPort();
     if (discovery.port) {
-      desktopMCPAvailable = true;
-      desktopMCPPort = discovery.port;
+      // Verify discovered port is reachable
+      console.log(`[MCP] Verifying discovered Desktop MCP at port ${discovery.port}...`);
+      const isReachable = await verifyMCPServerReachable(discovery.port);
       
-      // Clear cache after 30 seconds
-      setTimeout(() => {
-        desktopMCPAvailable = null;
-        desktopMCPPort = null;
-      }, 30000);
-      
-      return { available: true, port: discovery.port };
+      if (isReachable) {
+        desktopMCPAvailable = true;
+        desktopMCPPort = discovery.port;
+        console.log(`[MCP] Desktop MCP verified at discovered port ${discovery.port}`);
+        
+        // Clear cache after 30 seconds
+        setTimeout(() => {
+          desktopMCPAvailable = null;
+          desktopMCPPort = null;
+        }, 30000);
+        
+        return { available: true, port: discovery.port };
+      } else {
+        console.warn(`[MCP] Discovered port ${discovery.port} not reachable`);
+      }
     }
 
     desktopMCPAvailable = false;
@@ -101,8 +164,10 @@ export function getMCPProvider() {
     return envPreference;
   }
 
-  // Default to Remote MCP for cloud deployments
-  return PROVIDERS.FIGMA;
+  // Default provider depends on where we're running:
+  // - Local desktop app: Desktop MCP
+  // - Cloud deployments: OAuth-backed remote MCP
+  return isLocalMode() ? PROVIDERS.DESKTOP : PROVIDERS.OAUTH;
 }
 
 /**
@@ -133,6 +198,19 @@ function createOAuthTokenProvider(userId) {
     }
     return null;
   };
+}
+
+async function getOAuthAccessToken(userId) {
+  if (!userId) return null;
+  try {
+    const services = getServices();
+    if (services && services.figmaAuth) {
+      return await services.figmaAuth.getValidAccessToken(userId);
+    }
+  } catch (error) {
+    // Ignore and return null
+  }
+  return null;
 }
 
 /**
@@ -192,26 +270,90 @@ async function getFigmaToken(userId = null) {
 }
 
 /**
+ * Connect Desktop MCP with retry logic
+ * @param {DesktopMCPClient} client - Desktop MCP client instance
+ * @param {number} maxAttempts - Maximum retry attempts
+ * @returns {Promise<boolean>} True if connected successfully
+ */
+async function connectDesktopMCPWithRetry(client, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🔄 Desktop MCP connection attempt ${attempt}/${maxAttempts}...`);
+      const connected = await client.connect();
+      if (connected) {
+        console.log(`✅ Desktop MCP connected successfully on attempt ${attempt}`);
+        return true;
+      } else {
+        console.warn(`⚠️ Desktop MCP connection attempt ${attempt} returned false`);
+      }
+    } catch (error) {
+      console.error(`❌ Desktop MCP connection attempt ${attempt} failed:`, error.message);
+      if (attempt < maxAttempts) {
+        console.log(`⏳ Waiting 1 second before retry...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+  console.error(`❌ Desktop MCP connection failed after ${maxAttempts} attempts`);
+  return false;
+}
+
+/**
+ * Check if backend is running in local mode (Electron) vs cloud mode (Render/Vercel)
+ * @returns {boolean} True if running in local mode
+ */
+function isLocalMode() {
+  // Check for explicit mode setting
+  const explicitMode = normalizeProvider(process.env.FIGMA_CONNECTION_MODE);
+  if (explicitMode === PROVIDERS.DESKTOP) return true;
+  if (explicitMode === PROVIDERS.FIGMA) return false;
+
+  // Check for Electron environment
+  if (process.env.RUNNING_IN_ELECTRON === 'true') return true;
+  
+  // Check for cloud hosting indicators
+  if (process.env.RENDER || process.env.VERCEL || process.env.RAILWAY_ENVIRONMENT) {
+    return false;
+  }
+
+  // Default: assume local mode if not explicitly cloud
+  // This is safe because Desktop MCP will fail gracefully if Figma isn't running
+  return true;
+}
+
+/**
  * Get MCP client instance
  * @param {Object} options - Configuration options
  * @param {string} [options.userId] - User ID for token retrieval
  * @param {string} [options.figmaToken] - Figma token (overrides auto-detection)
  * @param {string} [options.mode] - Force MCP mode ('desktop', 'proxy', 'remote', 'api')
- * @param {boolean} [options.autoDetectDesktop] - Auto-detect desktop MCP (default: true)
+ * @param {boolean} [options.autoDetectDesktop] - Auto-detect desktop MCP (default: true in local mode, false in cloud)
  * @returns {Promise<FigmaMCPClient|RemoteMCPClient|ProxyMCPClient|DesktopMCPClient>} MCP client instance
  */
 export async function getMCPClient(options = {}) {
-  const { userId, figmaToken, mode, autoDetectDesktop = true } = options;
+  const { userId, figmaToken, mode } = options;
   const overrideProvider = normalizeProvider(mode);
   let currentMode = overrideProvider;
 
+  // Determine if we're in local mode
+  const runningInLocalMode = isLocalMode();
+  
+  // Auto-detect desktop MCP only in local mode and if not explicitly disabled
+  const autoDetectDesktop = options.autoDetectDesktop !== undefined 
+    ? options.autoDetectDesktop 
+    : runningInLocalMode; // Default: true in local mode, false in cloud
+
   // Auto-detect desktop MCP if no mode specified and auto-detect is enabled
-  if (!currentMode && autoDetectDesktop) {
+  if (!currentMode && autoDetectDesktop && runningInLocalMode) {
+    console.log('[MCP] Auto-detecting Desktop MCP (local mode)...');
     const desktopCheck = await checkDesktopMCPAvailability();
     if (desktopCheck.available) {
       currentMode = PROVIDERS.DESKTOP;
       console.log(`🖥️  Desktop MCP detected on port ${desktopCheck.port}`);
     }
+  } else if (!currentMode && !runningInLocalMode) {
+    // In cloud mode, don't try Desktop MCP
+    console.log('[MCP] Running in cloud mode - skipping Desktop MCP auto-detection');
   }
 
   // Fall back to configured provider if no desktop found
@@ -232,119 +374,80 @@ export async function getMCPClient(options = {}) {
   // Priority: Desktop > Proxy > Remote
   if (currentMode === PROVIDERS.DESKTOP) {
     try {
-      const { DesktopMCPClient } = await import('@designqa/mcp-client');
-      
+      // Figma Desktop MCP speaks HTTP/SSE on /mcp (not a raw WebSocket JSON-RPC endpoint).
+      // Use the HTTP-based MCP client (RemoteMCPClient) without requiring any token.
       const desktopCheck = await checkDesktopMCPAvailability();
-      if (!desktopCheck.available) {
-        throw new Error('Desktop MCP not available. Figma Desktop app may not be running.');
+      if (!desktopCheck.available || !desktopCheck.port) {
+        throw new Error('Desktop MCP not available. Set FIGMA_MCP_PORT=3845 or FIGMA_DESKTOP_MCP_URL.');
       }
 
-      console.log(`🖥️  Initializing Desktop MCP Client on port ${desktopCheck.port}`);
-      
-      mcpClientInstance = new DesktopMCPClient({
-        port: desktopCheck.port,
-        autoDiscover: true
+      const desktopUrl = process.env.FIGMA_DESKTOP_MCP_URL || `http://127.0.0.1:${desktopCheck.port}/mcp`;
+      console.log(`🖥️  Initializing Desktop MCP HTTP client at ${desktopUrl}`);
+
+      mcpClientInstance = new RemoteMCPClient({
+        remoteUrl: desktopUrl,
+        requireToken: false
       });
+
+      await mcpClientInstance.connect();
 
       mcpMode = PROVIDERS.DESKTOP;
       return mcpClientInstance;
     } catch (error) {
-      console.warn('⚠️ Desktop MCP initialization failed, falling back to Proxy/Remote:', error.message);
-      // Fall through to Proxy/Remote
-      currentMode = process.env.MCP_USE_PROXY === 'true' || !!process.env.MCP_PROXY_URL 
-        ? PROVIDERS.PROXY 
-        : PROVIDERS.FIGMA;
+      console.error('❌ Desktop MCP initialization failed:', error.message);
+      // In desktop mode, return null instead of falling back to Remote
+      // This prevents the tokenProvider error
+      mcpClientInstance = null;
+      mcpMode = PROVIDERS.DESKTOP;
+      return null;
     }
   }
 
-  if (currentMode === PROVIDERS.PROXY || (currentMode === PROVIDERS.FIGMA && (process.env.MCP_USE_PROXY === 'true' || !!process.env.MCP_PROXY_URL))) {
-    // Check if we should use the proxy
-    const useProxy = process.env.MCP_USE_PROXY === 'true' || !!process.env.MCP_PROXY_URL;
-    
-    // Create token provider if userId is available (for OAuth token refresh)
+  if (currentMode === PROVIDERS.OAUTH || currentMode === PROVIDERS.FIGMA) {
+    // OAuth-backed Remote MCP client.
+    // In this product, remote MCP is only enabled when the user has completed OAuth.
+    let token = figmaToken || null;
+    let tokenSource = figmaToken ? 'provided_argument' : null;
+
     let tokenProvider = null;
     if (userId) {
       tokenProvider = createOAuthTokenProvider(userId);
     }
 
-    if (useProxy) {
-      // Use proxy MCP client
-      let token = process.env.FIGMA_MCP_SERVICE_TOKEN;
-      let tokenSource = 'service_token (FIGMA_MCP_SERVICE_TOKEN)';
-
-      if (!token) {
-        token = figmaToken;
-        tokenSource = 'provided_argument';
-      }
-
-      if (!token) {
-        token = await getFigmaToken(userId);
-        tokenSource = userId ? 'oauth_or_pat' : 'environment';
-      }
-
-      if (!token && !tokenProvider) {
-        throw new Error('Figma connection failed: No Service Token (FIGMA_MCP_SERVICE_TOKEN) or User API Key found.');
-      }
-
-      const proxyUrl = process.env.MCP_PROXY_URL || 'https://mcp-proxy.onrender.com';
-      console.log(`🔌 Initializing Proxy MCP Client with source: ${tokenSource}`);
-      console.log(`🌐 Proxy URL: ${proxyUrl}`);
-      if (token) {
-        console.log(`🔑 Token (last 4): ...${token.slice(-4)}`);
-      } else {
-        console.log(`🔑 Using OAuth token provider`);
-      }
-
-      mcpClientInstance = new ProxyMCPClient({
-        proxyUrl: proxyUrl,
-        figmaToken: token,
-        tokenProvider: tokenProvider,
-        userId: userId
-      });
-      
-      mcpMode = PROVIDERS.PROXY;
-      return mcpClientInstance;
-    }
-  }
-
-  if (currentMode === PROVIDERS.FIGMA) {
-    // Use direct remote MCP client
-    let token = process.env.FIGMA_MCP_SERVICE_TOKEN;
-    let tokenSource = 'service_token (FIGMA_MCP_SERVICE_TOKEN)';
-
+    // Validate OAuth connectivity up-front so we don't return a client that will fail with a
+    // generic "token required" error.
     if (!token) {
-      token = figmaToken;
-      tokenSource = 'provided_argument';
-    }
-
-    if (!token) {
-      token = await getFigmaToken(userId);
-      tokenSource = userId ? 'oauth_or_pat' : 'environment';
+      const oauthToken = await getOAuthAccessToken(userId);
+      if (oauthToken) {
+        token = oauthToken;
+        tokenSource = 'oauth';
+      }
     }
 
     if (!token && !tokenProvider) {
-      throw new Error('Figma connection failed: No Service Token (FIGMA_MCP_SERVICE_TOKEN) or User API Key found.');
+      throw new Error('Figma connection failed: OAuth not configured (missing userId).');
+    }
+    if (!token) {
+      // tokenProvider exists but no token currently available.
+      throw new Error('Figma connection failed: OAuth not connected. Complete Figma OAuth in Settings, or switch to API mode.');
     }
 
-    console.log(`🔌 Initializing Remote MCP Client with source: ${tokenSource}`);
-    if (token) {
-      console.log(`🔑 Token (last 4): ...${token.slice(-4)}`);
-    } else {
-      console.log(`🔑 Using OAuth token provider`);
-    }
+    console.log(`🔌 Initializing Remote MCP Client with source: ${tokenSource || 'oauth'}`);
+    console.log(`🔑 Token (last 4): ...${token.slice(-4)}`);
 
     mcpClientInstance = new RemoteMCPClient({
       remoteUrl: process.env.FIGMA_MCP_URL || 'https://mcp.figma.com/mcp',
       figmaToken: token,
-      tokenProvider: tokenProvider,
-      userId: userId
+      // Keep provider for refresh/retry on 401 when available.
+      tokenProvider,
+      userId
     });
-    
-    mcpMode = PROVIDERS.FIGMA;
+
+    mcpMode = PROVIDERS.OAUTH;
     return mcpClientInstance;
   }
 
-  throw new Error(`Unsupported MCP provider: ${currentMode}. Supported providers: api, desktop, proxy, figma`);
+  throw new Error(`Unsupported MCP provider: ${currentMode}. Supported providers: api, desktop, oauth`);
 
 }
 

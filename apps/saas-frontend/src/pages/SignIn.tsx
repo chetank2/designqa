@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import SignInForm from '../components/auth/SignInForm';
 import { Loader2 } from 'lucide-react';
@@ -45,6 +45,12 @@ export default function SignIn() {
           </p>
         </div>
         <SignInForm onSuccess={() => navigate('/', { replace: true })} />
+        <div className="text-center text-sm">
+          <span className="text-muted-foreground">Don't have an account? </span>
+          <Link to="/signup" className="text-primary hover:underline font-medium">
+            Sign up
+          </Link>
+        </div>
       </div>
     </div>
   );

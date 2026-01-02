@@ -3,10 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  EyeIcon, 
-  TrashIcon, 
-  ArrowDownTrayIcon, 
+import {
+  EyeIcon,
+  TrashIcon,
+  ArrowDownTrayIcon,
   MagnifyingGlassIcon,
   CalendarIcon,
   ClockIcon,
@@ -41,11 +41,16 @@ export default function Reports() {
   const fetchReports = async () => {
     try {
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/reports/list`);
+      // Fix: Endpoint is mounted at /api/reports, so the path is just root
+      const response = await fetch(`${apiBaseUrl}/api/reports`);
       const data = await response.json();
-      
-      if (data.success && data.reports) {
-        console.log(`✅ Loaded ${data.reports.length} real reports from backend`);
+
+      // Fix: Backend returns { success: true, data: [...] }
+      if (data.success && Array.isArray(data.data)) {
+        console.log(`✅ Loaded ${data.data.length} real reports from backend`);
+        setReports(data.data);
+      } else if (data.reports) {
+        // Fallback for legacy format if any
         setReports(data.reports);
       } else {
         console.warn('⚠️ No reports data in API response:', data);
@@ -62,8 +67,8 @@ export default function Reports() {
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = (report.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (report.figmaUrl?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (report.webUrl?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      (report.figmaUrl?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (report.webUrl?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'all' || report.status === filter;
     return matchesSearch && matchesFilter;
   });
@@ -120,7 +125,7 @@ export default function Reports() {
       const fullUrl = reportUrl.startsWith('http') ? reportUrl : `${apiBaseUrl}${reportUrl}`;
       const response = await fetch(fullUrl);
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -140,13 +145,13 @@ export default function Reports() {
     if (!confirm(`Are you sure you want to delete "${report.title}"?`)) {
       return;
     }
-    
+
     try {
       const apiBaseUrl = getApiBaseUrl();
       const response = await fetch(`${apiBaseUrl}/api/reports/${report.id}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         // Remove from local state
         setReports(reports.filter(r => r.id !== report.id));
@@ -226,7 +231,7 @@ export default function Reports() {
               <DocumentTextIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No reports found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm || filter !== 'all' 
+                {searchTerm || filter !== 'all'
                   ? 'Try adjusting your search or filter criteria'
                   : 'Create your first comparison to see reports here'
                 }
@@ -259,7 +264,7 @@ export default function Reports() {
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
                         <div className="space-y-1">
                           <p><strong>Figma:</strong> {report.figmaUrl}</p>
@@ -282,10 +287,10 @@ export default function Reports() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 ml-4">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleViewReport(report)}
                         title="View report in new tab"
@@ -293,8 +298,8 @@ export default function Reports() {
                         <EyeIcon className="h-4 w-4 mr-1" />
                         View
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleExportReport(report)}
                         title="Download report file"
@@ -302,9 +307,9 @@ export default function Reports() {
                         <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                         Export
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="text-red-600 hover:text-red-700"
                         onClick={() => handleDeleteReport(report)}
                         title="Delete report"

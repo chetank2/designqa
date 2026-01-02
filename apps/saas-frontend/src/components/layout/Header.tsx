@@ -1,19 +1,11 @@
-import { Bars3Icon, BellIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon } from '@heroicons/react/24/outline'
+import { UserCircle } from 'lucide-react'
 import MCPStatus from '../ui/MCPStatus'
 import { ThemeToggle } from '../ui/theme-toggle'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '../../contexts/AuthContext'
-import { UserCircleIcon } from '@heroicons/react/24/outline'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { useAppMode } from '../../hooks/useAppMode'
+import { ModeBadge } from '../ui/ModeBadge'
 
 interface HeaderProps {
   title: string
@@ -23,23 +15,17 @@ interface HeaderProps {
 
 export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps) {
   const navigationLabel = sidebarOpen ? 'Collapse navigation sidebar' : 'Expand navigation sidebar'
-  const notificationsLabel = 'Notifications'
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
-
-  // Get user initial or first letter of email
-  const getUserInitial = () => {
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase()
-    }
-    return 'U'
-  }
+  const { isElectron } = useAppMode()
 
   return (
     <header className={cn(
       "px-8 py-5 sticky top-0 z-40 transition-all duration-300",
       "bg-background/40 backdrop-blur-md border-b border-border/10",
-      "supports-[backdrop-filter]:bg-background/20"
+      "supports-[backdrop-filter]:bg-background/20",
+      // Add left padding for traffic lights in Electron on Mac
+      // Usually traffic lights are ~70px wide, let's add some buffer
+      // ONLY if sidebar is closed (otherwise sidebar handles it)
+      isElectron && !sidebarOpen && "pl-28"
     )}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
@@ -63,73 +49,19 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-full bg-muted/20 border border-white/5 mx-2">
+            <ModeBadge />
+            <div className="w-px h-4 bg-border/20 mx-1" />
             <MCPStatus />
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative rounded-full hover:bg-muted/20 text-muted-foreground hover:text-foreground"
-              aria-label={notificationsLabel}
-              title={notificationsLabel}
-              disabled
-            >
-              <BellIcon className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background"></span>
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all"
-                >
-                  <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                    {user ? (
-                      <span className="text-sm font-bold text-white">
-                        {getUserInitial()}
-                      </span>
-                    ) : (
-                      <UserCircleIcon className="w-5 h-5 text-white" />
-                    )}
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 mt-2 p-2">
-                {user ? (
-                  <>
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.id.slice(0, 8)}...
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive focus:text-destructive">
-                      Sign Out
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuLabel>Not signed in</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/signin')}>
-                      <UserCircleIcon className="mr-2 h-4 w-4" />
-                      Sign In
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="px-3 py-1 rounded-full border border-muted/40 flex items-center justify-center">
+              <UserCircle className="w-4 h-4 text-muted-foreground" />
+            </div>
           </div>
         </div>
       </div>
     </header>
   )
-} 
+}

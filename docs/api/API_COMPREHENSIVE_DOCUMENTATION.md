@@ -209,6 +209,7 @@ This document provides a complete list of all API endpoints in the Figma-Web Com
     }
   }
   ```
+- **Compatibility**: This endpoint also includes the extracted fields (e.g. `elements`, `typography`, `metadata`) at the top level for older clients; newer clients should prefer `data`.
 - **Output Type**: `WebExtractionResponse`
 - **Call Frequency**: User-triggered (Extract button for Web-only)
 - **Reason**: Extract design tokens and elements from web pages
@@ -616,5 +617,4 @@ All APIs return standardized error responses:
 - **Screenshots**: No authentication (file upload)
 
 This comprehensive documentation covers all 40+ API endpoints in the system with their complete specifications and usage patterns.
-
 

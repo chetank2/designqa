@@ -93,13 +93,17 @@ export function getBrowserArgs(platform = process.platform) {
  * Get browser configuration for current environment
  */
 export function getBrowserConfig(options = {}) {
-  const executablePath = getBrowserExecutablePath();
-  const args = getBrowserArgs();
+  const detectedExecutablePath = getBrowserExecutablePath();
+  const executablePath = options.executablePath ?? detectedExecutablePath;
+  const args = options.args ?? getBrowserArgs();
   
   return {
     headless: options.headless !== false ? 'new' : false,
     executablePath,
     args,
+    // Prefer pipe mode on macOS to avoid intermittent "Timed out ... waiting for the WS endpoint"
+    // when Chrome fails to emit the DevTools websocket URL line promptly.
+    pipe: options.pipe ?? (process.platform === 'darwin'),
     timeout: options.timeout || 90000,
     protocolTimeout: options.protocolTimeout || 300000, // 5 minutes for slow sites like FreightTiger
     ignoreDefaultArgs: ['--disable-extensions'],

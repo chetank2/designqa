@@ -4,9 +4,9 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { generateCSSIncludes } from './utils/cssIncludes.js';
 import { IssueFormatter } from '../services/reports/IssueFormatter.js';
-import { 
-  generateProgressBar, 
-  generateCircularProgress, 
+import {
+  generateProgressBar,
+  generateCircularProgress,
   generateDonutChart,
   generateEnhancedSummaryCard,
   generateCollapsibleSection,
@@ -34,7 +34,7 @@ export class ReportGenerator {
       ...config
     };
   }
-  
+
   /**
    * Generate HTML report from comparison results
    * @param {Object} comparisonResults - Comparison results
@@ -43,20 +43,20 @@ export class ReportGenerator {
    */
   async generateReport(comparisonResults, options = {}) {
     const { outputPath } = options;
-    
+
     logger.info('Generating HTML report');
-    
+
     try {
       // Ensure output directory exists
       const actualOutputPath = outputPath || path.join(this.config.outputDir, `report_${Date.now()}.html`);
       await fs.mkdir(path.dirname(actualOutputPath), { recursive: true });
-      
+
       // Generate HTML content
       const htmlContent = await this.generateHtmlContent(comparisonResults);
-      
+
       // Write HTML to file
       await fs.writeFile(actualOutputPath, htmlContent);
-      
+
       logger.info(`Report generated at ${actualOutputPath}`);
       return actualOutputPath;
     } catch (error) {
@@ -64,7 +64,7 @@ export class ReportGenerator {
       throw error;
     }
   }
-  
+
   /**
    * Generate HTML content from comparison results
    * @param {Object} comparisonResults - Comparison results
@@ -75,7 +75,7 @@ export class ReportGenerator {
       // Determine extraction type and select appropriate template
       const extractionType = comparisonResults.metadata?.extractionType || 'comparison';
       let templatePath;
-      
+
       if (extractionType === 'web-only') {
         templatePath = this.config.webTemplatePath;
       } else if (extractionType === 'figma-only') {
@@ -83,7 +83,7 @@ export class ReportGenerator {
       } else {
         templatePath = this.config.templatePath; // comparison template
       }
-      
+
       // Load template
       let template;
       try {
@@ -92,25 +92,25 @@ export class ReportGenerator {
         logger.warn(`Template not found at ${templatePath}, using default template`);
         template = this.getDefaultTemplate();
       }
-      
+
       // Generate CSS includes
-      const cssIncludes = await generateCSSIncludes({ 
+      const cssIncludes = await generateCSSIncludes({
         inline: true // Use inline CSS for standalone reports
       });
-      
+
       // Replace CSS placeholder
       template = template.replace('{{cssIncludes}}', cssIncludes);
-      
+
       // Replace placeholders with actual data based on extraction type
       const html = this.replacePlaceholders(template, comparisonResults, extractionType);
-      
+
       return html;
     } catch (error) {
       logger.error('Failed to generate HTML content', error);
       throw error;
     }
   }
-  
+
   /**
    * Replace placeholders in template with actual data
    * @param {string} template - HTML template
@@ -121,39 +121,60 @@ export class ReportGenerator {
   replacePlaceholders(template, comparisonResults, extractionType = 'comparison') {
     // Basic info
     let html = template;
-    
+
     if (extractionType === 'web-only') {
       return this.replaceWebOnlyPlaceholders(html, comparisonResults);
     } else if (extractionType === 'figma-only') {
       return this.replaceFigmaOnlyPlaceholders(html, comparisonResults);
     }
-    
-    // Minimal placeholders for DevRev-only report
-    html = html.replaceAll('{{title}}', `DevRev Issues Report`);
-    html = html.replaceAll('{{timestamp}}', new Date().toLocaleString());
-    
-    // Count Figma and Web data
+
+    // Basic info for standard comparison or DevRev report
+    const title = extractionType === 'devrev-issues' ? 'DevRev Issues Report' : (comparisonResults.title || 'Figma vs Web Comparison Report');
+    html = html.replaceAll('{{title}}', title);
+    html = html.replaceAll('{{figmaFileName}}', comparisonResults.figmaData?.fileName || 'Figma Design');
+    html = html.replaceAll('{{webUrl}}', comparisonResults.webData?.url || 'URL');
+    html = html.replaceAll('{{timestamp}}', new Date(comparisonResults.timestamp || Date.now()).toLocaleString());
+
+    // Stats and Counts
+    const summary = comparisonResults.summary || {};
     const figmaCount = comparisonResults.figmaData?.components?.length || comparisonResults.figmaData?.metadata?.componentCount || 0;
     const webCount = comparisonResults.webData?.elements?.length || 0;
-    
+
+    html = html.replaceAll('{{componentsAnalyzed}}', summary.componentsAnalyzed || figmaCount);
     html = html.replaceAll('{{figmaComponentsCount}}', figmaCount);
     html = html.replaceAll('{{webElementsCount}}', webCount);
-    
-    // Count total issues (will be calculated from DevRev table)
-    const summary = comparisonResults.summary || {};
+    html = html.replaceAll('{{matchPercentage}}', summary.overallMatchPercentage || 0);
+    html = html.replaceAll('{{overallSeverity}}', summary.overallSeverity || 'info');
+
+    // Severity counts
+    const counts = summary.severityCounts || { high: 0, medium: 0, low: 0 };
+    html = html.replaceAll('{{highSeverityCount}}', counts.high);
+    html = html.replaceAll('{{mediumSeverityCount}}', counts.medium);
+    html = html.replaceAll('{{lowSeverityCount}}', counts.low);
+
+    // Total issues count for DevRev reports
     const issueCount = summary.componentsAnalyzed || comparisonResults.comparisons?.length || 0;
     html = html.replaceAll('{{totalIssues}}', issueCount);
-    
-    // Generate DevRev issues table (the main content)
+
+    // Generate Sections
+    html = html.replaceAll('{{designSystemValidation}}', this.generateDesignSystemValidationHtml(comparisonResults));
+    html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
     html = html.replaceAll('{{devrevIssuesTable}}', this.generateDevRevIssuesTable(comparisonResults));
-    
+
     // Add DevRev table styles and scripts
     html = html.replaceAll('{{devrevTableStyles}}', this.getDevRevTableStyles());
     html = html.replaceAll('{{devrevTableScripts}}', this.getDevRevTableScripts());
-    
+
+    // JSON Data for interactivity
+    const jsonData = JSON.stringify({
+      comparisons: comparisonResults.comparisons || [],
+      summary: summary
+    }).replace(/</g, '\\u003c');
+    html = html.replaceAll('{{jsonData}}', jsonData);
+
     return html;
   }
-  
+
   /**
    * Add enhanced interactive components to the HTML
    * @param {string} html - HTML template
@@ -163,17 +184,17 @@ export class ReportGenerator {
   addEnhancedComponents(html, comparisonResults) {
     const summary = comparisonResults.summary || {};
     const matchStats = summary.matchStats || {};
-    
+
     // Generate progress bars
     const colorPercentage = matchStats.colors?.percentage || 0;
     const typographyPercentage = matchStats.typography?.percentage || 0;
     const overallPercentage = summary.overallMatchPercentage || 0;
-    
+
     html = html.replaceAll('{{colorProgress}}', generateProgressBar(colorPercentage, colorPercentage > 80 ? 'success' : colorPercentage > 60 ? 'warning' : 'danger'));
     html = html.replaceAll('{{typographyProgress}}', generateProgressBar(typographyPercentage, typographyPercentage > 80 ? 'success' : typographyPercentage > 60 ? 'warning' : 'danger'));
     html = html.replaceAll('{{overallProgress}}', generateProgressBar(overallPercentage, overallPercentage > 80 ? 'success' : overallPercentage > 60 ? 'warning' : 'danger'));
     html = html.replaceAll('{{componentsProgress}}', generateProgressBar(Math.min(100, (summary.componentsAnalyzed || 0) * 10), 'primary'));
-    
+
     // Generate severity donut chart
     const severityCounts = summary.severityCounts || { high: 0, medium: 0, low: 0 };
     const total = severityCounts.high + severityCounts.medium + severityCounts.low;
@@ -183,7 +204,7 @@ export class ReportGenerator {
       danger: total > 0 ? Math.round((severityCounts.high / total) * 100) : 0
     };
     html = html.replaceAll('{{severityChart}}', generateDonutChart(severityData, 'Issues'));
-    
+
     // Generate sticky navigation
     const sections = [
       { id: 'summary', title: 'Summary' },
@@ -191,18 +212,18 @@ export class ReportGenerator {
       { id: 'details', title: 'Details' }
     ];
     html = html.replaceAll('{{stickyNav}}', generateStickyNav(sections));
-    
+
     // Add theme toggle and interactive JavaScript
     html = html.replaceAll('{{themeToggle}}', generateThemeToggle());
     html = html.replaceAll('{{interactiveJS}}', generateInteractiveJS());
-    
+
     // Add DevRev table styles and scripts
     html = html.replaceAll('{{devrevTableStyles}}', this.getDevRevTableStyles());
     html = html.replaceAll('{{devrevTableScripts}}', this.getDevRevTableScripts());
-    
+
     return html;
   }
-  
+
   /**
    * Generate comparison tables HTML
    * @param {Array<Object>} comparisons - Comparison results
@@ -212,25 +233,25 @@ export class ReportGenerator {
     if (!comparisons || comparisons.length === 0) {
       return '<div class="no-data">No comparison data available</div>';
     }
-    
+
     let tablesHtml = '';
-    
+
     // Group comparisons by severity
     const severityGroups = {
       high: [],
       medium: [],
       low: []
     };
-    
+
     comparisons.forEach(comp => {
       const severity = comp.overallDeviation?.severity || 'low';
       severityGroups[severity].push(comp);
     });
-    
+
     // Generate tables for each severity group
     Object.entries(severityGroups).forEach(([severity, comps]) => {
       if (comps.length === 0) return;
-      
+
       tablesHtml += `
         <div class="severity-group severity-${severity}">
           <h3>${this.capitalizeFirst(severity)} Severity Issues (${comps.length})</h3>
@@ -238,10 +259,10 @@ export class ReportGenerator {
         </div>
       `;
     });
-    
+
     return tablesHtml;
   }
-  
+
   /**
    * Generate a single comparison table
    * @param {Object} comparison - Comparison result
@@ -252,7 +273,7 @@ export class ReportGenerator {
     const element = comparison.element || {};
     const matchScore = comparison.matchScore?.toFixed(2) || '0.00';
     const matchPercentage = comparison.overallDeviation?.matchPercentage?.toFixed(2) || '0.00';
-    
+
     return `
       <div class="comparison-item severity-${comparison.overallDeviation?.severity || 'low'}">
         <div class="comparison-header">
@@ -297,7 +318,7 @@ export class ReportGenerator {
       </div>
     `;
   }
-  
+
   /**
    * Generate property comparison rows
    * @param {Array<Object>} propertyComparisons - Property comparisons
@@ -307,13 +328,13 @@ export class ReportGenerator {
     if (!propertyComparisons || propertyComparisons.length === 0) {
       return '<tr><td colspan="5">No property comparisons available</td></tr>';
     }
-    
+
     return propertyComparisons.map(prop => {
       const statusClass = prop.matches ? 'match' : 'mismatch';
-      const deviation = typeof prop.deviation === 'number' 
-        ? prop.deviation.toFixed(2) 
+      const deviation = typeof prop.deviation === 'number'
+        ? prop.deviation.toFixed(2)
         : prop.deviation || 'N/A';
-      
+
       return `
         <tr class="${statusClass}">
           <td>${this.formatPropertyName(prop.property)}</td>
@@ -325,7 +346,7 @@ export class ReportGenerator {
       `;
     }).join('');
   }
-  
+
   /**
    * Generate DevRev-ready issues table
    * @param {Object} comparisonResults - Comparison results
@@ -336,7 +357,7 @@ export class ReportGenerator {
       // Transform comparison results into DevRev issues
       const formatter = new IssueFormatter();
       const issues = formatter.transform(comparisonResults);
-      
+
       if (!issues || issues.length === 0) {
         return `
           <div class="no-data">
@@ -344,7 +365,7 @@ export class ReportGenerator {
           </div>
         `;
       }
-      
+
       // Generate table HTML
       return `
         <section class="devrev-issues-section" id="devrev-issues">
@@ -431,7 +452,101 @@ export class ReportGenerator {
       return '<div class="error">Failed to generate DevRev issues table</div>';
     }
   }
-  
+
+  /**
+   * Generate Design System Validation HTML
+   * @param {Object} comparisonResults - Comparison results
+   * @returns {string} HTML content
+   */
+  generateDesignSystemValidationHtml(comparisonResults) {
+    const comparisons = comparisonResults.comparisons || [];
+    if (comparisons.length === 0) return '';
+
+    // Find the first result with design system data
+    const firstWithDS = comparisons.find(c => c.designSystemResults);
+    if (!firstWithDS || !firstWithDS.designSystemResults) {
+      return '';
+    }
+
+    const results = firstWithDS.designSystemResults;
+    const figmaMatches = results.figma?.matches || [];
+    const figmaDeviations = results.figma?.deviations || [];
+    const webMatches = results.web?.matches || [];
+    const webDeviations = results.web?.deviations || [];
+
+    if (figmaMatches.length === 0 && figmaDeviations.length === 0 &&
+      webMatches.length === 0 && webDeviations.length === 0) {
+      return '';
+    }
+
+    return `
+      <section class="ds-validation-section" id="ds-validation">
+        <div class="ds-validation-header">
+          <h2>🛡️ Design System Alignment</h2>
+          <span class="badge ${results.summary === 'consistent' ? 'badge-success' : 'badge-warning'}">
+            ${results.summary === 'consistent' ? 'Consistent' : 'Deviations Found'}
+          </span>
+        </div>
+        
+        <div class="ds-grid">
+          <div class="ds-column">
+            <h3>🎨 Figma vs Design System</h3>
+            ${this.generateDSItemsHtml(figmaMatches, figmaDeviations)}
+          </div>
+          
+          <div class="ds-column">
+            <h3>🌐 Web vs Design System</h3>
+            ${this.generateDSItemsHtml(webMatches, webDeviations)}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Generate HTML for Design System items (matches and deviations)
+   */
+  generateDSItemsHtml(matches, deviations) {
+    let html = '';
+
+    // Deviations first
+    deviations.forEach(dev => {
+      html += `
+        <div class="ds-item ds-item-deviation">
+          <div class="ds-item-header">
+            <span>${this.formatPropertyName(dev.property)}</span>
+            <span class="badge badge-danger">Mismatch</span>
+          </div>
+          <div class="ds-item-message">Value: <strong>${dev.value}</strong></div>
+          <div class="ds-suggestion">
+            💡 Suggestion: Use <span class="ds-token-badge">${dev.suggestedToken}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    // Matches
+    matches.forEach(match => {
+      html += `
+        <div class="ds-item ds-item-match">
+          <div class="ds-item-header">
+            <span>${this.formatPropertyName(match.property)}</span>
+            <span class="badge badge-success">Match</span>
+          </div>
+          <div class="ds-item-message">
+            Value <strong>${match.value}</strong> matched token <span class="ds-token-badge">${match.token}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    if (html === '') {
+      return '<div class="no-data">No design system properties found</div>';
+    }
+
+    return html;
+  }
+
   /**
    * Generate a single DevRev issue row
    * @param {Object} issue - Issue object
@@ -459,7 +574,7 @@ export class ReportGenerator {
       </tr>
     `;
   }
-  
+
   /**
    * Escape HTML to prevent XSS
    * @param {string} text - Text to escape
@@ -476,7 +591,7 @@ export class ReportGenerator {
     };
     return String(text).replace(/[&<>"']/g, m => map[m]);
   }
-  
+
   /**
    * Format property name for display
    * @param {string} property - Property name
@@ -484,13 +599,13 @@ export class ReportGenerator {
    */
   formatPropertyName(property) {
     if (!property) return 'Unknown';
-    
+
     // Convert camelCase to Title Case with spaces
     return property
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase());
   }
-  
+
   /**
    * Format property value for display
    * @param {*} value - Property value
@@ -500,14 +615,14 @@ export class ReportGenerator {
     if (value === undefined || value === null) {
       return 'N/A';
     }
-    
+
     if (typeof value === 'object') {
       return JSON.stringify(value);
     }
-    
+
     return value.toString();
   }
-  
+
   /**
    * Capitalize first letter of a string
    * @param {string} str - Input string
@@ -517,7 +632,7 @@ export class ReportGenerator {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
-  
+
   /**
    * Get default HTML template
    * @returns {string} HTML template
@@ -812,6 +927,101 @@ export class ReportGenerator {
       color: var(--color-gray-500);
       font-size: 0.875rem;
     }
+    
+    /* Design System Validation Styles */
+    .ds-validation-section {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      overflow: hidden;
+      border-left: 4px solid var(--color-primary);
+    }
+    
+    .ds-validation-header {
+      padding: 1rem 1.5rem;
+      background-color: var(--color-gray-50);
+      border-bottom: 1px solid var(--color-gray-200);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .ds-validation-header h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: var(--color-gray-900);
+    }
+    
+    .ds-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background-color: var(--color-gray-200);
+    }
+    
+    .ds-column {
+      background-color: white;
+      padding: 1.5rem;
+    }
+    
+    .ds-column h3 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      color: var(--color-gray-700);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .ds-item {
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.875rem;
+    }
+    
+    .ds-item-match {
+      background-color: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    
+    .ds-item-deviation {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    
+    .ds-item-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+    }
+    
+    .ds-token-badge {
+      font-family: monospace;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      background-color: var(--color-gray-100);
+      color: var(--color-gray-700);
+      font-size: 0.75rem;
+    }
+    
+    .ds-item-message {
+      font-size: 0.75rem;
+      color: var(--color-gray-600);
+      margin-top: 0.25rem;
+      font-style: italic;
+    }
+    
+    .ds-suggestion {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed rgba(239, 68, 68, 0.2);
+      font-weight: 600;
+      color: var(--color-danger);
+    }
   </style>
 </head>
 <body>
@@ -861,6 +1071,9 @@ export class ReportGenerator {
         </div>
       </div>
     </div>
+
+    <!-- Design System Validation Section -->
+    {{designSystemValidation}}
     
     <div class="comparison-results">
       {{comparisonTables}}
@@ -901,29 +1114,29 @@ export class ReportGenerator {
     const elements = webData.elements || [];
     const colorPalette = webData.colorPalette || [];
     const typography = webData.typography || { fontFamilies: [], fontSizes: [], fontWeights: [] };
-    
+
     // Basic info
     html = html.replaceAll('{{title}}', `Web Extraction Report - ${new Date().toLocaleString()}`);
     html = html.replaceAll('{{webUrl}}', webData.url || 'Unknown Web URL');
     html = html.replaceAll('{{timestamp}}', comparisonResults.timestamp || new Date().toISOString());
-    
+
     // Summary data
     html = html.replaceAll('{{totalElements}}', elements.length);
     html = html.replaceAll('{{colorCount}}', colorPalette.length);
     html = html.replaceAll('{{fontFamilyCount}}', typography.fontFamilies?.length || 0);
-    
+
     // Generate element breakdown
     const elementBreakdown = this.generateElementBreakdown(elements);
     html = html.replaceAll('{{elementBreakdown}}', elementBreakdown);
-    
+
     // Generate color palette
     const colorPaletteHtml = this.generateColorPalette(colorPalette);
     html = html.replaceAll('{{colorPalette}}', colorPaletteHtml);
-    
+
     // Generate typography styles
     const typographyStylesHtml = this.generateTypographyStyles(typography);
     html = html.replaceAll('{{typographyStyles}}', typographyStylesHtml);
-    
+
     return html;
   }
 
@@ -936,24 +1149,24 @@ export class ReportGenerator {
   replaceFigmaOnlyPlaceholders(html, comparisonResults) {
     const figmaData = comparisonResults.figmaData || {};
     const components = figmaData.components || [];
-    
+
     // Basic info
     html = html.replaceAll('{{title}}', `Figma Extraction Report - ${new Date().toLocaleString()}`);
     html = html.replaceAll('{{figmaFileName}}', figmaData.fileName || 'Unknown Figma File');
     html = html.replaceAll('{{timestamp}}', comparisonResults.timestamp || new Date().toISOString());
-    
+
     // Summary data
     html = html.replaceAll('{{totalComponents}}', components.length);
     html = html.replaceAll('{{designTokenCount}}', components.length); // Simplified for now
-    
+
     // Generate component list
     const componentListHtml = this.generateComponentList(components);
     html = html.replaceAll('{{componentList}}', componentListHtml);
-    
+
     // Generate design tokens
     const designTokensHtml = this.generateDesignTokens(figmaData);
     html = html.replaceAll('{{designTokens}}', designTokensHtml);
-    
+
     return html;
   }
 
@@ -970,7 +1183,7 @@ export class ReportGenerator {
     });
 
     return Object.entries(breakdown)
-      .sort(([,a], [,b]) => b - a) // Sort by count descending
+      .sort(([, a], [, b]) => b - a) // Sort by count descending
       .map(([tag, count]) => `
         <div class="element-type">
           <div class="element-count">${count}</div>
@@ -1004,7 +1217,7 @@ export class ReportGenerator {
    */
   generateTypographyStyles(typography) {
     const sections = [];
-    
+
     if (typography.fontFamilies && typography.fontFamilies.length > 0) {
       sections.push(`
         <div class="typography-item">
@@ -1015,7 +1228,7 @@ export class ReportGenerator {
         </div>
       `);
     }
-    
+
     if (typography.fontSizes && typography.fontSizes.length > 0) {
       sections.push(`
         <div class="typography-item">
@@ -1026,7 +1239,7 @@ export class ReportGenerator {
         </div>
       `);
     }
-    
+
     if (typography.fontWeights && typography.fontWeights.length > 0) {
       sections.push(`
         <div class="typography-item">
@@ -1087,7 +1300,7 @@ export class ReportGenerator {
       </div>
     `;
   }
-  
+
   /**
    * Get DevRev table styles
    * @returns {string} CSS styles for DevRev table
@@ -1104,7 +1317,7 @@ export class ReportGenerator {
       return '<style>/* DevRev table styles not found */</style>';
     }
   }
-  
+
   /**
    * Get DevRev table scripts
    * @returns {string} JavaScript for DevRev table functionality

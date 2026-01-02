@@ -1,7 +1,8 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import axios from 'axios';
 import { getApiBaseUrl } from '../../config/ports';
+import { useBackendReachability } from '../../hooks/useBackendReachability';
 
 interface MCPStatusProps {
   showDetails?: boolean;
@@ -12,13 +13,17 @@ interface MCPStatusResponse {
   status: string;
   message: string;
   available: boolean;
+  connected: boolean;
+  port?: number;
+  figmaRunning?: boolean;
   error?: string;
 }
 
-const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = '' }) => {
+export function useMCPStatus(
+  queryOptions?: UseQueryOptions<MCPStatusResponse, Error, MCPStatusResponse>
+) {
   const apiBaseUrl = getApiBaseUrl();
-  
-  const { data, isLoading, error, refetch } = useQuery({
+  const defaultOptions: UseQueryOptions<MCPStatusResponse, Error, MCPStatusResponse> = {
     queryKey: ['mcpStatus'],
     queryFn: async () => {
       try {
@@ -31,12 +36,27 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
     },
     retry: 2,
     retryDelay: 1000,
-    refetchInterval: false, // Disable automatic polling - only refetch on mount and manual refresh
+    refetchInterval: false,
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000 // Consider data fresh for 5 minutes
+    staleTime: 5 * 60 * 1000
+  };
+
+  const mergedOptions = {
+    ...defaultOptions,
+    ...queryOptions,
+    queryFn: queryOptions?.queryFn ?? defaultOptions.queryFn,
+    queryKey: queryOptions?.queryKey ?? defaultOptions.queryKey
+  };
+
+  return useQuery<MCPStatusResponse>(mergedOptions);
+}
+
+const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = '' }) => {
+  const { reachable: backendReachable } = useBackendReachability();
+  const { data, isLoading, error, refetch } = useMCPStatus({
+    enabled: backendReachable === true
   });
-  
-  // keep in sync with server status events without violating hook order
+
   React.useEffect(() => {
     if (isLoading || error) {
       return;
@@ -55,7 +75,7 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
       </div>
     );
   }
-  
+
   if (error || !data) {
     return (
       <div className={`flex items-center ${className}`}>
@@ -64,20 +84,18 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
       </div>
     );
   }
-  
+
   const isAvailable = data.available;
 
   return (
     <div className={`flex items-center ${className}`}>
-      <div 
+      <div
         className={`w-2 h-2 rounded-full mr-2 ${
           isAvailable ? 'bg-green-500' : 'bg-red-500'
         }`}
       ></div>
       <span className="text-xs text-muted-foreground">
-        {isAvailable 
-          ? 'MCP connected' 
-          : 'MCP unavailable'}
+        {isAvailable ? 'MCP connected' : 'MCP unavailable'}
       </span>
       {showDetails && (
         <div className="ml-2 text-xs text-gray-400">
@@ -88,4 +106,4 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
   );
 };
 
-export default MCPStatus; 
+export default MCPStatus;

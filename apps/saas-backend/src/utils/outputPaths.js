@@ -2,30 +2,23 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const APP_NAME = 'Figma Comparison Tool';
-const DEFAULT_BASE_DIR = path.join(process.cwd(), 'output');
+const DEFAULT_DATA_DIR = path.join(os.homedir(), 'DesignQA', 'data');
 
 function resolveCustomDir() {
-  const customDir = process.env.APP_OUTPUT_DIR || process.env.OUTPUT_DIR;
-  if (!customDir) {
-    return null;
-  }
-  return path.isAbsolute(customDir) ? customDir : path.resolve(customDir);
-}
-
-function resolvePlatformDir() {
-  if (process.env.NODE_ENV === 'development') {
-    return DEFAULT_BASE_DIR;
+  if (process.env.DESIGNQA_DATA_DIR) {
+    return path.isAbsolute(process.env.DESIGNQA_DATA_DIR)
+      ? process.env.DESIGNQA_DATA_DIR
+      : path.resolve(process.env.DESIGNQA_DATA_DIR);
   }
 
-  switch (process.platform) {
-    case 'darwin':
-      return path.join(os.homedir(), 'Library', 'Application Support', APP_NAME, 'output');
-    case 'win32':
-      return path.join(os.homedir(), 'AppData', 'Roaming', APP_NAME, 'output');
-    default:
-      return path.join(os.homedir(), '.config', APP_NAME, 'output');
+  if (process.env.DESIGNQA_USER_DATA_DIR) {
+    const resolved = path.isAbsolute(process.env.DESIGNQA_USER_DATA_DIR)
+      ? process.env.DESIGNQA_USER_DATA_DIR
+      : path.resolve(process.env.DESIGNQA_USER_DATA_DIR);
+    return path.join(resolved, 'data');
   }
+
+  return null;
 }
 
 function ensureDir(dirPath) {
@@ -34,11 +27,50 @@ function ensureDir(dirPath) {
   }
 }
 
-export function getOutputBaseDir() {
+function resolveBaseDir() {
   const custom = resolveCustomDir();
-  const baseDir = custom || resolvePlatformDir();
-  ensureDir(baseDir);
-  return baseDir;
+  const target = custom || DEFAULT_DATA_DIR;
+  ensureDir(target);
+  return target;
+}
+
+function resolveSubDir(...segments) {
+  const baseDir = resolveBaseDir();
+  const dir = path.join(baseDir, ...segments);
+  ensureDir(dir);
+  return dir;
+}
+
+export function getOutputBaseDir() {
+  return resolveBaseDir();
+}
+
+export function getSubDir(...segments) {
+  return resolveSubDir(...segments);
+}
+
+export function getCredentialsDir() {
+  return resolveSubDir('credentials');
+}
+
+export function getDesignSystemsDir() {
+  return resolveSubDir('design-systems');
+}
+
+export function getReportsDir() {
+  return resolveSubDir('reports');
+}
+
+export function getSessionsDir() {
+  return resolveSubDir('sessions');
+}
+
+export function getScreenshotsDir() {
+  return resolveSubDir('screenshots');
+}
+
+export function getImagesDir() {
+  return resolveSubDir('images');
 }
 
 export function resolveOutputPath(...segments) {
@@ -48,29 +80,14 @@ export function resolveOutputPath(...segments) {
   return target;
 }
 
-export function getReportsDir() {
-  const dir = path.join(getOutputBaseDir(), 'reports');
-  ensureDir(dir);
-  return dir;
-}
-
-export function getImagesDir() {
-  const dir = path.join(getOutputBaseDir(), 'images');
-  ensureDir(dir);
-  return dir;
-}
-
-export function getScreenshotsDir() {
-  const dir = path.join(getOutputBaseDir(), 'screenshots');
-  ensureDir(dir);
-  return dir;
-}
-
 export default {
   getOutputBaseDir,
+  getSubDir,
+  getCredentialsDir,
+  getDesignSystemsDir,
   getReportsDir,
-  getImagesDir,
+  getSessionsDir,
   getScreenshotsDir,
+  getImagesDir,
   resolveOutputPath
 };
-

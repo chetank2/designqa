@@ -6,7 +6,7 @@ export const PAGE_CONTENT = {
   // Page titles and descriptions
   NEW_COMPARISON: {
     title: 'Design & Web Extraction',
-    description: 'Extract and compare design elements from Figma and web implementations',
+    description: 'Extract and compare design elements from Figma and web sources',
     notice: 'Comparison feature is disabled in this version. Only extraction data will be shown.'
   },
   
@@ -18,7 +18,7 @@ export const PAGE_CONTENT = {
       description: 'Extract from Figma file or frame'
     },
     web: {
-      title: 'Web Implementation', 
+      title: 'Web Extraction', 
       description: 'Extract from live website'
     }
   },

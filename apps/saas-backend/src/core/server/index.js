@@ -8,6 +8,7 @@ import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import os from 'os';
 import multer from 'multer';
 import fetch from 'node-fetch';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,15 +34,17 @@ import rateLimit from 'express-rate-limit';
 import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.js';
 import { getResourceManager, shutdownResourceManager } from '../../utils/ResourceManager.js';
 import { getOutputBaseDir } from '../../utils/outputPaths.js';
-import { getSupabaseClient } from '../../config/supabase.js';
 import { initDatabase } from '../../database/init.js';
-import { encrypt, decrypt } from '../../services/CredentialEncryption.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Config file path
-const configPath = path.join(__dirname, '../../../config.json');
+const legacyConfigPath = path.join(__dirname, '../../../config.json');
+const userConfigDir = process.env.DESIGNQA_DATA_DIR ||
+  path.join(process.env.HOME || os.homedir() || process.cwd(), '.designqa');
+const configPath = process.env.DESKTOP_CONFIG_PATH ||
+  path.join(userConfigDir, 'config.json');
 
 // Load Figma API key from config
 function loadFigmaApiKey() {
@@ -50,49 +53,30 @@ function loadFigmaApiKey() {
       const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       return configData.figmaApiKey || process.env.FIGMA_API_KEY || '';
     }
+    if (fs.existsSync(legacyConfigPath)) {
+      const legacyData = JSON.parse(fs.readFileSync(legacyConfigPath, 'utf8'));
+      return legacyData.figmaApiKey || process.env.FIGMA_API_KEY || '';
+    }
   } catch (error) {
   }
   return process.env.FIGMA_API_KEY || '';
 }
 
 // Get Figma API Key for user
-async function getUserFigmaApiKey(userId) {
-  if (!userId) {
-    return loadFigmaApiKey();
-  }
-
-  try {
-    const supabase = getSupabaseClient(true); // service role
-    if (!supabase) return loadFigmaApiKey();
-
-    const { data } = await supabase
-      .from('figma_api_keys')
-      .select('api_key')
-      .eq('user_id', userId)
-      .single();
-
-    if (data && data.api_key) {
-      const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY ||
-        process.env.LOCAL_CREDENTIAL_KEY ||
-        (process.env.NODE_ENV === 'production' 
-          ? (() => { 
-              console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
-              throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
-            })()
-          : 'local-credential-encryption-key-change-in-production');
-      return decrypt(data.api_key, encryptionKey);
-    }
-  } catch (error) {
-    console.warn('Failed to retrieve user Figma API key:', error.message);
-  }
-
-  // Fallback to env var if generic access allowed, or return null
+async function getUserFigmaApiKey(_userId) {
+  // Local-first mode always uses the locally stored key.
   return loadFigmaApiKey();
 }
 
 // Save Figma API key to config
 function saveFigmaApiKey(apiKey) {
   try {
+    // Ensure config directory exists
+    const dir = path.dirname(configPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
     let configData = {};
     if (fs.existsSync(configPath)) {
       configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -122,7 +106,7 @@ export async function startServer(portArg) {
     const legacyConfig = await import('../../config.js');
     config = legacyConfig.config;
   }
-  
+
   // Ensure config has required structure
   if (!config) {
     config = {};
@@ -159,6 +143,16 @@ export async function startServer(portArg) {
   const figmaConnectionMode = getMCPProvider();
   const isApiOnlyFigma = figmaConnectionMode === 'api';
 
+  // Determine if we're running in local mode (Electron) vs cloud mode (Render/Vercel)
+  const isLocalMode = process.env.RUNNING_IN_ELECTRON === 'true' ||
+    (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONMENT);
+
+  if (isLocalMode) {
+    console.log('[MCP] Backend running in LOCAL mode - Desktop MCP available');
+  } else {
+    console.log('[MCP] Backend running in CLOUD mode - Desktop MCP not available');
+  }
+
   // Create Express app and HTTP server
   const app = express();
   const httpServer = createServer(app);
@@ -189,8 +183,16 @@ export async function startServer(portArg) {
       // Get services from enhanced service manager
       if (!isApiOnlyFigma) {
         try {
-          figmaClient = await getMCPClient();
+          // Only try Desktop MCP in local mode
+          if (isLocalMode) {
+            console.log('[MCP] Attempting Desktop MCP connection (local mode)...');
+            figmaClient = await getMCPClient({ mode: figmaConnectionMode, autoDetectDesktop: true });
+          } else {
+            console.log('[MCP] Using Remote MCP (cloud mode)...');
+            figmaClient = await getMCPClient({ mode: 'figma', autoDetectDesktop: false });
+          }
         } catch (mcpError) {
+          console.warn('[MCP] Failed to get MCP client:', mcpError.message);
           figmaClient = serviceManager.getService('mcpClient');
         }
       }
@@ -214,10 +216,18 @@ export async function startServer(portArg) {
     // Fallback to legacy initialization (preserve existing functionality)
     try {
       if (!isApiOnlyFigma) {
-        figmaClient = await getMCPClient();
+        // Only try Desktop MCP in local mode
+        if (isLocalMode) {
+          console.log('[MCP] Attempting Desktop MCP connection (legacy fallback, local mode)...');
+          figmaClient = await getMCPClient({ mode: figmaConnectionMode, autoDetectDesktop: true });
+        } else {
+          console.log('[MCP] Using Remote MCP (legacy fallback, cloud mode)...');
+          figmaClient = await getMCPClient({ mode: 'figma', autoDetectDesktop: false });
+        }
       }
     } catch (mcpError) {
       if (!isApiOnlyFigma) {
+        console.warn('[MCP] Legacy fallback failed:', mcpError.message);
         throw mcpError;
       }
     }
@@ -260,20 +270,6 @@ export async function startServer(portArg) {
     console.warn('⚠️ Screenshot comparison service initialization failed:', error.message);
   }
 
-  // Initialize Supabase client (optional - graceful degradation if not configured)
-  let supabaseClient = null;
-  try {
-    supabaseClient = getSupabaseClient(false); // Use public client for server operations
-    if (supabaseClient) {
-      console.log('✅ Supabase client initialized');
-    } else {
-      console.log('ℹ️ Supabase not configured - features requiring database will use local storage');
-    }
-  } catch (error) {
-    console.warn('⚠️ Supabase initialization failed:', error.message);
-    console.warn('   Continuing without Supabase - features will use local storage');
-  }
-
   // Initialize database and services with timeout
   let dbServices = null;
   try {
@@ -294,15 +290,15 @@ export async function startServer(portArg) {
   if (process.env.NODE_ENV === 'production') {
     app.use((req, res, next) => {
       // Check if request is already secure (via proxy headers)
-      const isSecure = req.secure || 
-                       req.headers['x-forwarded-proto'] === 'https' ||
-                       req.headers['x-forwarded-ssl'] === 'on';
-      
+      const isSecure = req.secure ||
+        req.headers['x-forwarded-proto'] === 'https' ||
+        req.headers['x-forwarded-ssl'] === 'on';
+
       if (!isSecure && req.method !== 'GET') {
         // Redirect POST/PUT/DELETE to HTTPS
         return res.redirect(301, `https://${req.get('host')}${req.url}`);
       }
-      
+
       next();
     });
   }
@@ -387,6 +383,8 @@ export async function startServer(portArg) {
     const desktopRoutes = await import('../../routes/desktop.js');
     app.post('/api/desktop/register', healthLimiter, desktopRoutes.default.registerDesktop);
     app.get('/api/desktop/capabilities/:userId', healthLimiter, desktopRoutes.default.getDesktopCapabilities);
+    app.get('/api/user/preferences', healthLimiter, desktopRoutes.default.getUserPreferences);
+    app.put('/api/user/preferences', healthLimiter, desktopRoutes.default.saveUserPreferences);
     console.log('✅ Desktop routes registered');
   } catch (error) {
     console.warn('⚠️ Failed to load desktop routes:', error.message);
@@ -404,6 +402,33 @@ export async function startServer(portArg) {
     console.log('✅ MCP test routes registered');
   } catch (error) {
     console.warn('⚠️ Failed to load MCP routes:', error.message);
+  }
+
+  // Credentials Routes
+  try {
+    const credentialsRoutes = await import('../../routes/credentials.js');
+    app.use('/api/credentials', healthLimiter, credentialsRoutes.default);
+    console.log('✅ Credentials routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load credentials routes:', error.message);
+  }
+
+  // Design Systems Routes
+  try {
+    const designSystemRoutes = await import('../../routes/design-systems.js');
+    app.use('/api/design-systems', healthLimiter, designSystemRoutes.default);
+    console.log('✅ Design System routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load design system routes:', error.message);
+  }
+
+  // Reports Routes
+  try {
+    const reportsRoutes = await import('../../routes/reports.js');
+    app.use('/api/reports', healthLimiter, reportsRoutes.default);
+    console.log('✅ Reports routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load reports routes:', error.message);
   }
 
   /**
@@ -488,8 +513,52 @@ export async function startServer(portArg) {
   }
 
   // Serve frontend static files (exclude report files)
-  // Use process.cwd() for Docker compatibility - __dirname might not resolve correctly
-  const frontendPath = path.join(process.cwd(), 'frontend/dist');
+  // Use process.cwd() for Docker compatibility, but in Electron builds the frontend may live elsewhere.
+  // Prefer an explicit env var, then the legacy docker path, then desktop renderer output.
+  const resolveFrontendPath = () => {
+    const candidates = [];
+
+    // Explicit override (desktop or custom deployments)
+    const envPath =
+      process.env.DESIGNQA_FRONTEND_DIST ||
+      process.env.FRONTEND_DIST_PATH ||
+      process.env.VITE_FRONTEND_DIST;
+    if (envPath) candidates.push(envPath);
+
+    // Legacy docker path used by the unified server
+    candidates.push(path.join(process.cwd(), 'frontend/dist'));
+
+    // Electron desktop packaging locations
+    if (process.env.RUNNING_IN_ELECTRON === 'true') {
+      const resourcesPath = process.resourcesPath || process.cwd();
+      candidates.push(path.join(resourcesPath, 'app.asar.unpacked', 'dist', 'renderer'));
+      candidates.push(path.join(resourcesPath, 'dist', 'renderer'));
+    }
+
+    // Pick the first candidate that contains an index.html
+    for (const candidate of candidates) {
+      try {
+        const index = path.join(candidate, 'index.html');
+        if (fs.existsSync(index)) return candidate;
+      } catch {
+        // ignore
+      }
+    }
+
+    // Otherwise, pick the first existing directory
+    for (const candidate of candidates) {
+      try {
+        if (fs.existsSync(candidate)) return candidate;
+      } catch {
+        // ignore
+      }
+    }
+
+    // Fall back to the legacy value for logging/error messages
+    return candidates[0];
+  };
+
+  const frontendPath = resolveFrontendPath();
 
   // Log frontend path for debugging
   console.log(`📁 Frontend static path: ${frontendPath}`);
@@ -564,32 +633,50 @@ export async function startServer(portArg) {
   }
 
   // API Routes - Enhanced health endpoint with comprehensive monitoring
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', async (req, res) => {
     try {
-      const realTimeMetrics = performanceMonitor.getRealTimeMetrics();
-      const browserStats = browserPool.getStats();
+      const realTimeMetrics = performanceMonitor?.getRealTimeMetrics?.() || {};
+      const browserStats = browserPool?.getStats?.() || {};
 
       // Enhanced health data with service manager integration
       let enhancedHealth = {};
       if (serviceManager) {
-        enhancedHealth = serviceManager.getServicesStatus();
+        try {
+          enhancedHealth = serviceManager.getServicesStatus();
+        } catch (e) {
+          // Ignore service manager errors
+        }
+      }
+
+      // Check MCP connection status - prefer bridge client in Electron
+      let mcpStatusConnected = !!mcpConnected;
+      if (isLocalMode && process.__designqa_mcp_bridge_client) {
+        try {
+          const bridgeClient = process.__designqa_mcp_bridge_client;
+          const ws = bridgeClient.ws || null;
+          const wsOpen = ws && typeof ws.readyState !== 'undefined' && ws.readyState === 1;
+          mcpStatusConnected = wsOpen && (bridgeClient.initialized || false);
+        } catch (e) {
+          // Ignore bridge client errors
+        }
       }
 
       res.json({
+        success: true,
         status: 'ok',
         mcp: {
           enabled: !isApiOnlyFigma,
-          connected: !!mcpConnected,
+          connected: mcpStatusConnected,
           mode: figmaConnectionMode
         },
         webSocket: {
-          connected: webSocketManager.getActiveConnectionsCount() > 0,
-          activeConnections: webSocketManager.getActiveConnectionsCount(),
-          activeComparisons: webSocketManager.getActiveComparisonsCount(),
+          connected: webSocketManager?.getActiveConnectionsCount?.() > 0 || false,
+          activeConnections: webSocketManager?.getActiveConnectionsCount?.() || 0,
+          activeComparisons: webSocketManager?.getActiveComparisonsCount?.() || 0,
         },
         browser: {
           pool: browserStats,
-          activeExtractions: webExtractorV2.getActiveExtractions(),
+          activeExtractions: webExtractorV2?.getActiveExtractions?.() || 0,
         },
         timestamp: new Date().toISOString(),
         performance: realTimeMetrics,
@@ -598,9 +685,11 @@ export async function startServer(portArg) {
       });
     } catch (error) {
       // Ensure health endpoint never crashes
-      res.json({
+      console.error('Health check error:', error);
+      res.status(200).json({
+        success: false,
         status: 'degraded',
-        error: 'Health check error',
+        error: error.message || 'Health check error',
         timestamp: new Date().toISOString()
       });
     }
@@ -712,6 +801,26 @@ export async function startServer(portArg) {
     }
   });
 
+  // Helper function to verify MCP server is reachable
+  async function verifyMCPServerReachable(port) {
+    try {
+      const url = `http://127.0.0.1:${port}/mcp`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'text/event-stream' },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      return response.status >= 200 && response.status < 500;
+    } catch (error) {
+      return false;
+    }
+  }
+
   // MCP status endpoint
   app.get('/api/mcp/status', async (req, res) => {
     try {
@@ -720,7 +829,8 @@ export async function startServer(portArg) {
         connected: !!mcpConnected,
         mode: figmaConnectionMode,
         error: null,
-        message: ''
+        message: '',
+        port: null
       };
 
       if (isApiOnlyFigma) {
@@ -742,19 +852,103 @@ export async function startServer(portArg) {
         });
       }
 
+      // Check Electron bridge client first (for desktop mode)
+      let bridgeClient = null;
+      if (isLocalMode && process.__designqa_mcp_bridge_client) {
+        bridgeClient = process.__designqa_mcp_bridge_client;
+        console.log('[MCP Status] Found bridge client via process global');
+        
+        // Extract port and reachability from bridge status
+        if (bridgeClient.port) {
+          mcpStatus.port = bridgeClient.port;
+          if (bridgeClient.reachable === false) {
+            mcpStatus.available = false;
+            mcpStatus.connected = false;
+            mcpStatus.message = `Desktop MCP server not reachable at port ${bridgeClient.port} - ensure Figma Desktop is running with MCP enabled`;
+            return res.json({
+              success: false,
+              status: 'error',
+              ...mcpStatus,
+              data: {
+                connected: false,
+                serverUrl: bridgeClient.url || null,
+                port: bridgeClient.port,
+                tools: [],
+                toolsCount: 0
+              },
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      }
+
+      // If client wasn't created during boot, attempt lazy init (especially useful in local mode).
+      if (!figmaClient) {
+        try {
+          // In desktop mode, verify port is reachable before creating client
+          if (figmaConnectionMode === 'desktop') {
+            const portToCheck = mcpStatus.port || process.env.FIGMA_MCP_PORT || 3845;
+            const portNum = parseInt(portToCheck, 10);
+            
+            if (Number.isFinite(portNum)) {
+              console.log(`[MCP Status] Verifying Desktop MCP server at port ${portNum}...`);
+              const isReachable = await verifyMCPServerReachable(portNum);
+              
+              if (!isReachable) {
+                mcpStatus.available = false;
+                mcpStatus.connected = false;
+                mcpStatus.port = portNum;
+                mcpStatus.message = `Desktop MCP server not reachable at port ${portNum} - ensure Figma Desktop is running with MCP enabled`;
+                return res.json({
+                  success: false,
+                  status: 'error',
+                  ...mcpStatus,
+                  data: {
+                    connected: false,
+                    serverUrl: `http://127.0.0.1:${portNum}/mcp`,
+                    port: portNum,
+                    tools: [],
+                    toolsCount: 0
+                  },
+                  timestamp: new Date().toISOString()
+                });
+              }
+              
+              mcpStatus.port = portNum;
+              console.log(`[MCP Status] Desktop MCP server verified at port ${portNum}`);
+            }
+          }
+
+          figmaClient = await getMCPClient({
+            mode: figmaConnectionMode,
+            autoDetectDesktop: figmaConnectionMode === 'desktop'
+          });
+          if (figmaClient) {
+            mcpStatus.available = true;
+          }
+        } catch (error) {
+          // Leave figmaClient as null; status will report not initialized / error below.
+          mcpStatus.error = error.message;
+          mcpStatus.message = `Failed to initialize MCP client: ${error.message}`;
+        }
+      }
+
       if (figmaClient) {
         try {
-          const connectionTest = await figmaClient.connect();
-          mcpStatus.available = connectionTest;
-          mcpStatus.connected = connectionTest;
+          const connectionTest = await figmaClient.connect?.();
+          mcpStatus.available = connectionTest || false;
+          mcpStatus.connected = connectionTest || false;
           if (connectionTest) {
             mcpStatus.message = 'MCP connected successfully';
+            if (figmaClient.baseUrl) {
+              mcpStatus.port = parseInt(figmaClient.baseUrl.match(/:(\d+)/)?.[1] || '3845', 10);
+            }
           }
         } catch (error) {
           mcpStatus.available = false;
           mcpStatus.connected = false;
           mcpStatus.error = error.message;
-          
+
           // Provide helpful error message for 401 errors
           if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
             mcpStatus.message = 'MCP authentication failed. Figma MCP requires OAuth SSO authentication, not Personal Access Tokens. Consider using API mode (FIGMA_CONNECTION_MODE=api) or implementing OAuth flow.';
@@ -764,23 +958,34 @@ export async function startServer(portArg) {
         }
       } else {
         mcpStatus.available = false;
-        mcpStatus.message = 'MCP client not initialized';
+        if (!mcpStatus.message) {
+          mcpStatus.message = 'MCP client not initialized';
+        }
       }
 
       res.json({
         success: mcpStatus.available,
         status: mcpStatus.available ? 'connected' : 'error',
         ...mcpStatus,
+        data: {
+          connected: mcpStatus.connected,
+          serverUrl: mcpStatus.port ? `http://127.0.0.1:${mcpStatus.port}/mcp` : null,
+          port: mcpStatus.port,
+          tools: mcpStatus.connected ? ['get_code', 'get_metadata', 'get_variable_defs'] : [],
+          toolsCount: mcpStatus.connected ? 3 : 0
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      res.status(500).json({
+      console.error('MCP status error:', error);
+      // Return 200 with error status instead of 500 to prevent frontend issues
+      res.status(200).json({
         success: false,
         status: 'error',
         available: false,
         connected: false,
-        error: error.message,
-        message: `MCP status check failed: ${error.message}`,
+        error: error.message || 'Unknown error',
+        message: `MCP status check failed: ${error.message || 'Unknown error'}`,
         timestamp: new Date().toISOString()
       });
     }
@@ -885,6 +1090,9 @@ export async function startServer(portArg) {
 
       res.json({
         success: true,
+        // New standardized shape (preferred by newer frontend code)
+        data: { reports, total: reports.length },
+        // Backward-compatible fields (older code expects these at top level)
         reports,
         total: reports.length,
         timestamp: new Date().toISOString()
@@ -1205,54 +1413,28 @@ export async function startServer(portArg) {
    */
   app.get('/api/credentials', healthLimiter, async (req, res) => {
     try {
-      // Support both Supabase and local storage
-      if (supabaseClient && req.user) {
-        // Use Supabase storage
-        const { data: credentials, error } = await supabaseClient
-          .from('saved_credentials')
-          .select('id, name, url, login_url, notes, last_used_at, created_at, updated_at')
-          .eq('user_id', req.user.id)
-          .order('last_used_at', { ascending: false, nullsFirst: false });
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        // Map login_url to loginUrl for frontend consistency
-        const mappedCredentials = (credentials || []).map(cred => ({
-          ...cred,
-          loginUrl: cred.login_url
-        }));
-
-        return res.json({
-          success: true,
-          data: mappedCredentials
-        });
-      } else {
-        // Use local storage
-        const { getStorageProvider } = await import('../../config/storage-config.js');
-        const storage = getStorageProvider();
-
-        // Check if storage is local mode
-        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
-        if (storageMode === 'local') {
-          const credentials = await storage.listCredentials();
-          return res.json({
-            success: true,
-            data: credentials || []
-          });
-        } else {
-          // Return empty array instead of 401 for better UX when not authenticated
-          return res.json({
-            success: true,
-            data: []
-          });
-        }
+      let repo = null;
+      try {
+        const { getCredentialsRepository } = await import('../../storage/StorageRouter.js');
+        repo = getCredentialsRepository();
+      } catch (importError) {
+        logger.warn('Failed to import StorageRouter:', importError.message);
+        return res.status(200).json({ success: true, data: [] });
       }
-    } catch (error) {
-      logger.error('Failed to list credentials', { error: error.message });
-      // Return empty array instead of 500 error for better UX
+      
+      if (!repo) {
+        return res.status(200).json({ success: true, data: [] });
+      }
+      
+      const credentials = await repo.list();
       res.json({
+        success: true,
+        data: credentials || []
+      });
+    } catch (error) {
+      logger.error('Failed to list credentials', { error: error.message, stack: error.stack });
+      // Return empty array instead of error to prevent frontend issues
+      res.status(200).json({
         success: true,
         data: []
       });
@@ -1263,7 +1445,6 @@ export async function startServer(portArg) {
     try {
       const { name, url, loginUrl, username, password, notes } = req.body;
 
-      // Validate required fields
       if (!name || !name.trim()) {
         return res.status(400).json({
           success: false,
@@ -1276,96 +1457,27 @@ export async function startServer(portArg) {
           error: 'Credential URL is required'
         });
       }
-      if (!username || !username.trim()) {
-        return res.status(400).json({
-          success: false,
-          error: 'Username is required'
-        });
+
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      const storage = getStorageProvider();
+      if (!storage) {
+        throw new Error('Storage provider not available');
       }
-      if (!password || !password.trim()) {
-        return res.status(400).json({
-          success: false,
-          error: 'Password is required'
-        });
-      }
-
-      // Support both Supabase and local storage
-      if (supabaseClient && req.user) {
-        // Use Supabase storage
-        const { CredentialManager } = await import('../../services/CredentialEncryption.js');
-        const credentialManager = new CredentialManager();
-
-        // Prepare credentials for storage
-        const prepared = await credentialManager.prepareForStorage(
-          { name, url, loginUrl, username, password, notes },
-          supabaseClient
-        );
-
-        // Save to database
-        const { data: credential, error } = await supabaseClient
-          .from('saved_credentials')
-          .insert({
-            user_id: req.user.id,
-            name: prepared.name,
-            url: prepared.url,
-            login_url: loginUrl || null,
-            username_encrypted: prepared.username_encrypted,
-            password_vault_id: prepared.password_vault_id,
-            notes: notes || null
-          })
-          .select()
-          .single();
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        return res.json({
-          success: true,
-          data: {
-            id: credential.id,
-            name: credential.name,
-            url: credential.url,
-            loginUrl: credential.login_url,
-            notes: credential.notes,
-            last_used_at: credential.last_used_at,
-            created_at: credential.created_at,
-            updated_at: credential.updated_at
-          }
-        });
-      } else {
-        // Use local storage
-        const { getStorageProvider } = await import('../../config/storage-config.js');
-        const storage = getStorageProvider();
-
-        // Check if storage is local mode
-        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
-        if (storageMode === 'local') {
-          if (!storage) {
-            throw new Error('Storage provider not available');
-          }
-          const saved = await storage.saveCredential(
-            {
-              name: name.trim(),
-              url: url.trim(),
-              loginUrl: loginUrl?.trim(),
-              username: username.trim(),
-              password: password.trim(),
-              notes: notes?.trim()
-            },
-            {}
-          );
-          return res.json({
-            success: true,
-            data: saved
-          });
-        } else {
-          return res.status(401).json({
-            success: false,
-            error: 'Authentication required for Supabase storage'
-          });
-        }
-      }
+      const saved = await storage.saveCredential(
+        {
+          name: name.trim(),
+          url: url.trim(),
+          loginUrl: loginUrl?.trim(),
+          username: username?.trim() || '',
+          password: password?.trim() || '',
+          notes: notes?.trim()
+        },
+        {}
+      );
+      res.json({
+        success: true,
+        data: saved
+      });
     } catch (error) {
       logger.error('Failed to create credential', { error: error.message, stack: error.stack });
       res.status(500).json({
@@ -1380,7 +1492,6 @@ export async function startServer(portArg) {
       const credentialId = req.params.id;
       const { name, url, loginUrl, username, password, notes } = req.body;
 
-      // Validate required fields if provided
       if (name !== undefined && (!name || !name.trim())) {
         return res.status(400).json({
           success: false,
@@ -1394,141 +1505,38 @@ export async function startServer(portArg) {
         });
       }
 
-      // Support both Supabase and local storage
-      if (supabaseClient && req.user) {
-        // Use Supabase storage
-        const { CredentialManager } = await import('../../services/CredentialEncryption.js');
-        const credentialManager = new CredentialManager();
-
-        // Get existing credential
-        const { data: existing, error: fetchError } = await supabaseClient
-          .from('saved_credentials')
-          .select('*')
-          .eq('id', credentialId)
-          .eq('user_id', req.user.id)
-          .single();
-
-        if (fetchError || !existing) {
-          return res.status(404).json({
-            success: false,
-            error: 'Credential not found'
-          });
-        }
-
-        // Prepare updated credentials
-        let prepared = {};
-        if (username || password) {
-          // Decrypt existing to get full data
-          const decrypted = await credentialManager.retrieveFromStorage(existing, supabaseClient);
-          prepared = await credentialManager.prepareForStorage(
-            {
-              name: name || decrypted.name,
-              url: url || decrypted.url,
-              loginUrl: loginUrl !== undefined ? loginUrl : (existing.login_url || decrypted.loginUrl),
-              username: username || decrypted.username,
-              password: password || decrypted.password,
-              notes: notes !== undefined ? notes : decrypted.notes
-            },
-            supabaseClient
-          );
-        } else {
-          // Only update non-sensitive fields
-          prepared = {
-            name: name || existing.name,
-            url: url || existing.url,
-            username_encrypted: existing.username_encrypted,
-            password_vault_id: existing.password_vault_id
-          };
-        }
-
-        // Update in database
-        const updateData = {
-          name: prepared.name,
-          url: prepared.url,
-          username_encrypted: prepared.username_encrypted || existing.username_encrypted,
-          password_vault_id: prepared.password_vault_id || existing.password_vault_id,
-          notes: notes !== undefined ? notes : existing.notes,
-          updated_at: new Date().toISOString()
-        };
-
-        // Include loginUrl if provided or if updating credentials
-        if (loginUrl !== undefined) {
-          updateData.login_url = loginUrl || null;
-        } else if (prepared.loginUrl !== undefined) {
-          updateData.login_url = prepared.loginUrl || null;
-        }
-
-        const { data: updated, error } = await supabaseClient
-          .from('saved_credentials')
-          .update(updateData)
-          .eq('id', credentialId)
-          .eq('user_id', req.user.id)
-          .select()
-          .single();
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        return res.json({
-          success: true,
-          data: {
-            id: updated.id,
-            name: updated.name,
-            url: updated.url,
-            loginUrl: updated.login_url,
-            notes: updated.notes,
-            last_used_at: updated.last_used_at,
-            created_at: updated.created_at,
-            updated_at: updated.updated_at
-          }
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      const storage = getStorageProvider();
+      let existing;
+      try {
+        existing = await storage.getCredential(credentialId);
+      } catch (error) {
+        return res.status(404).json({
+          success: false,
+          error: 'Credential not found'
         });
-      } else {
-        // Use local storage
-        const { getStorageProvider } = await import('../../config/storage-config.js');
-        const storage = getStorageProvider();
-
-        // Check if storage is local mode
-        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
-        if (storageMode === 'local') {
-          // Get existing credential to preserve encrypted values if username/password not provided
-          let existing;
-          try {
-            existing = await storage.getCredential(credentialId);
-          } catch (e) {
-            return res.status(404).json({
-              success: false,
-              error: 'Credential not found'
-            });
-          }
-
-          // Update credential (username/password optional - will preserve existing if not provided)
-          if (!storage) {
-            throw new Error('Storage provider not available');
-          }
-          const updated = await storage.saveCredential(
-            {
-              name: name !== undefined ? name.trim() : existing.name,
-              url: url !== undefined ? url.trim() : existing.url,
-              loginUrl: loginUrl !== undefined ? (loginUrl?.trim() || null) : existing.loginUrl,
-              username: username !== undefined ? username : '', // Empty string means preserve existing
-              password: password !== undefined ? password : '', // Empty string means preserve existing
-              notes: notes !== undefined ? (notes?.trim() || null) : existing.notes
-            },
-            { id: credentialId }
-          );
-
-          return res.json({
-            success: true,
-            data: updated
-          });
-        } else {
-          return res.status(401).json({
-            success: false,
-            error: 'Authentication required for Supabase storage'
-          });
-        }
       }
+
+      if (!storage) {
+        throw new Error('Storage provider not available');
+      }
+
+      const updated = await storage.saveCredential(
+        {
+          name: name !== undefined ? name.trim() : existing.name,
+          url: url !== undefined ? url.trim() : existing.url,
+          loginUrl: loginUrl !== undefined ? (loginUrl?.trim() || null) : existing.loginUrl,
+          username: username !== undefined ? username : '',
+          password: password !== undefined ? password : '',
+          notes: notes !== undefined ? (notes?.trim() || null) : existing.notes
+        },
+        { id: credentialId }
+      );
+
+      res.json({
+        success: true,
+        data: updated
+      });
     } catch (error) {
       logger.error('Failed to update credential', { error: error.message, stack: error.stack });
       res.status(500).json({
@@ -1541,50 +1549,19 @@ export async function startServer(portArg) {
   app.delete('/api/credentials/:id', healthLimiter, async (req, res) => {
     try {
       const credentialId = req.params.id;
-
-      // Support both Supabase and local storage
-      if (supabaseClient && req.user) {
-        // Use Supabase storage
-        const { error } = await supabaseClient
-          .from('saved_credentials')
-          .delete()
-          .eq('id', credentialId)
-          .eq('user_id', req.user.id);
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        return res.json({
-          success: true,
-          message: 'Credential deleted'
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      const storage = getStorageProvider();
+      const deleted = await storage.deleteCredential(credentialId);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          error: 'Credential not found'
         });
-      } else {
-        // Use local storage
-        const { getStorageProvider } = await import('../../config/storage-config.js');
-        const storage = getStorageProvider();
-
-        // Check if storage is local mode
-        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
-        if (storageMode === 'local') {
-          const deleted = await storage.deleteCredential(credentialId);
-          if (!deleted) {
-            return res.status(404).json({
-              success: false,
-              error: 'Credential not found'
-            });
-          }
-          return res.json({
-            success: true,
-            message: 'Credential deleted'
-          });
-        } else {
-          return res.status(401).json({
-            success: false,
-            error: 'Authentication required for Supabase storage'
-          });
-        }
       }
+      res.json({
+        success: true,
+        message: 'Credential deleted'
+      });
     } catch (error) {
       logger.error('Failed to delete credential', { error: error.message });
       res.status(500).json({
@@ -1597,74 +1574,21 @@ export async function startServer(portArg) {
   app.get('/api/credentials/:id/decrypt', healthLimiter, async (req, res) => {
     try {
       const credentialId = req.params.id;
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      const storage = getStorageProvider();
+      const decrypted = await storage.decryptCredential(credentialId);
 
-      // Support both Supabase and local storage
-      if (supabaseClient && req.user) {
-        // Use Supabase storage
-        // Get credential
-        const { data: credential, error: fetchError } = await supabaseClient
-          .from('saved_credentials')
-          .select('*')
-          .eq('id', credentialId)
-          .eq('user_id', req.user.id)
-          .single();
-
-        if (fetchError || !credential) {
-          return res.status(404).json({
-            success: false,
-            error: 'Credential not found'
-          });
+      res.json({
+        success: true,
+        data: {
+          id: decrypted.id,
+          name: decrypted.name,
+          url: decrypted.url,
+          loginUrl: decrypted.loginUrl,
+          username: decrypted.username,
+          password: decrypted.password
         }
-
-        // Decrypt credentials (server-side only)
-        const { CredentialManager } = await import('../../services/CredentialEncryption.js');
-        const credentialManager = new CredentialManager();
-        const decrypted = await credentialManager.retrieveFromStorage(credential, supabaseClient);
-
-        // Update last_used_at
-        await supabaseClient
-          .from('saved_credentials')
-          .update({ last_used_at: new Date().toISOString() })
-          .eq('id', credentialId);
-
-        return res.json({
-          success: true,
-          data: {
-            id: credential.id,
-            name: credential.name,
-            url: decrypted.url,
-            loginUrl: credential.login_url || decrypted.loginUrl,
-            username: decrypted.username,
-            password: decrypted.password
-          }
-        });
-      } else {
-        // Use local storage
-        const { getStorageProvider } = await import('../../config/storage-config.js');
-        const storage = getStorageProvider();
-
-        // Check if storage is local mode
-        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
-        if (storageMode === 'local') {
-          const decrypted = await storage.decryptCredential(credentialId);
-          return res.json({
-            success: true,
-            data: {
-              id: decrypted.id,
-              name: decrypted.name,
-              url: decrypted.url,
-              loginUrl: decrypted.loginUrl,
-              username: decrypted.username,
-              password: decrypted.password
-            }
-          });
-        } else {
-          return res.status(401).json({
-            success: false,
-            error: 'Authentication required for Supabase storage'
-          });
-        }
-      }
+      });
     } catch (error) {
       logger.error('Failed to decrypt credential', { error: error.message });
       res.status(500).json({
@@ -1677,129 +1601,102 @@ export async function startServer(portArg) {
   /**
    * Settings endpoints
    */
+  async function buildSettingsPayload() {
+    const apiKey = await getUserFigmaApiKey();
+    const maskedKey = apiKey ? '***' + apiKey.slice(-4) : '';
+    return {
+      mcpServer: {
+        url: config.mcp?.url || process.env.MCP_PROXY_URL || 'http://localhost:3001',
+        endpoint: config.mcp?.endpoint || process.env.MCP_ENDPOINT || '/sse',
+        connected: mcpConnected
+      },
+      figmaApiKey: maskedKey,
+      hasApiKey: !!apiKey
+    };
+  }
+
   app.get('/api/settings', healthLimiter, async (req, res) => {
-    let apiKey = '';
-    let hasApiKey = false;
-
-    // Check for user-specific key first
-    if (req.user) {
-      const userKey = await getUserFigmaApiKey(req.user.id);
-      if (userKey) {
-        apiKey = userKey;
-        hasApiKey = true;
-      }
-    }
-
-    // Fallback to global key
-    if (!hasApiKey) {
-      apiKey = loadFigmaApiKey();
-      hasApiKey = !!apiKey;
-    }
-
+    const payload = await buildSettingsPayload();
     res.json({
       success: true,
-      data: {
-        mcpServer: {
-          url: config.mcp?.url || process.env.MCP_PROXY_URL || 'http://localhost:3001',
-          endpoint: config.mcp?.endpoint || process.env.MCP_ENDPOINT || '/sse',
-          connected: mcpConnected
-        },
-        figmaApiKey: apiKey ? '***' + apiKey.slice(-4) : '', // Show last 4 chars only
-        hasApiKey
-      }
+      data: payload
     });
   });
 
-  // Alias for /api/settings/current (used by frontend)
   app.get('/api/settings/current', healthLimiter, async (req, res) => {
-    // Reuse the same logic as /api/settings
-    let apiKey = '';
-    let hasApiKey = false;
-
-    // Check for user-specific key first
-    if (req.user) {
-      const userKey = await getUserFigmaApiKey(req.user.id);
-      if (userKey) {
-        apiKey = userKey;
-        hasApiKey = true;
-      }
-    }
-
-    // Fallback to global key
-    if (!hasApiKey) {
-      apiKey = loadFigmaApiKey();
-      hasApiKey = !!apiKey;
-    }
-
+    const payload = await buildSettingsPayload();
     res.json({
       success: true,
-      data: {
-        mcpServer: {
-          url: config.mcp?.url || process.env.MCP_PROXY_URL || 'http://localhost:3001',
-          endpoint: config.mcp?.endpoint || process.env.MCP_ENDPOINT || '/sse',
-          connected: mcpConnected
-        },
-        figmaApiKey: apiKey ? '***' + apiKey.slice(-4) : '', // Show last 4 chars only
-        hasApiKey
-      }
+      data: payload
     });
   });
 
   app.post('/api/settings/save', healthLimiter, async (req, res) => {
     try {
       const { figmaPersonalAccessToken } = req.body;
+      const saved = saveFigmaApiKey(figmaPersonalAccessToken);
 
-      if (figmaPersonalAccessToken !== undefined) {
-        // If user is authenticated, save to database
-        if (req.user) {
-          const supabase = getSupabaseClient(true);
-          if (supabase) {
-            const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY ||
-              process.env.LOCAL_CREDENTIAL_KEY ||
-              'local-credential-encryption-key-change-in-production';
-
-            if (figmaPersonalAccessToken) {
-              const encrypted = encrypt(figmaPersonalAccessToken, encryptionKey);
-              await supabase.from('figma_api_keys').upsert({
-                user_id: req.user.id,
-                api_key: encrypted,
-                updated_at: new Date().toISOString()
-              });
-            } else {
-              // Clear key
-              await supabase.from('figma_api_keys').delete().eq('user_id', req.user.id);
-            }
-          }
-        }
-
-        // Also save to config for backward compatibility/local mode
-        const saved = saveFigmaApiKey(figmaPersonalAccessToken);
-        if (saved) {
-          res.json({
-            success: true,
-            message: 'Figma API key saved successfully'
-          });
+      if (saved) {
+        if (figmaPersonalAccessToken) {
+          process.env.FIGMA_API_KEY = figmaPersonalAccessToken;
         } else {
-          // If we saved to DB, it is still a success
-          if (req.user && getSupabaseClient(false)) {
-            res.json({ success: true, message: 'Figma API key saved to profile' });
-          } else {
-            res.status(500).json({
-              success: false,
-              error: 'Failed to save Figma API key'
-            });
-          }
+          delete process.env.FIGMA_API_KEY;
         }
-      } else {
         res.json({
           success: true,
-          message: 'Settings saved (MCP configuration is automatic)'
+          message: 'Figma API key saved locally'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Failed to save Figma API key locally'
         });
       }
     } catch (error) {
       res.status(500).json({
         success: false,
         error: `Failed to save settings: ${error.message}`
+      });
+    }
+  });
+
+  app.get('/api/storage/location', healthLimiter, async (req, res) => {
+    try {
+      const baseDir = getOutputBaseDir();
+      res.json({
+        success: true,
+        data: {
+          path: baseDir,
+          credentials: path.join(baseDir, 'credentials'),
+          designSystems: path.join(baseDir, 'design-systems'),
+          reports: path.join(baseDir, 'reports'),
+          sessions: path.join(baseDir, 'sessions')
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to read storage location', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to determine local storage path'
+      });
+    }
+  });
+
+  app.post('/api/diagnostics/export', healthLimiter, async (req, res) => {
+    try {
+      const baseDir = getOutputBaseDir();
+      res.json({
+        success: true,
+        message: 'Diagnostics snapshot generated locally',
+        data: {
+          location: baseDir
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to export diagnostics', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to export diagnostics'
       });
     }
   });
@@ -1875,6 +1772,48 @@ export async function startServer(portArg) {
       try {
         const { figmaUrl, extractionMode = 'both', preferredMethod = null } = req.body;
 
+        // Check if we're in local mode and MCP is required
+        const isLocalMode = process.env.RUNNING_IN_ELECTRON === 'true' ||
+          (!process.env.RENDER && !process.env.VERCEL);
+
+        if (isLocalMode && preferredMethod !== 'api') {
+          // Check Desktop MCP connection status
+          try {
+            const { getMCPClient } = await import('../../config/mcp-config.js');
+            const mcpClient = await getMCPClient({ mode: 'desktop', autoDetectDesktop: false });
+
+            if (!mcpClient) {
+              const mcpUrl = process.env.FIGMA_DESKTOP_MCP_URL || (process.env.FIGMA_MCP_PORT ? `http://127.0.0.1:${process.env.FIGMA_MCP_PORT}/mcp` : null);
+              return res.status(400).json({
+                success: false,
+                error: 'Desktop Figma MCP not initialized. Ensure Figma Desktop is running and Desktop MCP is enabled.',
+                message: 'Desktop MCP required but not available'
+                ,
+                details: mcpUrl ? `Expected Desktop MCP URL: ${mcpUrl}` : 'Set FIGMA_MCP_PORT=3845 or FIGMA_DESKTOP_MCP_URL'
+              });
+            }
+
+            // Ensure it's connected (works for both HTTP MCP client and legacy DesktopMCPClient)
+            if (!mcpClient.initialized) {
+              const connected = await mcpClient.connect();
+              if (!connected || !mcpClient.initialized) {
+                return res.status(400).json({
+                  success: false,
+                  error: 'Desktop Figma MCP not connected',
+                  message: 'Desktop MCP is not connected. Ensure Figma Desktop is running and MCP is enabled.'
+                });
+              }
+            }
+          } catch (mcpError) {
+            console.error('[MCP] Connection check failed:', mcpError);
+            return res.status(400).json({
+              success: false,
+              error: 'Desktop Figma MCP not available',
+              message: `MCP connection check failed: ${mcpError.message}`
+            });
+          }
+        }
+
         // Use unified extractor
         const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
         const extractor = new UnifiedFigmaExtractor(config);
@@ -1889,7 +1828,18 @@ export async function startServer(portArg) {
         });
 
         if (!extractionResult.success) {
-          throw new Error(extractionResult.error || 'Extraction failed');
+          const message = extractionResult.error || 'Extraction failed';
+          const isDesktopSelectionIssue =
+            process.env.RUNNING_IN_ELECTRON === 'true' &&
+            /desktop mcp/i.test(message) &&
+            (/select the target frame\/component/i.test(message) || /current selection/i.test(message));
+          return res.status(isDesktopSelectionIssue ? 400 : 502).json({
+            success: false,
+            error: message,
+            details: isDesktopSelectionIssue
+              ? 'Open the Figma file in Figma Desktop, enable Dev Mode, and select the target frame/component, then retry.'
+              : undefined
+          });
         }
 
         const standardizedData = extractionResult.data;
@@ -2060,14 +2010,35 @@ export async function startServer(portArg) {
 
       // Route web-only extractions through the unified extractor for robustness
       const isFreightTiger = targetUrl.includes('freighttiger.com');
+      const includeScreenshot =
+        req.body.includeVisual === true ||
+        req.body.includeScreenshot === true ||
+        req.body.includeVisualComparison === true;
       const unifiedOptions = {
         authentication,
-        includeScreenshot: false,
+        includeScreenshot,
         viewport: { width: 1920, height: 1080 },
         timeout: isFreightTiger ? Math.max(config.timeouts.webExtraction, 120000) : config.timeouts.webExtraction
       };
 
       const webData = await unifiedWebExtractor.extractWebData(targetUrl, unifiedOptions);
+      const elementsCount = webData?.elements?.length || 0;
+      if (elementsCount === 0) {
+        return res.status(422).json({
+          success: false,
+          error: 'Web extraction returned 0 DOM elements.',
+          details: 'This is usually caused by a login wall, bot-detection, or content rendered inside restricted iframes/shadow DOM. Enable screenshots to inspect what rendered.',
+          data: {
+            url: webData?.url || targetUrl,
+            extractedAt: webData?.extractedAt,
+            duration: webData?.duration,
+            metadata: webData?.metadata || undefined,
+            screenshot: webData?.screenshot?.data
+              ? `data:image/${webData.screenshot.type || 'png'};base64,${webData.screenshot.data}`
+              : undefined
+          }
+        });
+      }
 
       // Generate HTML report for web extraction
       const reportGenerator = await import('../../reporting/index.js');
@@ -2174,30 +2145,35 @@ export async function startServer(portArg) {
    * Comparison endpoint
    */
   app.post('/api/compare', async (req, res) => {
+    // Immediate stdout write for terminal visibility
+    process.stdout.write('🚀 COMPARE ENDPOINT HIT - Request received\n');
     console.log('🚀 COMPARE ENDPOINT HIT - Request received');
     console.log('🔍 Request body keys:', Object.keys(req.body));
     console.log('🔍 Authentication in body:', !!req.body.authentication);
 
     try {
-      const { figmaUrl, webUrl, includeVisual = false, nodeId } = req.body;
+      const { figmaUrl, webUrl, includeVisual = false, nodeId, designSystemId } = req.body;
 
       if (!figmaUrl || !webUrl) {
+        process.stdout.write('❌ Validation failed: Missing Figma or Web URL\n');
         return res.status(400).json({
           success: false,
           error: 'Both Figma URL and Web URL are required'
         });
       }
 
-
       // Extract data from both sources using the same method as single source
+      process.stdout.write(`📊 Starting comparison: Figma=${figmaUrl.substring(0, 50)}... | Web=${webUrl.substring(0, 50)}...\n`);
       logger.info('Starting data extraction', { figmaUrl, webUrl });
       const startTime = Date.now();
 
       const figmaStartTime = Date.now();
+      process.stdout.write('🎨 Starting Figma extraction...\n');
       let figmaData = null;
       try {
         console.log('🎨 Using UnifiedFigmaExtractor for comparison (same as single source)');
         console.log('🎯 NodeId from request:', nodeId || 'No nodeId - extracting full file');
+        process.stdout.write(`🎯 Extracting ${nodeId ? 'specific node' : 'full file'} from Figma\n`);
 
         // Use unified extractor - SAME AS SINGLE SOURCE
         const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
@@ -2209,7 +2185,9 @@ export async function startServer(portArg) {
           fallbackEnabled: true,
           timeout: 30000,
           apiKey: await getUserFigmaApiKey(req.user?.id),
-          nodeId: nodeId  // Pass nodeId for specific component extraction
+          userId: req.user?.id,
+          nodeId: nodeId,  // Pass nodeId for specific component extraction
+          designSystemId
         });
 
         if (!extractionResult.success) {
@@ -2234,6 +2212,8 @@ export async function startServer(portArg) {
 
           // Colors extracted successfully
 
+          const figmaDuration = Date.now() - figmaStartTime;
+          process.stdout.write(`✅ Figma extraction completed in ${figmaDuration}ms\n`);
           console.log('✅ Figma extraction successful via UnifiedFigmaExtractor');
           console.log('📊 Figma data summary:', {
             components: figmaData.components?.length || 0,
@@ -2243,27 +2223,67 @@ export async function startServer(portArg) {
             extractionMethod: figmaData.extractionMethod,
             fileName: standardizedData.metadata?.fileName || 'Unknown'
           });
+          process.stdout.write(`📊 Figma: ${figmaData.components?.length || 0} components, ${figmaData.colors?.length || 0} colors, ${figmaData.typography?.length || 0} typography entries\n`);
         } else {
           throw new Error('Figma extraction returned no components');
         }
       } catch (figmaError) {
-        console.log('⚠️ Figma extraction failed, continuing with web extraction only:', figmaError.message);
-        figmaData = {
-          components: [],
-          componentCount: 0,
-          componentsCount: 0,
-          error: figmaError.message
-        };
+        process.stdout.write(`❌ Figma extraction failed: ${figmaError.message}\n`);
+        console.log('❌ Figma extraction failed:', figmaError.message);
+        const message = figmaError.message || String(figmaError);
+        const isDesktopSelectionIssue =
+          process.env.RUNNING_IN_ELECTRON === 'true' &&
+          /desktop mcp/i.test(message) &&
+          (/select the target frame\/component/i.test(message) || /current selection/i.test(message));
+        return res.status(isDesktopSelectionIssue ? 400 : 502).json({
+          success: false,
+          error: `Figma extraction failed: ${message}`,
+          details: isDesktopSelectionIssue
+            ? 'Open the Figma file in Figma Desktop, enable Dev Mode, and select the target frame/component, then retry.'
+            : undefined
+        });
       }
       const figmaDuration = Date.now() - figmaStartTime;
       performanceMonitor.trackExtraction('Figma', figmaDuration, { url: figmaUrl });
 
       const webStartTime = Date.now();
+      process.stdout.write('🌐 Starting Web extraction...\n');
       let webData;
 
-      // DEBUG: Log the full request body to understand the structure
-      console.log('🔍 DEBUG: Full request body:', JSON.stringify(req.body, null, 2));
-      console.log('🔍 DEBUG: Authentication object:', JSON.stringify(req.body.authentication, null, 2));
+      const redactSensitive = (value) => {
+        if (!value || typeof value !== 'object') return value;
+        const clone = Array.isArray(value) ? [...value] : { ...value };
+        const sensitiveKeys = new Set([
+          'password',
+          'token',
+          'access_token',
+          'refresh_token',
+          'apiKey',
+          'api_key',
+          'authorization',
+          'cookie',
+          'cookies'
+        ]);
+        for (const key of Object.keys(clone)) {
+          if (sensitiveKeys.has(key.toLowerCase())) {
+            clone[key] = '[REDACTED]';
+            continue;
+          }
+          clone[key] = redactSensitive(clone[key]);
+        }
+        return clone;
+      };
+
+      // Avoid logging credentials/tokens (these requests can contain passwords).
+      console.log('🔍 Compare request:', JSON.stringify({
+        figmaUrl,
+        webUrl,
+        includeVisual,
+        nodeId,
+        extractionMode: req.body.extractionMode,
+        hasAuth: Boolean(req.body.authentication),
+        options: redactSensitive(req.body.options || {})
+      }, null, 2));
 
       // Extract authentication from request body if available
       const authentication = req.body.authentication?.webAuth ? {
@@ -2280,26 +2300,38 @@ export async function startServer(portArg) {
       } : null;
 
       console.log('🔧 Using UnifiedWebExtractor for comparison with auth:', authentication ? 'enabled' : 'disabled');
-      console.log('🔍 DEBUG: Parsed authentication:', JSON.stringify(authentication, null, 2));
+      console.log('🔍 Parsed authentication:', JSON.stringify(redactSensitive(authentication), null, 2));
 
       const freightTigerUrl = webUrl.includes('freighttiger.com');
       const requestedTimeout = req.body.options?.timeout;
-      const comparisonTimeout = requestedTimeout
-        || (freightTigerUrl ? 300000 : (config?.timeouts?.webExtraction || 90000));
+      const configuredTimeout = config?.timeouts?.webExtraction;
+      let comparisonTimeout = requestedTimeout
+        || (freightTigerUrl ? 600000 : (configuredTimeout || 120000));
+      // Allow desktop users to override timeouts via env/config without rebuilding the frontend.
+      if (configuredTimeout && configuredTimeout > comparisonTimeout) {
+        comparisonTimeout = configuredTimeout;
+      }
+
+      // Keep a small buffer so the backend can respond before client-side timeouts fire.
+      const extractionTimeout = Math.max(10000, Number(comparisonTimeout) - 5000);
 
       const extractionOptions = {
         authentication,
-        timeout: comparisonTimeout,
-        includeScreenshot: false,
-        stabilityTimeout: freightTigerUrl ? 60000 : 5000
+        timeout: extractionTimeout,
+        // Default off for speed; enable only when troubleshooting.
+        includeScreenshot: process.env.DEBUG_WEB_SCREENSHOTS === 'true',
+        stabilityTimeout: freightTigerUrl ? 60000 : 5000,
+        designSystemId
       };
 
       const attemptWebExtraction = async (label = 'primary') => {
-        console.log(`🌐 Web extraction attempt (${label}) with timeout ${comparisonTimeout}ms`);
+        process.stdout.write(`🌐 Web extraction attempt (${label}) with timeout ${extractionTimeout}ms\n`);
+        console.log(`🌐 Web extraction attempt (${label}) with timeout ${extractionTimeout}ms`);
         return unifiedWebExtractor.extractWebData(webUrl, extractionOptions);
       };
 
       try {
+        process.stdout.write(`🔧 Authentication: ${authentication ? 'enabled' : 'disabled'}\n`);
         console.log(`🔧 Using authentication: ${authentication ? 'enabled' : 'disabled'}`);
         webData = await attemptWebExtraction();
       } catch (webError) {
@@ -2308,16 +2340,20 @@ export async function startServer(portArg) {
           /Extraction aborted due to timeout/i.test(message);
 
         if (canRetry) {
+          process.stdout.write(`⚠️ Web extraction aborted early, retrying...\n`);
           console.warn(`⚠️ Web extraction aborted early (${message}). Retrying once with fresh session...`);
           // Give the browser pool a brief moment to recycle pages
           await new Promise(resolve => setTimeout(resolve, 1500));
           webData = await attemptWebExtraction('retry');
         } else {
+          process.stdout.write(`❌ Web extraction failed: ${message}\n`);
           console.error('❌ Web extraction failed:', message);
           throw webError;
         }
       }
 
+      const webDuration = Date.now() - webStartTime;
+      process.stdout.write(`✅ Web extraction completed in ${webDuration}ms: ${webData.elements?.length || 0} elements\n`);
       console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
       console.log('📊 Web data summary:', {
         elements: webData.elements?.length || 0,
@@ -2327,6 +2363,7 @@ export async function startServer(portArg) {
         spacing: webData.spacing?.length || 0,
         borderRadius: webData.borderRadius?.length || 0
       });
+      process.stdout.write(`📊 Web: ${webData.elements?.length || 0} elements, ${webData.colorPalette?.length || 0} colors, ${webData.typography?.fontFamilies?.length || 0} fonts\n`);
 
       // Debug: Sample extracted data
       if (webData.colorPalette?.length > 0) {
@@ -2339,29 +2376,50 @@ export async function startServer(portArg) {
         console.log('📏 Sample spacing:', webData.spacing.slice(0, 3));
       }
 
-      const webDuration = Date.now() - webStartTime;
       performanceMonitor.trackExtraction('Web', webDuration, { url: webUrl });
+
+      const webElementsCount = webData?.elements?.length || 0;
+      if (webElementsCount === 0) {
+        return res.status(422).json({
+          success: false,
+          error: 'Web extraction returned 0 DOM elements.',
+          details: 'This is usually caused by a login wall, bot-detection, or content rendered inside restricted iframes/shadow DOM. Check the screenshot output to see what actually rendered.',
+          data: {
+            url: webData?.url || webUrl,
+            extractedAt: webData?.extractedAt,
+            duration: webData?.duration,
+            metadata: webData?.metadata || undefined,
+            screenshot: webData?.screenshot?.data
+              ? `data:image/${webData.screenshot.type || 'png'};base64,${webData.screenshot.data}`
+              : undefined
+          }
+        });
+      }
 
       logger.extraction('Figma', figmaUrl, figmaData);
       logger.extraction('Web', webUrl, webData);
 
       // Compare the data
       const comparisonStartTime = Date.now();
+      process.stdout.write(`⚖️ Starting comparison: ${figmaData.components?.length || 0} Figma components vs ${webData.elements?.length || 0} Web elements\n`);
       console.log('🔄 Starting comparison with data:', {
         figmaComponents: figmaData.components?.length || 0,
         webElements: webData.elements?.length || 0
       });
 
-      const comparison = await comparisonEngine.compareDesigns(figmaData, webData);
+      const comparison = await comparisonEngine.compareDesigns(figmaData, webData, { designSystemId });
       const comparisonDuration = Date.now() - comparisonStartTime;
 
+      process.stdout.write(`✅ Comparison completed in ${comparisonDuration}ms\n`);
       console.log('✅ Comparison completed:', {
         totalComparisons: comparison.comparisons?.length || 0,
         totalMatches: comparison.summary?.totalMatches || 0,
         totalDeviations: comparison.summary?.totalDeviations || 0
       });
+      process.stdout.write(`📊 Comparison results: ${comparison.comparisons?.length || 0} comparisons, ${comparison.summary?.totalMatches || 0} matches, ${comparison.summary?.totalDeviations || 0} deviations\n`);
 
       const totalDuration = Date.now() - startTime;
+      process.stdout.write(`🎉 Full comparison pipeline completed in ${totalDuration}ms\n`);
       performanceMonitor.trackComparison(comparisonDuration, {
         figmaComponents: figmaData?.components?.length || 0,
         webElements: webData?.elements?.length || 0,
@@ -2537,7 +2595,7 @@ export async function startServer(portArg) {
           componentsCount: figmaData?.components?.length || 0 // Keep for compatibility
         },
         webData: {
-          ...webData,
+          ...(includeVisual ? webData : { ...webData, screenshot: null }),
           // STANDARDIZED FIELDS (preferred)
           elementCount: webData?.elements?.length || 0, // Standard field name
 
@@ -2572,11 +2630,26 @@ export async function startServer(portArg) {
         data: responseData
       });
     } catch (error) {
-      console.error('❌ Comparison failed:', error.message);
+      const message = error?.message || String(error);
+      console.error('❌ Comparison failed:', message);
+
+      const isTimeout =
+        /timeout/i.test(message) ||
+        /timed out/i.test(message) ||
+        /deadline reached/i.test(message) ||
+        /aborted/i.test(message);
+
+      if (isTimeout) {
+        return res.status(504).json({
+          success: false,
+          error: `Comparison failed: ${message}`,
+          details: 'The backend timed out while extracting the web page. Try again with a simpler URL, enable authentication, or reduce the extraction scope.'
+        });
+      }
 
       res.status(500).json({
         success: false,
-        error: `Comparison failed: ${error.message}`
+        error: `Comparison failed: ${message}`
       });
     }
   });
@@ -2890,7 +2963,7 @@ export async function startServer(portArg) {
    */
   app.post('/api/reports/save', async (req, res) => {
     try {
-      const { comparisonId, reportData, title, format = 'html' } = req.body;
+      const { comparisonId, reportData, reportPath, title, format = 'html' } = req.body;
 
       if (!comparisonId) {
         return res.status(400).json({
@@ -2929,17 +3002,278 @@ export async function startServer(portArg) {
             format
           });
         } else {
-          // Just create metadata entry (for existing reports)
-          reportEntry = {
-            id: `report_${Date.now()}`,
-            comparisonId,
-            title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
-            format,
-            url: `/reports/${comparisonId}.html`,
-            createdAt: new Date().toISOString()
-          };
+          // Fetch comparison data and generate report
+          let comparisonData = null;
+          let reportHtmlContent = null;
+
+          // Try to read any existing report file as fallback
+          const testReportDirs = [
+            path.join(process.cwd(), 'apps', 'saas-backend', 'output', 'reports'),
+            path.join(process.cwd(), 'output', 'reports')
+          ];
+          
+          for (const testDir of testReportDirs) {
+            try {
+              if (await fs.promises.access(testDir).then(() => true).catch(() => false)) {
+                const files = await fs.promises.readdir(testDir);
+                const htmlFiles = files.filter(f => f.endsWith('.html')).sort().reverse();
+                
+                if (htmlFiles.length > 0) {
+                  const testFile = path.join(testDir, htmlFiles[0]);
+                  try {
+                    reportHtmlContent = await fs.promises.readFile(testFile, 'utf8');
+                    break;
+                  } catch (readErr) {
+                    // Continue to next file
+                  }
+                }
+              }
+            } catch (dirErr) {
+              // Continue to next directory
+            }
+          }
+
+          // First, try to use reportPath if provided by frontend
+          if (reportPath) {
+            // reportPath is like /reports/comparison-123456.html or /reports/report_123456.html
+            // Extract just the filename
+            const reportFileName = reportPath.startsWith('/reports/') ? reportPath.substring('/reports/'.length) : reportPath.split('/').pop();
+
+            // Try multiple possible locations where reports might be:
+            const { getOutputBaseDir } = await import('../../utils/outputPaths.js');
+            const outputBaseDir = getOutputBaseDir();
+
+            // Reports can be in:
+            // 1. apps/saas-backend/output/reports/ (where they're actually generated based on reportGenerator config)
+            // 2. output/reports/ (project root)
+            // 3. getOutputBaseDir()/reports/ (where they're served from)
+            const possibleDirs = [
+              path.join(process.cwd(), 'apps', 'saas-backend', 'output', 'reports'), // Actual generation location
+              path.join(process.cwd(), 'output', 'reports'), // Project root
+              path.join(outputBaseDir, 'reports'), // Served from location
+              path.join(process.cwd(), 'src', 'reporting', 'output') // Alternative
+            ];
+
+            const possiblePaths = possibleDirs.map(dir => path.join(dir, reportFileName));
+
+            for (const filePath of possiblePaths) {
+              try {
+                const exists = await fs.promises.access(filePath).then(() => true).catch(() => false);
+                if (exists) {
+                  reportHtmlContent = await fs.promises.readFile(filePath, 'utf8');
+                  break;
+                }
+              } catch (fileError) {
+                // Continue to next path
+              }
+            }
+          }
+
+          // If reportPath didn't work, try to find existing report file (from comparison run)
+          // Reports are generated in output/reports directory
+          // NOTE: Reports are actually named report_TIMESTAMP.html (not comparison-TIMESTAMP.html)
+          if (!reportHtmlContent) {
+            // Check both project root output/reports and apps/saas-backend/output/reports
+            const possibleDirs = [
+              path.join(process.cwd(), 'output', 'reports'),
+              path.join(process.cwd(), 'apps', 'saas-backend', 'output', 'reports')
+            ];
+
+            // Get all HTML report files from all possible directories
+            const allReportFiles = [];
+            for (const outputReportsDir of possibleDirs) {
+              try {
+                if (await fs.promises.access(outputReportsDir).then(() => true).catch(() => false)) {
+                  const reportFiles = await fs.promises.readdir(outputReportsDir);
+
+                  for (const file of reportFiles) {
+                    if (file.endsWith('.html') && (file.includes('report') || file.includes('comparison'))) {
+                      const filePath = path.join(outputReportsDir, file);
+                      try {
+                        const stats = await fs.promises.stat(filePath);
+                        allReportFiles.push({
+                          name: file,
+                          path: filePath,
+                          mtime: stats.mtime.getTime(),
+                          size: stats.size
+                        });
+                      } catch (e) {
+                        // Skip files we can't stat
+                      }
+                    }
+                  }
+                }
+              } catch (dirError) {
+                // Continue to next directory
+              }
+            }
+
+            // Sort by most recent first
+            allReportFiles.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+
+            // Try the most recent report files (up to 5)
+            for (const fileInfo of allReportFiles.slice(0, 5)) {
+              try {
+                reportHtmlContent = await fs.promises.readFile(fileInfo.path, 'utf8');
+                break;
+              } catch (fileError) {
+                // Continue to next file
+              }
+            }
+          }
+
+          // If no existing report file, try to get comparison from database and generate
+          if (!reportHtmlContent) {
+            if (dbServices?.comparisons) {
+              try {
+                comparisonData = await dbServices.comparisons.getComparison(comparisonId);
+
+                if (comparisonData) {
+                  try {
+                    const reportGeneratorModule = await import('../../reporting/index.js');
+                    const reportDataForGeneration = {
+                      figmaData: comparisonData.result?.figmaData || comparisonData.figmaData || {},
+                      webData: comparisonData.result?.webData || comparisonData.webData || {},
+                      comparisons: comparisonData.result?.comparisons || comparisonData.comparisons || [],
+                      summary: comparisonData.result?.summary || comparisonData.summary || {},
+                      timestamp: comparisonData.result?.timestamp || comparisonData.createdAt || new Date().toISOString(),
+                      metadata: comparisonData.result?.metadata || comparisonData.metadata || {}
+                    };
+
+                    // Generate HTML report content
+                    const reportGenerator = reportGeneratorModule.getReportGenerator();
+                    reportHtmlContent = await reportGenerator.generateHtmlContent(reportDataForGeneration);
+                  } catch (genError) {
+                    console.error('❌ Failed to generate report from comparison data:', genError);
+                  }
+                }
+              } catch (dbError) {
+                console.warn('⚠️ Failed to fetch comparison from database:', dbError.message);
+              }
+            }
+          }
+
+          // Save the report if we have HTML content
+          if (reportHtmlContent && reportHtmlContent.length > 0) {
+            try {
+              reportEntry = await storage.saveReport(reportHtmlContent, {
+                comparisonId,
+                title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
+                format
+              });
+
+            } catch (saveError) {
+              console.error('❌ Error saving report:', saveError);
+              throw saveError;
+            }
+          } else {
+            // Last resort: Try to find and save ANY recent report file
+            const lastResortDirs = [
+              path.join(process.cwd(), 'apps', 'saas-backend', 'output', 'reports'),
+              path.join(process.cwd(), 'output', 'reports')
+            ];
+
+            for (const dir of lastResortDirs) {
+              try {
+                if (await fs.promises.access(dir).then(() => true).catch(() => false)) {
+                  const files = await fs.promises.readdir(dir);
+                  const htmlFiles = files
+                    .filter(f => f.endsWith('.html'))
+                    .map(f => ({
+                      name: f,
+                      path: path.join(dir, f),
+                      mtime: null
+                    }));
+
+                  // Get modification times
+                  for (const fileInfo of htmlFiles) {
+                    try {
+                      const stats = await fs.promises.stat(fileInfo.path);
+                      fileInfo.mtime = stats.mtime.getTime();
+                      fileInfo.size = stats.size;
+                    } catch (e) {
+                      // Skip
+                    }
+                  }
+
+                  // Sort by most recent
+                  htmlFiles.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+
+                  if (htmlFiles.length > 0) {
+                    const mostRecent = htmlFiles[0];
+                    try {
+                      reportHtmlContent = await fs.promises.readFile(mostRecent.path, 'utf8');
+                      break;
+                    } catch (readError) {
+                      // Continue to next directory
+                    }
+                  }
+                }
+              } catch (dirError) {
+                // Continue to next directory
+              }
+            }
+
+            // If we found a report file, save it
+            if (reportHtmlContent && reportHtmlContent.length > 0) {
+              try {
+                reportEntry = await storage.saveReport(reportHtmlContent, {
+                  comparisonId,
+                  title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
+                  format
+                });
+              } catch (saveError) {
+                console.error('❌ Last resort save failed:', saveError);
+              }
+            }
+
+            // Try to generate report from comparison data
+            if (!reportEntry && comparisonData) {
+              try {
+                const reportGeneratorModule = await import('../../reporting/index.js');
+                const reportGenerator = reportGeneratorModule.getReportGenerator();
+                const reportDataForGeneration = {
+                  figmaData: comparisonData.result?.figmaData || comparisonData.figmaData || {},
+                  webData: comparisonData.result?.webData || comparisonData.webData || {},
+                  comparisons: comparisonData.result?.comparisons || comparisonData.comparisons || [],
+                  summary: comparisonData.result?.summary || comparisonData.summary || {},
+                  timestamp: comparisonData.result?.timestamp || comparisonData.createdAt || new Date().toISOString(),
+                  metadata: comparisonData.result?.metadata || comparisonData.metadata || {}
+                };
+                reportHtmlContent = await reportGenerator.generateHtmlContent(reportDataForGeneration);
+
+                if (reportHtmlContent && reportHtmlContent.length > 0) {
+                  reportEntry = await storage.saveReport(reportHtmlContent, {
+                    comparisonId,
+                    title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
+                    format
+                  });
+                }
+              } catch (genError) {
+                console.error('❌ Failed to generate report:', genError);
+              }
+            }
+          }
         }
-        console.log(`✅ Report saved via StorageProvider: ${reportEntry.id}`);
+
+        // Check if a file was actually saved (has fileSize property)
+        const hasActualFile = !!(reportEntry?.fileSize && reportEntry.fileSize > 0);
+
+        if (hasActualFile) {
+          console.log(`✅ Report saved via StorageProvider: ${reportEntry.id} (file size: ${reportEntry.fileSize} bytes)`);
+        } else {
+          console.warn(`⚠️ WARNING: Only metadata created, NO FILE SAVED: ${reportEntry?.id || 'unknown'}`);
+        }
+      }
+
+      // CRITICAL: Only return success if a file was actually saved
+      const hasActualFile = !!(reportEntry?.fileSize && reportEntry.fileSize > 0);
+
+      if (!hasActualFile) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to save report file. Report file not found or could not be saved.'
+        });
       }
 
       res.json({
@@ -3043,6 +3377,8 @@ export async function startServer(portArg) {
    * Catch-all route - serve frontend (exclude report files and API routes)
    */
   app.get('*', (req, res) => {
+    console.log(`[Catch-all] Request path: ${req.path}`);
+
     // Don't serve frontend for API routes
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'API endpoint not found' });
@@ -3054,11 +3390,22 @@ export async function startServer(portArg) {
     }
 
     // Serve index.html for all other routes (SPA routing)
-    const indexPath = path.join(frontendPath, 'index.html');
+    const indexPath = path.resolve(frontendPath, 'index.html');
+    console.log(`[Catch-all] Checking indexPath: ${indexPath}`);
+    console.log(`[Catch-all] indexPath exists: ${fs.existsSync(indexPath)}`);
+
     if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
+      console.log(`[Catch-all] Sending index.html`);
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error(`[Catch-all] Error sending file:`, err);
+          res.status(500).send('Error serving frontend');
+        }
+      });
     } else {
       console.error(`❌ index.html not found at: ${indexPath}`);
+      console.error(`   Frontend path: ${frontendPath}`);
+      console.error(`   Current working directory: ${process.cwd()}`);
       res.status(500).send('Frontend not found. Please rebuild the frontend.');
     }
   });
@@ -3093,6 +3440,26 @@ export async function startServer(portArg) {
     });
 
   /**
+   * Enable file logging endpoint (Development/Debugging)
+   * Temporary feature for debugging web extraction issues
+   */
+  app.post('/api/logging/enable', (req, res) => {
+    try {
+      logger.enableFileLogging();
+      res.json({
+        success: true,
+        message: 'File logging enabled',
+        logDir: logger.getLogDir()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  /**
    * Unified web extraction endpoint (V3 - Recommended)
    * Note: No rate limiting - this is internal web scraping, not external API calls
    */
@@ -3100,7 +3467,7 @@ export async function startServer(portArg) {
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
       try {
-        const { url, authentication, options = {} } = req.body;
+        const { url, authentication, designSystemId, options = {} } = req.body;
         const startTime = Date.now();
 
         console.log(`🚀 Starting unified extraction for: ${url}`);
@@ -3108,6 +3475,7 @@ export async function startServer(portArg) {
         // Extract using unified extractor with cross-platform support
         const webData = await unifiedWebExtractor.extractWebData(url, {
           authentication,
+          designSystemId,
           timeout: options.timeout || config.timeouts.webExtraction,
           includeScreenshot: options.includeScreenshot !== false,
           viewport: options.viewport || { width: 1920, height: 1080 },
@@ -3127,7 +3495,15 @@ export async function startServer(portArg) {
           });
         }
 
+        // Return both a standardized API envelope and the legacy/raw shape (for compatibility).
         res.json({
+          success: true,
+          data: {
+            ...webData,
+            extractor: 'unified-v3',
+            performance: { duration }
+          },
+          // Legacy/raw fields (kept so older clients can read top-level keys)
           ...webData,
           extractor: 'unified-v3',
           performance: { duration }
@@ -3249,73 +3625,84 @@ export async function startServer(portArg) {
   // Start server
   const PORT = portArg || config.server?.port || parseInt(process.env.PORT || '3847', 10);
   const HOST = config.server?.host || process.env.HOST || '0.0.0.0';
-  console.log(`[DEBUG] Attempting to listen on port: ${PORT}, host: ${HOST}`);
 
-  // Handle server errors
-  httpServer.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-      console.error(`❌ Port ${PORT} is already in use`);
-    } else {
-      console.error('❌ Server error:', error.message);
-    }
-  });
-
-  const server = httpServer.listen(PORT, HOST, () => {
-    process.stdout.write(`Server running on port ${PORT}\n`);
-
-    console.log(`🚀 Server running at http://${HOST}:${PORT}`);
-    console.log(`📱 Frontend available at http://${HOST}:${PORT}`);
-    console.log(`🔌 MCP Status: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
-    console.log(`🔌 WebSocket server ready for connections`);
-    console.log(`🔧 Enhanced features: Browser Pool, Security, Rate Limiting`);
-    
-    // Don't try to connect MCP here - it's already attempted above
-
-    // Start periodic MCP status checks
-    setInterval(async () => {
-      // Don't check if we are in API-only mode
-      if (config.mcp?.mode === 'api') {
-        return;
+  // Wrap server.listen in a Promise to ensure it's actually listening before returning
+  return new Promise((resolve, reject) => {
+    // Handle server errors
+    httpServer.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+        reject(new Error(`Port ${PORT} is already in use`));
+      } else {
+        console.error('❌ Server error:', error.message);
+        reject(error);
       }
+    });
 
-      try {
-        const wasConnected = mcpConnected;
-        if (figmaClient) {
-          // If we recently had auth errors, maybe skip or backoff?
-          // For now, just try to connect
-          mcpConnected = await figmaClient.connect();
+    const server = httpServer.listen(PORT, HOST, () => {
+      process.stdout.write(`Server running on port ${PORT}\n`);
 
-          if (wasConnected !== mcpConnected) {
-            console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+      console.log(`🚀 Server running at http://${HOST}:${PORT}`);
+      console.log(`📱 Frontend available at http://${HOST}:${PORT}`);
+      console.log(`🔌 MCP Status: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+      console.log(`🔌 WebSocket server ready for connections`);
+      console.log(`🔧 Enhanced features: Browser Pool, Security, Rate Limiting`);
+
+      // Don't try to connect MCP here - it's already attempted above
+
+      // Start periodic MCP status checks
+      setInterval(async () => {
+        // Don't check if we are in API-only mode
+        if (config.mcp?.mode === 'api') {
+          return;
+        }
+
+        try {
+          const wasConnected = mcpConnected;
+          if (figmaClient) {
+            // If we recently had auth errors, maybe skip or backoff?
+            // For now, just try to connect
+            mcpConnected = await figmaClient.connect();
+
+            if (wasConnected !== mcpConnected) {
+              console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+            }
+          } else {
+            try {
+              // Try to re-initialize client if it was missing
+              // Only try Desktop MCP in local mode
+              const { getMCPClient } = await import('../../config/mcp-config.js');
+              if (isLocalMode) {
+                figmaClient = await getMCPClient({ mode: figmaConnectionMode, autoDetectDesktop: true });
+              } else {
+                figmaClient = await getMCPClient({ mode: 'figma', autoDetectDesktop: false });
+              }
+            } catch (e) {
+              console.warn('[MCP] Status check: Failed to re-initialize client:', e.message);
+              mcpConnected = null;
+            }
           }
-        } else {
-          try {
-            // Try to re-initialize client if it was missing 
-            const { getMCPClient } = await import('../../config/mcp-config.js');
-            figmaClient = await getMCPClient();
-          } catch (e) {
-            mcpConnected = null;
+        } catch (error) {
+          if (mcpConnected) {
+            mcpConnected = false;
+            console.log('🔌 MCP Status changed: Disconnected');
+          }
+
+          // Log error only if it's NOT a 401 to avoid spamming logs when config is wrong
+          // 401 means "Invalid Token", which won't fix itself by retrying
+          if (!error.message.includes('401') && !error.message.includes('Unauthorized')) {
+            console.warn('MCP Status Check Failed:', error.message);
           }
         }
-      } catch (error) {
-        if (mcpConnected) {
-          mcpConnected = false;
-          console.log('🔌 MCP Status changed: Disconnected');
-        }
+      }, 30000); // Check every 30 seconds
 
-        // Log error only if it's NOT a 401 to avoid spamming logs when config is wrong
-        // 401 means "Invalid Token", which won't fix itself by retrying
-        if (!error.message.includes('401') && !error.message.includes('Unauthorized')) {
-          console.warn('MCP Status Check Failed:', error.message);
-        }
-      }
-    }, 30000); // Check every 30 seconds
+      // Setup signal handlers
+      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+      process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+      process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'));
+
+      // Server is now listening, resolve the promise
+      resolve(server);
+    });
   });
-
-  // Setup signal handlers
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'));
-
-  return server;
 } 

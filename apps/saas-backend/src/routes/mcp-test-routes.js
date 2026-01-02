@@ -31,6 +31,12 @@ router.post('/test-connection', async (req, res) => {
         console.log('✅ Routing to testDirectAPI');
         return await testDirectAPI(req, res);
         
+      case 'desktop':
+      case 'local':
+      case 'figma-desktop':
+        console.log('✅ Routing to testDesktopMCP');
+        return await testDesktopMCP(req, res);
+        
       case 'mcp_server_remote':
       case 'figma':
       case 'figma-cloud':
@@ -43,7 +49,7 @@ router.post('/test-connection', async (req, res) => {
         console.error('❌ Unknown method:', { original: method, normalized: normalizedMethod, type: typeof method });
         return res.json({
           success: false,
-          error: `Unknown connection method: ${method || 'undefined'}. Supported methods: api, figma.`
+          error: `Unknown connection method: ${method || 'undefined'}. Supported methods: api, desktop, figma.`
         });
     }
   } catch (error) {
@@ -54,6 +60,86 @@ router.post('/test-connection', async (req, res) => {
     });
   }
 });
+
+/**
+ * Test Desktop MCP connection
+ */
+async function testDesktopMCP(req, res) {
+  try {
+    console.log('🖥️  Testing Desktop MCP connection...');
+    
+    // Check if we're in desktop environment
+    const isDesktopEnvironment = 
+      process.env.DEPLOYMENT_MODE === 'desktop' ||
+      process.env.NODE_ENV === 'development';
+    
+    if (!isDesktopEnvironment) {
+      return res.json({
+        success: false,
+        error: 'Desktop MCP is only available in desktop mode'
+      });
+    }
+    
+    // Try to discover Desktop MCP
+    try {
+      const { discoverMCPPort, isFigmaRunning } = await import('@designqa/mcp-client/discovery');
+      
+      const figmaRunning = await isFigmaRunning();
+      if (!figmaRunning) {
+        return res.json({
+          success: false,
+          error: 'Figma Desktop app is not running. Please start Figma to use Desktop MCP.'
+        });
+      }
+      
+      const discovery = await discoverMCPPort();
+      if (!discovery.port) {
+        return res.json({
+          success: false,
+          error: 'Could not find Figma MCP port. Ensure Dev Mode and the Figma MCP server are enabled.'
+        });
+      }
+      
+      // Try to connect
+      const { DesktopMCPClient } = await import('@designqa/mcp-client');
+      const client = new DesktopMCPClient({
+        port: discovery.port,
+        autoDiscover: true
+      });
+      
+      return res.json({
+        success: true,
+        message: `Desktop MCP connected successfully on port ${discovery.port}!`,
+        data: {
+          connected: true,
+          port: discovery.port
+        }
+      });
+    } catch (error) {
+      console.error('❌ Desktop MCP discovery failed:', error);
+      const errorMsg = error.message || String(error);
+      
+      // Provide specific guidance based on error type
+      if (errorMsg.includes('404') || errorMsg.includes('Unexpected server response')) {
+        return res.json({
+          success: false,
+          error: 'MCP server found but not responding correctly. This may mean:\n• Figma MCP feature is not enabled or available\n• Wrong port detected\n• MCP server needs to be enabled in Figma Preferences\n\nNote: Figma MCP may require an Enterprise account or specific version.'
+        });
+      }
+      
+      return res.json({
+        success: false,
+        error: `Desktop MCP connection failed: ${errorMsg}`
+      });
+    }
+  } catch (error) {
+    console.error('❌ Desktop MCP test failed:', error);
+    return res.json({
+      success: false,
+      error: `Desktop MCP test failed: ${error.message || String(error)}`
+    });
+  }
+}
 
 /**
  * Test Direct Figma API connection

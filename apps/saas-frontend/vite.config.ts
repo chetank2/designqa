@@ -8,9 +8,9 @@ const rootPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../.
 const packageJson = { version: rootPackageJson.version }
 
 // SINGLE SOURCE OF TRUTH: API port (validated by scripts/validate-ports.mjs)
-// Backend runs on 3848 internally, frontend dev server on 3847 proxies to it
-const API_PORT = Number(process.env.VITE_SERVER_PORT || process.env.BACKEND_PORT || 3848);
-const API_URL = process.env.VITE_API_URL || `http://localhost:${API_PORT}`;
+// Backend runs on 3847 internally, frontend dev server on 3846 proxies to it
+const API_PORT = Number(process.env.VITE_SERVER_PORT || process.env.BACKEND_PORT || 3847);
+const API_URL = process.env.VITE_API_URL || `http://127.0.0.1:${API_PORT}`;
 
 // printConfig function to log configuration
 function printConfig(config: any) {
@@ -32,31 +32,31 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   server: {
-    port: 3847,
+    port: 3846,
     host: true,
     proxy: {
       '/api': {
-        target: `http://localhost:${API_PORT}`,
+        target: `http://127.0.0.1:${API_PORT}`,
         changeOrigin: true,
         secure: false,
       },
       '/reports': {
-        target: `http://localhost:${API_PORT}`,
+        target: `http://127.0.0.1:${API_PORT}`,
         changeOrigin: true,
         secure: false,
       },
       '/output': {
-        target: `http://localhost:${API_PORT}`,
+        target: `http://127.0.0.1:${API_PORT}`,
         changeOrigin: true,
         secure: false,
       },
       '/images': {
-        target: `http://localhost:${API_PORT}`,
+        target: `http://127.0.0.1:${API_PORT}`,
         changeOrigin: true,
         secure: false,
       },
       '/screenshots': {
-        target: `http://localhost:${API_PORT}`,
+        target: `http://127.0.0.1:${API_PORT}`,
         changeOrigin: true,
         secure: false,
       },

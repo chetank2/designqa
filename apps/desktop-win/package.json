@@ -8,15 +8,22 @@
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
     "dev:main": "tsc --watch --project tsconfig.main.json",
     "dev:renderer": "vite",
-    "build": "npm run build:main && npm run build:renderer",
+    "build": "npm run build:workspace-packages && npm run verify:workspace-packages && npm run copy:backend && npm run install:deps && npm run resolve:deps && npm run build:main && npm run build:renderer && npm run check:ts-syntax",
+    "install:deps": "pnpm install --filter @designqa/desktop-win",
+    "resolve:deps": "node scripts/resolve-deps.js",
     "build:main": "tsc --project tsconfig.main.json",
     "build:renderer": "vite build",
+    "build:workspace-packages": "cd ../../packages/mcp-client && npm run build && cd ../compare-engine && npm run build",
+    "verify:workspace-packages": "node scripts/verify-build.js",
+    "check:ts-syntax": "node scripts/check-ts-syntax.js",
+    "copy:backend": "node scripts/copy-backend.js",
     "package": "electron-builder --win",
     "package:all": "electron-builder --win --mac"
   },
   "dependencies": {
     "@myapp/compare-engine": "workspace:*",
     "@designqa/mcp-client": "workspace:*",
+    "dotenv": "^17.2.3",
     "express": "^4.18.2"
   },
   "devDependencies": {
@@ -32,6 +39,7 @@
   "build": {
     "appId": "com.designqa.desktop",
     "productName": "DesignQA",
+    "asar": true,
     "win": {
       "target": [
         {
@@ -42,11 +50,35 @@
           ]
         }
       ],
+      "icon": "build/icon.ico",
       "forceCodeSigning": false
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*",
+      "!**/node_modules/**/{README.md,README,readme.md,readme}",
+      "!**/node_modules/**/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/**/*.d.ts",
+      "!**/node_modules/**/*.map",
+      "!**/node_modules/**/.{eslintrc,prettierrc,prettierignore,eslintignore}",
+      "!**/node_modules/**/{.nyc_output,coverage,.nyc_output}",
+      "saas-backend/src/**/*",
+      "saas-backend/package.json",
+      "saas-backend/config.json",
+      "!saas-backend/node_modules/**/*",
+      "!saas-backend/dist/**/*",
+      "!saas-backend/tests/**/*",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/src/**/*.ts",
+      "!**/src/**/*.tsx",
+      "!**/packages/**/src/**",
+      "!**/packages/**/*.ts",
+      "!**/packages/**/*.tsx"
+    ],
+    "asarUnpack": [
+      "saas-backend/src/**/*"
     ],
     "directories": {
       "output": "build"

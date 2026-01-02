@@ -18,14 +18,24 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   validate(rawData) {
     // Support new structured MCP data format
     if (rawData && rawData.rawMCPData) {
-      return !!(rawData.rawMCPData.metadata || rawData.rawMCPData.code || rawData.rawMCPData.variables);
+      const { metadata, code, variables } = rawData.rawMCPData || {};
+      const hasAny = !!(metadata || code || variables);
+      if (!hasAny) return false;
+
+      // If all results are explicit MCP error payloads, treat as invalid input.
+      const isErrorPayload = (v) => (v && typeof v === 'object' && v.isError === true);
+      if (isErrorPayload(metadata) && isErrorPayload(code) && isErrorPayload(variables)) {
+        return false;
+      }
+
+      return true;
     }
 
     // Support legacy XML format
     return rawData &&
-           rawData.content &&
-           typeof rawData.content === 'string' &&
-           rawData.content.includes('<canvas');
+      rawData.content &&
+      typeof rawData.content === 'string' &&
+      rawData.content.includes('<canvas');
   }
 
   /**
@@ -41,6 +51,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
 
     const baseMetadata = this.extractBaseMetadata(context);
 
+    // Ensure designSystem context is preserved
+    if (context.designSystem) {
+      baseMetadata.designSystem = context.designSystem;
+    }
+
     // Handle new structured MCP data format
     if (rawData.rawMCPData) {
       return this.transformStructuredData(rawData, baseMetadata);
@@ -49,7 +64,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     // Handle legacy XML format
     const xmlContent = rawData.content;
     const components = this.extractComponents(xmlContent);
-    const colors = this.extractColors(xmlContent);
+    // Use enhanced extraction logic (normalized, unique, token-mapped)
+    const colors = this.extractColorsFromXMLMetadata({
+      content: xmlContent,
+      designSystem: baseMetadata.designSystem
+    });
     const typography = this.extractTypography(xmlContent);
 
     return {
@@ -374,6 +393,17 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     console.log('  - Code:', !!code);
     console.log('  - Variables:', !!variables);
 
+    // Fail fast on MCP error payloads so callers don't treat them as valid extracted data.
+    const isErrorPayload = (v) => (v && typeof v === 'object' && v.isError === true);
+    if (isErrorPayload(metadata) || isErrorPayload(code) || isErrorPayload(variables)) {
+      const msg =
+        metadata?.content?.[0]?.text ||
+        code?.content?.[0]?.text ||
+        variables?.content?.[0]?.text ||
+        'MCP returned an error payload';
+      throw new Error(msg);
+    }
+
     // Extract components from MCP code/metadata
     console.log('\n📦 Extracting components...');
     const components = this.extractComponentsFromStructuredData(metadata, code);
@@ -381,8 +411,16 @@ export class MCPXMLAdapter extends BaseDataAdapter {
 
     // Extract colors from variables AND XML metadata
     console.log('\n🎨 Extracting colors...');
-    const colorsFromVariables = this.extractColorsFromVariables(variables);
-    const colorsFromXML = this.extractColorsFromXMLMetadata(metadata);
+    // Pass design system context for token mapping
+    const dsContext = { designSystem: baseMetadata.designSystem };
+
+    // Note: extractColorsFromVariables doesn't accept metadata arg yet, we should update it or pass 2nd arg
+    const colorsFromVariables = this.extractColorsFromVariables(variables, dsContext);
+
+    // We mix the raw metadata with our design system context for the XML extractor
+    const xmlMetadataWithContext = { ...metadata, ...dsContext };
+    const colorsFromXML = this.extractColorsFromXMLMetadata(xmlMetadataWithContext);
+
     const colors = [...colorsFromVariables, ...colorsFromXML];
     console.log(`  ✅ Total colors: ${colors.length} (${colorsFromVariables.length} from variables, ${colorsFromXML.length} from XML)`);
 
@@ -588,7 +626,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     }
 
     if (xmlContent) {
-      // Use the robust XML color extractor so we capture hex AND rgb(a) in fill/stroke
+      // Use the robust XML color extractor
       const extracted = this.extractColors(xmlContent);
 
       // Normalize values and de-duplicate by normalized value
@@ -597,17 +635,26 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         const norm = this.normalizeColorString(item.value);
         if (!norm) return;
         if (seen.has(norm)) return;
+
         seen.add(norm);
+
+        // Map to design system token if available
+        let token = null;
+        if (metadata?.designSystem) {
+          token = this.findTokenForColor(norm, metadata.designSystem);
+        }
+
         colors.push({
           id: `xml-color-${index}`,
           name: item.name || `Color ${colors.length + 1}`,
           value: norm,
           type: 'COLOR',
-          source: 'xml-metadata'
+          source: 'xml-metadata',
+          token: token // Attach matched token
         });
       });
 
-      console.log(`  ✅ Extracted ${colors.length} colors from XML metadata (normalized & unique)`);
+      console.log(`  ✅ Extracted ${colors.length} colors from XML metadata`);
     } else {
       console.warn('  - No XML content to extract colors from');
     }
@@ -616,10 +663,32 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   }
 
   /**
+   * Helper to find matching token for a color value
+   */
+  findTokenForColor(colorValue, designSystem) {
+    if (!designSystem || !designSystem.tokens) return null;
+
+    // Check colors section
+    const colorTokens = designSystem.tokens.colors || {};
+
+    // Simple exact match first
+    for (const [name, tokenValue] of Object.entries(colorTokens)) {
+      const normToken = this.normalizeColorString(tokenValue);
+
+      if (normToken === colorValue) {
+        return { name, value: tokenValue, type: 'exact' };
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Extract colors from variables
    */
-  extractColorsFromVariables(variables) {
+  extractColorsFromVariables(variables, context = {}) {
     const colors = [];
+    const { designSystem } = context;
 
     console.log('🎨 Color Extraction from Variables Debug:');
     console.log('  - Variables present:', !!variables);
@@ -667,12 +736,20 @@ export class MCPXMLAdapter extends BaseDataAdapter {
             const extracted = this.extractColorValue(value);
             const norm = this.normalizeColorString(extracted);
             if (!norm) return;
+
+            // Map to token
+            let token = null;
+            if (designSystem) {
+              token = this.findTokenForColor(norm, designSystem);
+            }
+
             colors.push({
               id: key,
               name: value.name || key,
               value: norm,
               type: 'COLOR',
-              source: 'mcp-variables'
+              source: 'mcp-variables',
+              token
             });
           });
         } else if (varsData && typeof varsData === 'object') {
@@ -687,23 +764,39 @@ export class MCPXMLAdapter extends BaseDataAdapter {
               const extracted = this.extractColorValue(value);
               const norm = this.normalizeColorString(extracted);
               if (!norm) return;
+
+              // Map to token
+              let token = null;
+              if (designSystem) {
+                token = this.findTokenForColor(norm, designSystem);
+              }
+
               colors.push({
                 id: key,
                 name: value.name || key,
                 value: norm,
                 type: 'COLOR',
-                source: 'mcp-variables-direct'
+                source: 'mcp-variables-direct',
+                token
               });
             } else if (typeof value === 'string' && this.isHexColor(value)) {
               // Direct hex color values like "Primary":"#434F64"
               const norm = this.normalizeColorString(value);
               if (!norm) return;
+
+              // Map to token
+              let token = null;
+              if (designSystem) {
+                token = this.findTokenForColor(norm, designSystem);
+              }
+
               colors.push({
                 id: key,
                 name: key.replace(/_/g, ' '), // Convert underscores to spaces
                 value: norm,
                 type: 'COLOR',
-                source: 'mcp-variables-hex'
+                source: 'mcp-variables-hex',
+                token
               });
             }
           });
@@ -965,6 +1058,35 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
 
+    // hsl/hsla(h, s, l[, a]) -> #rrggbb
+    // Supports commma and space separation
+    if (v.startsWith('hsl')) {
+      const match = v.match(/^hsla?\((.+)\)$/i);
+      if (match) {
+        const parts = match[1].split(/[\s,]+/).filter(p => p !== '/' && p.trim() !== '');
+        if (parts.length >= 3) {
+          let h = parseFloat(parts[0]);
+          let s = parseFloat(parts[1].replace('%', ''));
+          let l = parseFloat(parts[2].replace('%', ''));
+
+          // Convert HSL to RGB
+          s /= 100;
+          l /= 100;
+          const k = n => (n + h / 30) % 12;
+          const a = s * Math.min(l, 1 - l);
+          const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+
+          const r = Math.round(255 * f(0));
+          const g = Math.round(255 * f(8));
+          const b = Math.round(255 * f(4));
+
+          // rgb to hex
+          const toHex = (n) => n.toString(16).padStart(2, '0');
+          return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
+      }
+    }
+
     // Basic named colors mapping
     const named = {
       black: '#000000',
@@ -989,7 +1111,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   isColorVariable(value) {
     return value.type === 'COLOR' ||
-           (typeof value.value === 'string' && value.value.match(/^#[0-9a-fA-F]{6}$/));
+      (typeof value.value === 'string' && value.value.match(/^#[0-9a-fA-F]{6}$/));
   }
 
   /**

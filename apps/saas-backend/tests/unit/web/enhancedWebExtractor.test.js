@@ -1,10 +1,10 @@
-import { EnhancedWebExtractor } from '../../../src/web/enhancedWebExtractor.js';
+import { UnifiedWebExtractor } from '../../../src/web/UnifiedWebExtractor.js';
 
-describe('EnhancedWebExtractor', () => {
+describe('UnifiedWebExtractor', () => {
   let extractor;
 
   beforeEach(() => {
-    extractor = new EnhancedWebExtractor();
+    extractor = new UnifiedWebExtractor();
   });
 
   afterEach(async () => {

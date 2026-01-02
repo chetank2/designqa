@@ -1,7 +1,8 @@
-import { ComparisonResult } from '@/types'
+import { ComparisonResult, DesignSystemValidationResult } from '@/types'
 import { motion } from 'framer-motion'
 import { SummaryStats } from './SummaryStats'
 import { VisualTokenComparison } from './VisualTokenComparison'
+import { DesignSystemValidation } from './DesignSystemValidation'
 import { Button } from '@/components/ui/button'
 import ExtractionDetailsView from '../reports/ExtractionDetailsView'
 import { GlassCard, GlassContent } from '@/components/ui/GlassCard'
@@ -38,6 +39,19 @@ export function ComparisonResultView({
     const spacingData = getSpacingComparisonData(result)
     const borderRadiusData = getBorderRadiusComparisonData(result)
 
+    const openReport = async () => {
+        if (!reportUrl) return
+        const apiBaseUrl = getApiBaseUrl()
+        const url = reportUrl.startsWith('http') ? reportUrl : `${apiBaseUrl}${reportUrl}`
+
+        if (window.electronAPI?.openExternal) {
+            await window.electronAPI.openExternal(url)
+            return
+        }
+
+        window.open(url, '_blank', 'noopener,noreferrer')
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -52,7 +66,7 @@ export function ComparisonResultView({
                 </Button>
                 <div className="flex items-center gap-4">
                     {reportUrl && (
-                        <Button variant="outline" onClick={() => window.open(reportUrl, '_blank')} className="gap-2">
+                        <Button variant="outline" onClick={openReport} className="gap-2">
                             <EyeIcon className="w-4 h-4" />
                             View Report
                         </Button>
@@ -71,6 +85,23 @@ export function ComparisonResultView({
                 deviations={deviations}
                 matchPercentage={matchPercentage}
             />
+
+            {/* Design System Validation Section */}
+            {(() => {
+                const comps = (result.data?.comparisons || (result as any).comparisons || []) as any[];
+                const firstResultWithDS = comps.find(c => c.designSystemResults)?.designSystemResults as DesignSystemValidationResult | undefined;
+
+                if (firstResultWithDS) {
+                    // Aggregate all results if multiple exist, or just show the first one for now
+                    // For a MVP, showing the first one (usually the main component) is a good start
+                    return (
+                        <div className="mt-12">
+                            <DesignSystemValidation results={firstResultWithDS} />
+                        </div>
+                    );
+                }
+                return null;
+            })()}
 
             {/* Visual Analysis Grid */}
             <div className="space-y-12">

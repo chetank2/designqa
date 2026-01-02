@@ -12,9 +12,105 @@ const router = express.Router();
 /**
  * GET /api/mcp/status
  * Get MCP connection status
+ * In Electron/local mode, checks Electron MCP bridge
  */
 router.get('/status', async (req, res) => {
   try {
+    // Check if we're in Electron/local mode
+    const isLocalMode = process.env.RUNNING_IN_ELECTRON === 'true' || 
+                        (!process.env.RENDER && !process.env.VERCEL);
+
+    if (isLocalMode) {
+      // In Electron, MCP is managed by Electron bridge
+      // First try to get bridge client from process global
+      let bridgeClient = null;
+      if (process.__designqa_mcp_bridge_client) {
+        bridgeClient = process.__designqa_mcp_bridge_client;
+        console.log('[MCP Status] Found bridge client via process global');
+      }
+      
+      // If no bridge client, try to get MCP client (which will use bridge if available)
+      if (!bridgeClient) {
+        try {
+          const mcpClient = await getMCPClient({ mode: 'desktop', autoDetectDesktop: false });
+          bridgeClient = mcpClient;
+        } catch (error) {
+          console.warn('[MCP Status] Failed to get MCP client:', error.message);
+        }
+      }
+      
+      if (!bridgeClient) {
+        return res.json({
+          success: false,
+          status: 'disconnected',
+          available: false,
+          message: 'Desktop MCP not initialized. Ensure Figma Desktop is running and MCP bridge is connected.',
+          data: {
+            connected: false,
+            serverUrl: null,
+            port: null,
+            tools: [],
+            toolsCount: 0
+          }
+        });
+      }
+
+      // Protocol-agnostic connection check:
+      // - HTTP/SSE clients expose connect() + initialized + baseUrl
+      // - Legacy websocket clients expose ws + initialized
+      let isConnected = false;
+      let isInitialized = !!bridgeClient.initialized;
+
+      try {
+        if (typeof bridgeClient.connect === 'function') {
+          const connectResult = await bridgeClient.connect();
+          isInitialized = !!bridgeClient.initialized || !!connectResult;
+        }
+      } catch (error) {
+        isInitialized = false;
+      }
+
+      const ws = bridgeClient.ws || null;
+      const wsOpen = ws && typeof ws.readyState !== 'undefined' && ws.readyState === 1; // WebSocket.OPEN
+
+      // Connected if initialized and (either no ws (HTTP client) or ws is open)
+      isConnected = isInitialized && (!ws || wsOpen);
+
+      const serverUrl = bridgeClient.baseUrl || bridgeClient.remoteUrl || process.env.FIGMA_DESKTOP_MCP_URL || null;
+      const portFromEnv = process.env.FIGMA_MCP_PORT ? parseInt(process.env.FIGMA_MCP_PORT, 10) : null;
+      const mcpPort = bridgeClient.port || portFromEnv || 3845;
+
+      let tools = [];
+      if (isConnected && typeof bridgeClient.listTools === 'function') {
+        try {
+          const toolResult = await bridgeClient.listTools();
+          tools = toolResult?.tools?.map(t => t.name).filter(Boolean) || [];
+        } catch (error) {
+          tools = [];
+        }
+      }
+
+      return res.json({
+        success: true,
+        status: isConnected ? 'connected' : 'disconnected',
+        available: isConnected,
+        message: isConnected
+          ? `✅ Connected to Figma Desktop MCP on port ${mcpPort}`
+          : 'Desktop MCP not connected. Ensure Figma Desktop is running.',
+        data: {
+          connected: isConnected,
+          serverUrl,
+          port: mcpPort,
+          figmaRunning: isConnected,
+          initialized: isInitialized,
+          wsReadyState: ws ? ws.readyState : null,
+          tools,
+          toolsCount: tools.length
+        }
+      });
+    }
+
+    // Cloud mode - use remote MCP
     const mcpClient = await getMCPClient({ userId: req.user?.id });
 
     if (!mcpClient) {
@@ -35,20 +131,21 @@ router.get('/status', async (req, res) => {
     // Test connection to get current status
     const isConnected = await mcpClient.connect();
 
-    res.json({
-      success: true,
-      status: isConnected ? 'connected' : 'disconnected',
-      available: isConnected,
-      message: isConnected
-        ? 'MCP Server connected successfully'
-        : 'MCP Server not available',
-      data: {
-        connected: isConnected,
-        serverUrl: mcpClient.baseUrl || mcpClient.remoteUrl || 'https://mcp.figma.com/mcp',
-        tools: isConnected ? ['get_code', 'get_metadata', 'get_variable_defs'] : [],
-        toolsCount: isConnected ? 3 : 0
-      }
-    });
+      res.json({
+        success: true,
+        status: isConnected ? 'connected' : 'disconnected',
+        available: isConnected,
+        message: isConnected
+          ? 'MCP Server connected successfully'
+          : 'MCP Server not available',
+        data: {
+          connected: isConnected,
+          serverUrl: mcpClient.baseUrl || mcpClient.remoteUrl || 'https://mcp.figma.com/mcp',
+          figmaRunning: isConnected,
+          tools: isConnected ? ['get_code', 'get_metadata', 'get_variable_defs'] : [],
+          toolsCount: isConnected ? 3 : 0
+        }
+      });
   } catch (error) {
     console.error('❌ MCP status error:', error);
     res.json({

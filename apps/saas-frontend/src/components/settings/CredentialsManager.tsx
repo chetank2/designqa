@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppMode } from '../../contexts/ModeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +26,13 @@ interface Credential {
   updated_at: string;
 }
 
-export default function CredentialsManager() {
+import { migrateData } from '../../utils/migration';
+
+interface CredentialsManagerProps {
+  backendReachable?: boolean | null;
+}
+
+export default function CredentialsManager({ backendReachable }: CredentialsManagerProps) {
   const { user } = useAuth();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,15 +100,38 @@ export default function CredentialsManager() {
     }
   };
 
+  const { mode: appMode } = useAppMode();
+
+  const backendState =
+    backendReachable === undefined ? true : backendReachable;
+
   useEffect(() => {
-    // Detect storage mode
-    const mode = supabase && user ? 'supabase' : 'local';
-    setStorageMode(mode);
-    loadCredentials(mode);
-  }, [user, supabase]);
+    if (backendState === false) {
+      setLoading(false);
+      setCredentials([]);
+      setError('Local backend unavailable. Start the embedded server to manage credentials.');
+      return;
+    }
+
+    if (backendState === null) {
+      setLoading(true);
+      setError(null);
+      return;
+    }
+
+    if (appMode === 'local') {
+      setStorageMode('local');
+      loadCredentials('local');
+    } else {
+      const mode = supabase && user ? 'supabase' : 'local';
+      setStorageMode(mode);
+      loadCredentials(mode);
+    }
+  }, [user, supabase, appMode, backendState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setError(null);
 
     // Validate required fields
@@ -112,17 +142,6 @@ export default function CredentialsManager() {
     if (!formData.url || !formData.url.trim()) {
       setError('Credential URL is required');
       return;
-    }
-    if (!editingId) {
-      // Only require username/password for new credentials
-      if (!formData.username || !formData.username.trim()) {
-        setError('Username is required');
-        return;
-      }
-      if (!formData.password || !formData.password.trim()) {
-        setError('Password is required');
-        return;
-      }
     }
 
     const currentMode = supabase && user ? 'supabase' : 'local';
@@ -254,11 +273,10 @@ export default function CredentialsManager() {
         </Alert>
       )}
 
-      {/* Storage Mode Indicator */}
       {supabase && (
         <Alert>
           <div className="flex items-center gap-2">
-            {user ? (
+            {storageMode === 'supabase' ? (
               <>
                 <Cloud className="h-4 w-4" />
                 <AlertDescription>
@@ -269,7 +287,7 @@ export default function CredentialsManager() {
               <>
                 <HardDrive className="h-4 w-4" />
                 <AlertDescription>
-                  Supabase configured but not signed in. Credentials will be stored locally until you sign in.
+                  Using Local storage. {user ? "You can import credentials from your cloud account." : "Sign in to sync credentials across devices."}
                 </AlertDescription>
               </>
             )}
@@ -284,7 +302,67 @@ export default function CredentialsManager() {
             Store and reuse authentication credentials for web extractions
           </p>
         </div>
-        <Button onClick={() => {
+        {storageMode === 'supabase' && (
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (confirm('Import credentials from local storage? This will copy local credentials to your cloud account.\n\nNOTE: Passwords cannot be exported for security reasons and must be re-entered.')) {
+                try {
+                  setLoading(true);
+                  const session = await supabase?.auth.getSession();
+                  const token = session?.data.session?.access_token;
+                  if (!token) throw new Error('Not authenticated');
+
+                  // Use migrateData util
+                  const result = await migrateData('credentials', token, 'to_cloud');
+                  if (result.success) {
+                    alert(`Successfully imported ${result.count} credentials!`);
+                    loadCredentials();
+                  }
+                } catch (err) {
+                  console.error('Migration failed:', err);
+                  alert('Failed to import credentials. Ensure local server is running.');
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+          >
+            <HardDrive className="mr-2 h-4 w-4" />
+            Import from Local
+          </Button>
+        )}
+        {storageMode === 'local' && user && supabase && (
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (confirm('Import credentials from cloud storage? This will copy cloud credentials to your local storage.\n\nNOTE: Passwords cannot be exported for security reasons and must be re-entered.')) {
+                try {
+                  setLoading(true);
+                  const session = await supabase?.auth.getSession();
+                  const token = session?.data.session?.access_token;
+                  if (!token) throw new Error('Not authenticated');
+
+                  // Use migrateData util
+                  const result = await migrateData('credentials', token, 'to_local');
+                  if (result.success) {
+                    alert(`Successfully imported ${result.count} credentials!`);
+                    loadCredentials();
+                  }
+                } catch (err) {
+                  console.error('Migration failed:', err);
+                  alert('Failed to import credentials.');
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+          >
+            <Cloud className="mr-2 h-4 w-4" />
+            Import from Cloud
+          </Button>
+        )}
+        <Button type="button" onClick={() => {
           setShowForm(!showForm);
           setEditingId(null);
           setFormData({ name: '', url: '', loginUrl: '', username: '', password: '', notes: '' });
@@ -303,7 +381,12 @@ export default function CredentialsManager() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Using div instead of form to avoid nested form issues with parent Settings form */}
+            <div className="space-y-4" onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSubmit(e as any);
+              }
+            }}>
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input
@@ -342,24 +425,28 @@ export default function CredentialsManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username *</Label>
+                <Label htmlFor="username">
+                  Username
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <Input
                   id="username"
                   value={formData.username}
                   onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                  required={!editingId}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password *</Label>
+                <Label htmlFor="password">
+                  Password
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    required={!editingId}
                   />
                   <Button
                     type="button"
@@ -385,7 +472,7 @@ export default function CredentialsManager() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit">
+                <Button type="button" onClick={(e) => handleSubmit(e as any)}>
                   {editingId ? 'Update' : 'Create'} Credential
                 </Button>
                 <Button type="button" variant="outline" onClick={() => {
@@ -396,7 +483,7 @@ export default function CredentialsManager() {
                   Cancel
                 </Button>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -413,7 +500,7 @@ export default function CredentialsManager() {
             <Card key={credential.id}>
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex flex-col gap-[12px]">
                     <CardTitle>{credential.name}</CardTitle>
                     <CardDescription className="flex items-center gap-2">
                       <Globe className="h-4 w-4" />

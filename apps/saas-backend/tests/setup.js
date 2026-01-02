@@ -3,13 +3,26 @@
  * Global test configuration and utilities
  */
 
-import '@testing-library/jest-dom';
 import { jest } from '@jest/globals';
 
 // Global test timeout
 jest.setTimeout(30000);
 
 // Mock console methods for cleaner test output
+// Use a safe serializer to avoid circular reference issues
+const safeStringify = (obj) => {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular]';
+      }
+      seen.add(value);
+    }
+    return value;
+  });
+};
+
 global.console = {
   ...console,
   // Uncomment to suppress console.log during tests
@@ -17,7 +30,23 @@ global.console = {
   debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
-  error: jest.fn(),
+  error: jest.fn((...args) => {
+    // Safely stringify error objects to avoid circular references
+    const safeArgs = args.map(arg => {
+      if (arg instanceof Error) {
+        return arg.message;
+      }
+      if (typeof arg === 'object' && arg !== null) {
+        try {
+          return safeStringify(arg);
+        } catch {
+          return '[Object]';
+        }
+      }
+      return arg;
+    });
+    process.stderr.write(`[ERROR] ${safeArgs.join(' ')}\n`);
+  }),
 };
 
 // Global test utilities

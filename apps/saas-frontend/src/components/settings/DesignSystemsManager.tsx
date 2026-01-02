@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppMode } from '../../contexts/ModeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Plus, Trash2, Edit2, Upload, FileText, Code, Cloud, HardDrive } from 'lucide-react';
 import { getApiBaseUrl } from '../../config/ports';
 import { supabase } from '../../lib/supabase';
+import { migrateData } from '../../utils/migration';
 
 interface DesignSystem {
   id: string;
@@ -28,7 +30,11 @@ interface DesignSystem {
   updatedAt: string;
 }
 
-export default function DesignSystemsManager() {
+interface DesignSystemsManagerProps {
+  backendReachable?: boolean | null;
+}
+
+export default function DesignSystemsManager({ backendReachable }: DesignSystemsManagerProps) {
   const { user } = useAuth();
   const [systems, setSystems] = useState<DesignSystem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,44 +50,66 @@ export default function DesignSystemsManager() {
     tokens: '{}'
   });
 
+  const { mode: appMode } = useAppMode();
+
+  const backendState =
+    backendReachable === undefined ? true : backendReachable;
+
   useEffect(() => {
-    // Detect storage mode
-    const mode = supabase ? 'supabase' : 'local';
-    setStorageMode(mode);
-    loadSystems(mode);
-  }, [user, supabase]);
+    if (backendState === false) {
+      setLoading(false);
+      setSystems([]);
+      setError('Local backend unavailable. Start the embedded server to manage design systems.');
+      return;
+    }
+
+    if (backendState === null) {
+      setLoading(true);
+      setError(null);
+      return;
+    }
+
+    if (appMode === 'local') {
+      setStorageMode('local');
+      loadSystems('local');
+    } else {
+      const mode = supabase && user ? 'supabase' : 'local';
+      setStorageMode(mode);
+      loadSystems(mode);
+    }
+  }, [user, supabase, appMode, backendState]);
 
   const loadSystems = async (mode?: 'local' | 'supabase') => {
     const currentMode = mode || storageMode;
     try {
       setLoading(true);
       setError(null);
-      
+
       if (currentMode === 'supabase' && supabase) {
         // Load from Supabase via API
         const apiBaseUrl = getApiBaseUrl();
         const headers: HeadersInit = {};
-        
+
         if (user) {
           const session = await supabase.auth.getSession();
           if (session?.data.session?.access_token) {
             headers['Authorization'] = `Bearer ${session.data.session.access_token}`;
           }
         }
-        
+
         const response = await fetch(`${apiBaseUrl}/api/design-systems`, { headers });
-        
+
         if (!response.ok) {
           throw new Error('Failed to load design systems from Supabase');
         }
-        
+
         const result = await response.json();
         setSystems(result.data || []);
       } else {
         // Load from local storage via API (backend handles LocalStorageProvider)
         const apiBaseUrl = getApiBaseUrl();
         const response = await fetch(`${apiBaseUrl}/api/design-systems`);
-        
+
         if (!response.ok) {
           // If API fails, try to load from localStorage as fallback
           const localData = localStorage.getItem('design-systems');
@@ -92,7 +120,7 @@ export default function DesignSystemsManager() {
           }
           return;
         }
-        
+
         const result = await response.json();
         setSystems(result.data || []);
       }
@@ -108,6 +136,7 @@ export default function DesignSystemsManager() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setError(null);
 
     try {
@@ -130,7 +159,7 @@ export default function DesignSystemsManager() {
       }
 
       const apiBaseUrl = getApiBaseUrl();
-      
+
       const payload: any = {
         name: formData.name.trim(),
         slug: formData.slug?.trim() || formData.name.toLowerCase().replace(/\s+/g, '-'),
@@ -140,7 +169,7 @@ export default function DesignSystemsManager() {
 
       let url = `${apiBaseUrl}/api/design-systems`;
       let method = 'POST';
-      
+
       if (editingId) {
         url = `${apiBaseUrl}/api/design-systems/${editingId}`;
         method = 'PUT';
@@ -151,14 +180,14 @@ export default function DesignSystemsManager() {
       const headers: HeadersInit = {
         'Content-Type': 'application/json'
       };
-      
+
       if (currentMode === 'supabase' && user && supabase) {
         const session = await supabase.auth.getSession();
         if (session?.data.session?.access_token) {
           headers['Authorization'] = `Bearer ${session.data.session.access_token}`;
         }
       }
-      
+
       const response = await fetch(url, {
         method,
         headers,
@@ -195,7 +224,7 @@ export default function DesignSystemsManager() {
           headers['Authorization'] = `Bearer ${session.data.session.access_token}`;
         }
       }
-      
+
       const response = await fetch(`${apiBaseUrl}/api/design-systems/${id}`, {
         method: 'DELETE',
         headers
@@ -274,7 +303,36 @@ export default function DesignSystemsManager() {
             Manage design tokens and CSS for your comparisons
           </p>
         </div>
-        <Button onClick={() => {
+        {storageMode === 'supabase' && (
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (confirm('Import design systems from local storage? This will copy local design systems to your cloud account.')) {
+                try {
+                  setLoading(true);
+                  const session = await supabase?.auth.getSession();
+                  const token = session?.data.session?.access_token;
+                  if (!token) throw new Error('Not authenticated');
+
+                  const result = await migrateData('design-systems', token);
+                  if (result.success) {
+                    alert(`Successfully imported ${result.count} design systems!`);
+                    loadSystems();
+                  }
+                } catch (err) {
+                  console.error('Migration failed:', err);
+                  alert('Failed to import design systems.');
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+          >
+            <HardDrive className="mr-2 h-4 w-4" />
+            Import from Local
+          </Button>
+        )}
+        <Button type="button" onClick={() => {
           setShowForm(!showForm);
           setEditingId(null);
           setFormData({ name: '', slug: '', cssText: '', cssFile: null, tokens: '{}' });
@@ -290,7 +348,16 @@ export default function DesignSystemsManager() {
             <CardTitle>{editingId ? 'Edit' : 'Create'} Design System</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Using div instead of form to avoid nested form issues */}
+            <div className="space-y-4" onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent accidental outer form submit
+                // Only submit if not in textarea
+                if ((e.target as HTMLElement).tagName !== 'TEXTAREA') {
+                  handleSubmit(e as any);
+                }
+              }
+            }}>
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input
@@ -346,7 +413,7 @@ export default function DesignSystemsManager() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit">
+                <Button type="button" onClick={(e) => handleSubmit(e as any)}>
                   {editingId ? 'Update' : 'Create'} Design System
                 </Button>
                 <Button type="button" variant="outline" onClick={() => {
@@ -357,7 +424,7 @@ export default function DesignSystemsManager() {
                   Cancel
                 </Button>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       )}

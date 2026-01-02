@@ -9,6 +9,7 @@ import { getResourceManager } from '../utils/ResourceManager.js';
 import { loadConfig } from '../config/index.js';
 import { EnhancedAuthentication } from './EnhancedAuthentication.js';
 import { colorElementMapping } from '../services/ColorElementMappingService.js';
+import { TokenMappingService } from '../services/TokenMappingService.js';
 
 export class UnifiedWebExtractor {
   constructor() {
@@ -30,11 +31,11 @@ export class UnifiedWebExtractor {
    */
   async extractWebData(url, options = {}) {
     await this.initialize();
-    
+
     const extractionId = this.generateExtractionId();
     const controller = new AbortController();
     const startTime = Date.now();
-    
+
     // Set up timeout with special handling for FreightTiger (longer for SystemJS loading)
     const isFreightTiger = url.includes('freighttiger.com');
     const defaultTimeout = isFreightTiger ? 180000 : (this.config?.timeouts?.webExtraction || 30000); // 3 minutes for FreightTiger
@@ -44,25 +45,37 @@ export class UnifiedWebExtractor {
       const deadlineTs = startTime + actualTimeout;
       options._deadlineTs = deadlineTs;
     }
-    
+
+    process.stdout.write(`⏱️ Web extraction timeout: ${actualTimeout}ms (FreightTiger: ${isFreightTiger})\n`);
     console.log(`⏱️ Setting extraction timeout: ${actualTimeout}ms (FreightTiger: ${isFreightTiger})`);
-    
+
     const timeoutId = setTimeout(() => {
+      process.stdout.write(`⏰ Web extraction deadline reached for: ${url}\n`);
       console.log(`⏰ Extraction deadline reached for: ${url}`);
       controller.abort();
     }, actualTimeout);
 
     try {
+      process.stdout.write(`🌐 Starting web extraction from: ${url}\n`);
       console.log(`🌐 Starting unified extraction from: ${url}`);
-      
+
       // Validate URL
       this.validateUrl(url);
-      
-      // Create managed page through browser pool with enhanced options for FreightTiger
-      const { page, pageId } = await this.browserPool.createPage({
+
+      let sessionKey = null;
+      if (process.env.RUNNING_IN_ELECTRON === 'true' || process.env.DEPLOYMENT_MODE === 'desktop') {
+        try {
+          sessionKey = new URL(url).hostname;
+        } catch (_) {
+          sessionKey = null;
+        }
+      }
+
+      const pageOptions = {
         width: options.viewport?.width || 1920,
         height: options.viewport?.height || 1080,
         userAgent: options.userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ...(sessionKey ? { sessionKey, profileUrl: url } : {}),
         extraHTTPHeaders: {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
@@ -71,7 +84,10 @@ export class UnifiedWebExtractor {
           'Connection': 'keep-alive',
           'Upgrade-Insecure-Requests': '1'
         }
-      });
+      };
+
+      // Create managed page through browser pool with enhanced options for FreightTiger
+      let { page, pageId } = await this.browserPool.createPage(pageOptions);
 
       // CRITICAL: Mark page as active immediately to prevent cleanup race condition
       this.browserPool.markPageActive(pageId);
@@ -82,7 +98,7 @@ export class UnifiedWebExtractor {
       // Enhanced page configuration for complex SPAs
       await page.setDefaultNavigationTimeout(60000);
       await page.setDefaultTimeout(30000);
-      
+
       // Track whether we enabled interception so we can restore later
       let interceptionEnabled = false;
 
@@ -92,11 +108,11 @@ export class UnifiedWebExtractor {
       }
 
       // Track extraction (page already marked active above)
-      this.activeExtractions.set(extractionId, { 
-        pageId, 
-        controller, 
-        startTime, 
-        url 
+      this.activeExtractions.set(extractionId, {
+        pageId,
+        controller,
+        startTime,
+        url
       });
 
       // Track extraction in resource manager
@@ -114,25 +130,33 @@ export class UnifiedWebExtractor {
       });
 
       // Navigate to page with retry logic
+      process.stdout.write(`🔗 Navigating to: ${url}\n`);
       try {
         await Promise.race([
           this.navigateToPage(page, url, options),
           abortPromise
         ]);
+        process.stdout.write(`✅ Navigation successful\n`);
       } catch (navError) {
         // Handle flaky navigation errors by recreating page once
         const msg = navError?.message || '';
         if (msg.includes('Requesting main frame too early') || msg.includes('frame was detached')) {
           console.warn('⚠️ Navigation failed due to frame state; recreating page and retrying...');
           await this.browserPool.closePage(pageId);
-          const fresh = await this.browserPool.createPage({
-            width: options.viewport?.width || 1920,
-            height: options.viewport?.height || 1080
-          });
+          const fresh = await this.browserPool.createPage(pageOptions);
+          // Mark new page active and apply same config as the original page
+          this.browserPool.markPageActive(fresh.pageId);
+          await this.applyStealth(fresh.page);
+          await fresh.page.setDefaultNavigationTimeout(60000);
+          await fresh.page.setDefaultTimeout(30000);
+
+          // Switch subsequent steps (auth, stability, extraction) to use the fresh page.
+          page = fresh.page;
+          pageId = fresh.pageId;
           // Best-effort: reapply interception if needed
           if (interceptionEnabled) {
-            await fresh.page.setRequestInterception(true);
-            fresh.page.on('request', (request) => {
+            await page.setRequestInterception(true);
+            page.on('request', (request) => {
               const resourceType = request.resourceType();
               if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
                 request.abort();
@@ -142,9 +166,9 @@ export class UnifiedWebExtractor {
             });
           }
           // Update tracking to use fresh page
-          this.activeExtractions.set(extractionId, { pageId: fresh.pageId, controller, startTime, url });
+          this.activeExtractions.set(extractionId, { pageId, controller, startTime, url });
           await Promise.race([
-            this.navigateToPage(fresh.page, url, options),
+            this.navigateToPage(page, url, options),
             abortPromise
           ]);
         } else {
@@ -154,20 +178,33 @@ export class UnifiedWebExtractor {
 
       // Handle authentication if provided
       if (options.authentication) {
+        process.stdout.write(`🔐 Handling authentication...\n`);
         if (url.includes('freighttiger.com')) {
+          process.stdout.write(`🚛 Using FreightTiger-specific authentication flow\n`);
           console.log('🚛 Using FreightTiger-specific authentication flow');
-          // FreightTiger authentication can take a long time due to complex login flow
-          // Don't abort it with the timeout - let it complete naturally
-          await this.handleFreightTigerAuthentication(page, options.authentication, url);
+          // FreightTiger authentication can take a long time due to complex login flow.
+          // Do not fail the entire extraction if auth automation fails; proceed and surface status in metadata.
+          try {
+            await this.handleFreightTigerAuthentication(page, options.authentication, url);
+            options._authStatus = { ok: true };
+            process.stdout.write(`✅ FreightTiger authentication successful\n`);
+          } catch (authError) {
+            const message = authError?.message || String(authError);
+            process.stdout.write(`⚠️ FreightTiger authentication failed (continuing without auth)\n`);
+            console.warn('⚠️ FreightTiger authentication failed (continuing without auth):', message);
+            options._authStatus = { ok: false, error: message };
+          }
         } else {
           await Promise.race([
             this.handleAuthentication(page, options.authentication),
             abortPromise
           ]);
-          
+          process.stdout.write(`✅ Authentication successful\n`);
+
           // After authentication, check if we need to navigate to target URL
           const currentUrl = page.url();
           if (options.authentication.targetUrl && currentUrl !== options.authentication.targetUrl) {
+            process.stdout.write(`🔗 Navigating to target URL after authentication\n`);
             console.log(`🔗 Navigating to target URL after authentication: ${options.authentication.targetUrl}`);
             await Promise.race([
               this.navigateToPage(page, options.authentication.targetUrl, options),
@@ -178,7 +215,25 @@ export class UnifiedWebExtractor {
       }
 
       // Wait for page to stabilize
+      process.stdout.write(`⏳ Waiting for page stability...\n`);
       await this.waitForPageStability(page, options);
+      process.stdout.write(`✅ Page stabilized\n`);
+
+      // Detect login wall (helps explain "0 elements" results)
+      let loginWall = null;
+      if (url.includes('freighttiger.com')) {
+        try {
+          loginWall = await page.evaluate(() => {
+            const hasPassword =
+              !!document.querySelector('input[type="password"], #password') ||
+              !!document.querySelector('form input[type="password"]');
+            const looksLikeLoginUrl = /\/login\b/i.test(window.location.href);
+            return hasPassword || looksLikeLoginUrl;
+          });
+        } catch (_) {
+          loginWall = null;
+        }
+      }
 
       // Extract data with enhanced error handling for navigation
       let extractionResult;
@@ -187,22 +242,29 @@ export class UnifiedWebExtractor {
         if (page.isClosed()) {
           throw new Error('Page was closed before extraction could begin');
         }
-        
+
         const browser = page.browser();
         if (!browser.isConnected()) {
           throw new Error('Browser disconnected before extraction');
         }
-        
-        // Do not race the actual extraction with the abort signal.
-        // If the deadline triggers while we already collect DOM, allow extraction to finish.
-        extractionResult = await this.performExtraction(page, url, options);
+
+        process.stdout.write(`🔍 Performing DOM extraction...\n`);
+        extractionResult = await Promise.race([
+          this.performExtraction(page, url, options),
+          abortPromise
+        ]);
+        process.stdout.write(`✅ DOM extraction completed: ${extractionResult?.elements?.length || 0} elements found\n`);
       } catch (error) {
         if (error.message.includes('Execution context was destroyed')) {
+          process.stdout.write(`🔄 Page navigated during extraction, retrying...\n`);
           console.log('🔄 Page navigated during extraction, retrying...');
           // Wait a bit for navigation to complete
           await new Promise(resolve => setTimeout(resolve, 3000));
           // Retry extraction
-          extractionResult = await this.performExtraction(page, page.url(), options);
+          extractionResult = await Promise.race([
+            this.performExtraction(page, page.url(), options),
+            abortPromise
+          ]);
         } else {
           throw error;
         }
@@ -228,6 +290,7 @@ export class UnifiedWebExtractor {
                 const { page: childPage, pageId: childPageId } = await this.browserPool.createPage({
                   width: options.viewport?.width || 1920,
                   height: options.viewport?.height || 1080,
+                  ...(sessionKey ? { sessionKey, profileUrl: url } : {}),
                 });
                 await Promise.race([
                   this.navigateToPage(childPage, fUrl, options),
@@ -255,6 +318,11 @@ export class UnifiedWebExtractor {
         }
       }
 
+      // Attach auth/login metadata so the UI can show useful guidance.
+      if (!extractionResult.metadata) extractionResult.metadata = {};
+      if (options._authStatus) extractionResult.metadata.auth = options._authStatus;
+      if (loginWall !== null) extractionResult.metadata.loginWall = loginWall;
+
       // Capture screenshot if requested
       let screenshot = null;
       if (options.includeScreenshot !== false) {
@@ -269,7 +337,35 @@ export class UnifiedWebExtractor {
       }
 
       const duration = Date.now() - startTime;
+      process.stdout.write(`✅ Web extraction completed in ${duration}ms: ${extractionResult?.elements?.length || 0} elements extracted\n`);
       console.log(`✅ Extraction completed in ${duration}ms: ${url}`);
+
+      // Apply Design System token mapping if requested
+      if (options.designSystemId) {
+        try {
+          console.log(`🛡️ Applying token mapping for Design System: ${options.designSystemId}`);
+          const tokenMapper = new TokenMappingService();
+          await tokenMapper.initialize(options.designSystemId);
+
+          // Map colors in colorPalette
+          if (extractionResult.colorPalette) {
+            extractionResult.mappedColors = extractionResult.colorPalette.map(color => {
+              const token = tokenMapper.mapToToken('colors', 'background', color);
+              return { value: color, tokenName: token?.tokenName, isExact: token?.isExact };
+            });
+          }
+
+          // Map typography in typography sections
+          if (extractionResult.typography?.fontSizes) {
+            extractionResult.mappedFontSizes = extractionResult.typography.fontSizes.map(size => {
+              const token = tokenMapper.mapToToken('typography', 'fontSize', size);
+              return { value: size, tokenName: token?.tokenName, isExact: token?.isExact };
+            });
+          }
+        } catch (dsError) {
+          console.warn(`⚠️ Failed to apply Design System token mapping: ${dsError.message}`);
+        }
+      }
 
       return {
         url,
@@ -281,6 +377,7 @@ export class UnifiedWebExtractor {
 
     } catch (error) {
       const duration = Date.now() - startTime;
+      process.stdout.write(`❌ Web extraction failed after ${duration}ms: ${error.message}\n`);
       console.error(`❌ Extraction failed after ${duration}ms: ${error.message}`);
       throw new Error(`Web extraction failed: ${error.message}`);
     } finally {
@@ -295,7 +392,7 @@ export class UnifiedWebExtractor {
   validateUrl(url) {
     try {
       const parsed = new URL(url);
-      
+
       // Check protocol
       if (!['http:', 'https:'].includes(parsed.protocol)) {
         throw new Error('Only HTTP and HTTPS URLs are allowed');
@@ -306,9 +403,9 @@ export class UnifiedWebExtractor {
         const hostname = parsed.hostname;
         const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
         const isPrivateIP = /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/.test(hostname);
-        
+
         if (isLocalhost || isPrivateIP) {
-          const isAllowed = this.config.security.allowedHosts.some(allowed => 
+          const isAllowed = this.config.security.allowedHosts.some(allowed =>
             hostname.includes(allowed)
           );
           if (!isAllowed) {
@@ -343,54 +440,91 @@ export class UnifiedWebExtractor {
 
     const strategies = isFreightTiger
       ? [
-          { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
-          { waitUntil: 'networkidle0', timeout: mkTimeout() },
-          { waitUntil: 'load', timeout: mkTimeout() }
-        ]
+        { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
+        { waitUntil: 'networkidle0', timeout: mkTimeout() },
+        { waitUntil: 'load', timeout: mkTimeout() }
+      ]
       : [
-          { waitUntil: 'networkidle0', timeout: mkTimeout() },
-          { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
-          { waitUntil: 'load', timeout: mkTimeout() }
-        ];
+        // OPTIMIZATION: Use domcontentloaded first as it's much faster.
+        // networkidle0 is too slow for 90% of sites.
+        { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
+        { waitUntil: 'networkidle2', timeout: mkTimeout() }, // networkidle2 is slightly faster than 0
+        { waitUntil: 'load', timeout: mkTimeout() }
+      ];
 
     let lastError;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const strategy = strategies[attempt] || strategies[strategies.length - 1];
-      
+
       try {
         console.log(`🔗 Navigation attempt ${attempt + 1}/${maxRetries} with ${strategy.waitUntil}`);
         await page.goto(url, strategy);
+        // Important: Wait a minimal amount for hydration if needed, but not 500ms of silence
+        if (strategy.waitUntil === 'domcontentloaded') {
+          // Quick stabilization wait - longer for FreightTiger
+          const waitTime = isFreightTiger ? 5000 : 1000;
+          console.log(`⏳ waiting ${waitTime}ms for stabilization...`);
+          await new Promise(r => setTimeout(r, waitTime));
+        }
         console.log(`✅ Navigation successful with ${strategy.waitUntil}`);
         return;
       } catch (error) {
         lastError = error;
         console.warn(`⚠️ Navigation attempt ${attempt + 1} failed: ${error.message}`);
-        
+
         if (attempt < maxRetries - 1) {
           // Wait before retry with exponential backoff
           await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         }
       }
     }
-    
+
     throw new Error(`Navigation failed after ${maxRetries} attempts: ${lastError.message}`);
   }
+
 
   /**
    * FreightTiger-specific authentication handler
    */
   async handleFreightTigerAuthentication(page, auth, targetUrl) {
     console.log('🚛 Starting FreightTiger authentication process...');
-    
+
     try {
+      const debugAuth = process.env.DEBUG_WEB_AUTH === 'true' || process.env.DEBUG_FREIGHTTIGER_AUTH === 'true';
+
+      // If we're already on the target page (or any non-login page) and there's no login form,
+      // skip authentication to reduce extraction time on subsequent runs (session cookies persisted).
+      try {
+        const currentUrl = page.url();
+        const isLoginUrl = currentUrl.includes('/login');
+        const hasLoginForm = await page.evaluate(() => {
+          return !!document.querySelector('input[type="password"], #password, form input[type="password"]');
+        });
+
+        if (!isLoginUrl && !hasLoginForm) {
+          if (targetUrl) {
+            const targetPath = new URL(targetUrl).pathname;
+            if (currentUrl.includes(targetPath)) {
+              console.log('✅ FreightTiger appears already authenticated; skipping login flow');
+              return;
+            }
+          } else {
+            console.log('✅ FreightTiger login form not detected; skipping login flow');
+            return;
+          }
+        }
+      } catch {
+        // Ignore detection failures; continue with login flow.
+      }
+
       // Step 1: Navigate to login page if not already there
       const currentUrl = page.url();
       if (!currentUrl.includes('/login')) {
         console.log('🔗 Navigating to FreightTiger login page...');
-        await page.goto('https://www.freighttiger.com/login', { 
+        await page.goto('https://www.freighttiger.com/login', {
           waitUntil: 'domcontentloaded',
-          timeout: 30000 
+          timeout: 30000
         });
       }
 
@@ -408,7 +542,7 @@ export class UnifiedWebExtractor {
         }
         return null;
       };
-      
+
       // Poll for a login-capable context (page or frame)
       let loginCtx = null;
       const waitStart = Date.now();
@@ -428,56 +562,60 @@ export class UnifiedWebExtractor {
       if (!loginCtx) {
         throw new Error('Login form not found in page or iframes');
       }
-      
+
       // Step 2.5: Ensure we're on the "with Password" tab
       console.log('🔍 Ensuring "with Password" tab is selected...');
-      
-      // DEBUG: Capture screenshot of login page
-      try {
-        const loginScreenshot = await page.screenshot({ encoding: 'base64' });
-        console.log('📸 Login page screenshot captured (base64 length:', loginScreenshot.length, ')');
-      } catch (e) {
-        console.log('⚠️ Could not capture login screenshot');
+
+      if (debugAuth) {
+        // DEBUG: Capture screenshot of login page
+        try {
+          const loginScreenshot = await page.screenshot({ encoding: 'base64' });
+          console.log('📸 Login page screenshot captured (base64 length:', loginScreenshot.length, ')');
+        } catch (e) {
+          console.log('⚠️ Could not capture login screenshot');
+        }
+
+        // DEBUG: Analyze login page structure
+        const loginPageAnalysis = await page.evaluate(() => {
+          const allButtons = Array.from(document.querySelectorAll('button')).map(btn => ({
+            text: btn.textContent?.trim(),
+            className: btn.className,
+            id: btn.id
+          }));
+          const allInputs = Array.from(document.querySelectorAll('input')).map(inp => ({
+            type: inp.type,
+            name: inp.name,
+            id: inp.id,
+            placeholder: inp.placeholder,
+            className: inp.className
+          }));
+          return { buttons: allButtons, inputs: allInputs, title: document.title, url: window.location.href };
+        });
+        console.log('🔍 Login page analysis:', JSON.stringify(loginPageAnalysis, null, 2));
       }
-      
-      // DEBUG: Analyze login page structure
-      const loginPageAnalysis = await page.evaluate(() => {
-        const allButtons = Array.from(document.querySelectorAll('button')).map(btn => ({
-          text: btn.textContent?.trim(),
-          className: btn.className,
-          id: btn.id
-        }));
-        const allInputs = Array.from(document.querySelectorAll('input')).map(inp => ({
-          type: inp.type,
-          name: inp.name,
-          id: inp.id,
-          placeholder: inp.placeholder,
-          className: inp.className
-        }));
-        return { buttons: allButtons, inputs: allInputs, title: document.title, url: window.location.href };
-      });
-      console.log('🔍 Login page analysis:', JSON.stringify(loginPageAnalysis, null, 2));
-      
+
       try {
         // Look for the "with Password" tab - it might be a div, span, or other element, not just button
         console.log('🔍 Looking for "with Password" tab...');
-        
-        // First, analyze all clickable elements to find the correct tab
-        const tabAnalysis = await page.evaluate(() => {
-          const allClickable = Array.from(document.querySelectorAll('*')).filter(el => {
-            const text = el.textContent?.trim().toLowerCase() || '';
-            return text.includes('with password') || text.includes('password') || text.includes('otp') || text.includes('sso');
-          }).map(el => ({
-            tag: el.tagName.toLowerCase(),
-            text: el.textContent?.trim(),
-            className: el.className,
-            id: el.id,
-            clickable: el.onclick !== null || el.style.cursor === 'pointer' || ['button', 'a'].includes(el.tagName.toLowerCase())
-          }));
-          return allClickable;
-        });
-        console.log('🔍 Tab analysis:', JSON.stringify(tabAnalysis, null, 2));
-        
+
+        if (debugAuth) {
+          // First, analyze all clickable elements to find the correct tab
+          const tabAnalysis = await page.evaluate(() => {
+            const allClickable = Array.from(document.querySelectorAll('*')).filter(el => {
+              const text = el.textContent?.trim().toLowerCase() || '';
+              return text.includes('with password') || text.includes('password') || text.includes('otp') || text.includes('sso');
+            }).map(el => ({
+              tag: el.tagName.toLowerCase(),
+              text: el.textContent?.trim(),
+              className: el.className,
+              id: el.id,
+              clickable: el.onclick !== null || el.style.cursor === 'pointer' || ['button', 'a'].includes(el.tagName.toLowerCase())
+            }));
+            return allClickable;
+          });
+          console.log('🔍 Tab analysis:', JSON.stringify(tabAnalysis, null, 2));
+        }
+
         // Look for the actual "with Password" tab (not "Forgot Password")
         const tabSelectors = [
           '*:contains("with Password")',
@@ -487,7 +625,7 @@ export class UnifiedWebExtractor {
           'span:contains("with Password")',
           'a:contains("with Password")'
         ];
-        
+
         let tabFound = false;
         for (const selector of tabSelectors) {
           try {
@@ -497,7 +635,7 @@ export class UnifiedWebExtractor {
                 return text === 'with password' && !text.includes('forgot');
               });
             });
-            
+
             if (elements.length > 0) {
               console.log('✅ Found "with Password" tab via text matching');
               // Click the first matching element
@@ -518,11 +656,11 @@ export class UnifiedWebExtractor {
             // Try next selector
           }
         }
-        
+
         if (tabFound) {
           console.log('⏳ Waiting for password tab content to load...');
           await new Promise(resolve => setTimeout(resolve, 2000));
-          
+
           // Wait specifically for password field to appear
           try {
             await page.waitForSelector('input[type="password"]', { timeout: 5000 });
@@ -539,15 +677,15 @@ export class UnifiedWebExtractor {
 
       // Step 3: Fill credentials using multiple strategies
       console.log('📝 Filling username field...');
-      
+
       const usernameSelectors = [
         '#username',
-        '#userName', 
+        '#userName',
         '#user-name',
         '#email',
         '#user_name',
         'input[name="username"]',
-        'input[name="userName"]', 
+        'input[name="userName"]',
         'input[name="user-name"]',
         'input[name="email"]',
         'input[placeholder*="username" i]',
@@ -555,7 +693,7 @@ export class UnifiedWebExtractor {
         'input[type="text"]',
         'input[type="email"]'
       ];
-      
+
       let usernameField = null;
       for (const selector of usernameSelectors) {
         try {
@@ -567,7 +705,7 @@ export class UnifiedWebExtractor {
           // Try next selector
         }
       }
-      
+
       if (usernameField) {
         try {
           await (loginCtx.click ? loginCtx.click(usernameField) : page.click(usernameField));
@@ -583,9 +721,9 @@ export class UnifiedWebExtractor {
       } else {
         console.log('❌ No username field found with any selector');
       }
-      
+
       console.log('📝 Filling password field...');
-      
+
       // DEBUG: Check current page state before password detection
       const passwordPageAnalysis = await page.evaluate(() => {
         const passwordInputs = Array.from(document.querySelectorAll('input[type="password"]')).map(inp => ({
@@ -598,7 +736,7 @@ export class UnifiedWebExtractor {
         return { passwordInputs, url: window.location.href };
       });
       console.log('🔍 Password field analysis:', JSON.stringify(passwordPageAnalysis, null, 2));
-      
+
       const passwordSelectors = [
         '#password',
         '#Password',
@@ -613,7 +751,7 @@ export class UnifiedWebExtractor {
         'input[placeholder*="Password" i]',
         'input[type="password"]'
       ];
-      
+
       let passwordField = null;
       for (const selector of passwordSelectors) {
         try {
@@ -626,7 +764,7 @@ export class UnifiedWebExtractor {
           console.log(`❌ Password selector failed: ${selector} - ${e.message}`);
         }
       }
-      
+
       if (passwordField) {
         try {
           await (loginCtx.click ? loginCtx.click(passwordField) : page.click(passwordField));
@@ -652,9 +790,9 @@ export class UnifiedWebExtractor {
           '.login-button',
           'input[type="submit"]'
         ];
-        
+
         let submitted = false;
-        
+
         // First try to find by button text
         const buttons = await (loginCtx.$$ ? loginCtx.$$('button') : page.$$('button'));
         for (const button of buttons) {
@@ -666,7 +804,7 @@ export class UnifiedWebExtractor {
             break;
           }
         }
-        
+
         // Then try by selectors
         if (!submitted) {
           for (const selector of loginButtonSelectors) {
@@ -681,7 +819,7 @@ export class UnifiedWebExtractor {
             }
           }
         }
-        
+
         if (!submitted) {
           // Fallback: press Enter on password field
           try {
@@ -697,7 +835,7 @@ export class UnifiedWebExtractor {
             throw new Error('Failed to submit login form - no working method found');
           }
         }
-        
+
       } catch (e) {
         console.log('⚠️ Could not submit form:', e.message);
         throw new Error('Failed to submit login form');
@@ -705,21 +843,21 @@ export class UnifiedWebExtractor {
 
       // Step 6: Wait for authentication and handle navigation carefully
       console.log('⏳ Waiting for authentication to complete...');
-      
+
       // Give the form submission time to process
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
       try {
         // Multiple strategies to detect successful authentication
         const authSuccess = await Promise.race([
           // Strategy 1: Wait for URL change away from login
           page.waitForFunction(() => !window.location.href.includes('/login'), { timeout: 10000 })
             .then(() => 'url_redirect'),
-          
+
           // Strategy 2: Wait for dashboard elements to appear
           page.waitForSelector('[class*="dashboard"], [class*="journey"], [class*="listing"], .main-content, .app-content', { timeout: 10000 })
             .then(() => 'dashboard_loaded'),
-          
+
           // Strategy 3: Wait for login form to disappear
           page.waitForFunction(() => {
             const loginForms = document.querySelectorAll('form, [class*="login"], [class*="auth"]');
@@ -727,12 +865,12 @@ export class UnifiedWebExtractor {
             return loginForms.length === 0 || passwordInputs.length === 0;
           }, { timeout: 10000 }).then(() => 'login_form_gone')
         ]);
-        
+
         console.log(`✅ Authentication successful via: ${authSuccess}`);
-        
+
       } catch (e) {
         console.log('⚠️ Standard auth detection failed, checking page state...');
-        
+
         // Final check: analyze current page state
         const pageAnalysis = await page.evaluate(() => {
           const url = window.location.href;
@@ -740,7 +878,7 @@ export class UnifiedWebExtractor {
           const hasDashboardElements = document.querySelector('[class*="dashboard"], [class*="journey"], [class*="listing"], .main-content, .app-content, [class*="nav"]') !== null;
           const pageTitle = document.title;
           const bodyClasses = document.body.className;
-          
+
           return {
             url,
             hasLoginForm,
@@ -750,9 +888,9 @@ export class UnifiedWebExtractor {
             isLoginPage: url.includes('/login') || pageTitle.toLowerCase().includes('login')
           };
         });
-        
+
         console.log('📊 Page state analysis:', JSON.stringify(pageAnalysis, null, 2));
-        
+
         // If we have dashboard elements or no login form, consider it successful
         if (!pageAnalysis.hasLoginForm || pageAnalysis.hasDashboardElements || !pageAnalysis.isLoginPage) {
           console.log('✅ Authentication appears successful based on page analysis');
@@ -764,30 +902,30 @@ export class UnifiedWebExtractor {
       // Step 7: Navigate to target URL if specified
       const finalUrl = page.url();
       console.log(`📍 Current URL after auth: ${finalUrl}`);
-      
+
       if (targetUrl && !finalUrl.includes(new URL(targetUrl).pathname)) {
         console.log(`🔗 Navigating to target: ${targetUrl}`);
         try {
-          await page.goto(targetUrl, { 
+          await page.goto(targetUrl, {
             waitUntil: 'networkidle0',
-            timeout: 30000 
+            timeout: 30000
           });
           console.log('✅ Successfully navigated to target URL');
         } catch (navError) {
           console.log('⚠️ Navigation to target failed, trying with domcontentloaded...');
-          await page.goto(targetUrl, { 
+          await page.goto(targetUrl, {
             waitUntil: 'domcontentloaded',
-            timeout: 30000 
+            timeout: 30000
           });
         }
-        
+
         // Extra wait for SPA to load
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
       const finalCurrentUrl = page.url();
       console.log(`✅ FreightTiger authentication completed successfully - Final URL: ${finalCurrentUrl}`);
-      
+
       // Verify we're on the expected page
       if (targetUrl && finalCurrentUrl.includes(new URL(targetUrl).pathname)) {
         console.log('🎯 Successfully reached target page after authentication');
@@ -806,13 +944,13 @@ export class UnifiedWebExtractor {
           const bodyChildren = document.body?.children || [];
           const hasBodyContent = bodyChildren.length > 0;
           const hasSystemJS = !!window.System;
-          
+
           return hasBodyContent && hasSystemJS;
         }, { timeout: 30000 });
         console.log('✅ SystemJS modules loaded and body content rendered');
       } catch (_) {
         console.log('⚠️ SystemJS module loading timed out, checking body content...');
-        
+
         // Fallback: wait for ANY body content to appear
         try {
           await page.waitForFunction(() => {
@@ -836,65 +974,67 @@ export class UnifiedWebExtractor {
         console.log('⚠️ Dashboard content not detected in time, continuing');
       }
 
-      // DEBUG: Capture dashboard screenshot and analyze structure
-      try {
-        const dashboardScreenshot = await page.screenshot({ encoding: 'base64' });
-        console.log('📸 Dashboard screenshot captured (base64 length:', dashboardScreenshot.length, ')');
-      } catch (e) {
-        console.log('⚠️ Could not capture dashboard screenshot');
+      if (debugAuth) {
+        // DEBUG: Capture dashboard screenshot and analyze structure
+        try {
+          const dashboardScreenshot = await page.screenshot({ encoding: 'base64' });
+          console.log('📸 Dashboard screenshot captured (base64 length:', dashboardScreenshot.length, ')');
+        } catch (e) {
+          console.log('⚠️ Could not capture dashboard screenshot');
+        }
+
+        // DEBUG: Analyze dashboard page structure with focus on body content
+        const dashboardAnalysis = await page.evaluate(() => {
+          const bodyChildren = Array.from(document.body?.children || []);
+          const bodyElementInfo = bodyChildren.map(el => ({
+            tag: el.tagName.toLowerCase(),
+            id: el.id,
+            className: el.className,
+            text: el.textContent?.trim().substring(0, 100),
+            visible: el.offsetParent !== null,
+            computedDisplay: window.getComputedStyle(el).display,
+            computedVisibility: window.getComputedStyle(el).visibility
+          }));
+
+          // Look for specific FreightTiger elements
+          const navElements = Array.from(document.querySelectorAll('nav, [class*="nav"], [class*="topnav"]')).map(el => ({
+            tag: el.tagName.toLowerCase(),
+            className: el.className,
+            text: el.textContent?.trim().substring(0, 50)
+          }));
+
+          const tableElements = Array.from(document.querySelectorAll('table, tbody, tr, td')).map(el => ({
+            tag: el.tagName.toLowerCase(),
+            className: el.className,
+            text: el.textContent?.trim().substring(0, 50)
+          }));
+
+          const antdElements = Array.from(document.querySelectorAll('[class*="ant-"], [class*="css-"]')).slice(0, 20).map(el => ({
+            tag: el.tagName.toLowerCase(),
+            className: el.className,
+            text: el.textContent?.trim().substring(0, 50),
+            visible: el.offsetParent !== null
+          }));
+
+          return {
+            title: document.title,
+            url: window.location.href,
+            totalElements: document.querySelectorAll('*').length,
+            bodyChildrenCount: bodyChildren.length,
+            bodyElements: bodyElementInfo,
+            navElements: navElements,
+            tableElements: tableElements,
+            antdElements: antdElements,
+            bodyClasses: document.body?.className || '',
+            bodyStyle: document.body?.style?.cssText || '',
+            hasReact: !!window.React,
+            hasSystemJS: !!window.System,
+            hasAntd: !!document.querySelector('[class*="ant-"]')
+          };
+        });
+        console.log('🔍 Dashboard analysis:', JSON.stringify(dashboardAnalysis, null, 2));
       }
 
-      // DEBUG: Analyze dashboard page structure with focus on body content
-      const dashboardAnalysis = await page.evaluate(() => {
-        const bodyChildren = Array.from(document.body?.children || []);
-        const bodyElementInfo = bodyChildren.map(el => ({
-          tag: el.tagName.toLowerCase(),
-          id: el.id,
-          className: el.className,
-          text: el.textContent?.trim().substring(0, 100),
-          visible: el.offsetParent !== null,
-          computedDisplay: window.getComputedStyle(el).display,
-          computedVisibility: window.getComputedStyle(el).visibility
-        }));
-        
-        // Look for specific FreightTiger elements
-        const navElements = Array.from(document.querySelectorAll('nav, [class*="nav"], [class*="topnav"]')).map(el => ({
-          tag: el.tagName.toLowerCase(),
-          className: el.className,
-          text: el.textContent?.trim().substring(0, 50)
-        }));
-        
-        const tableElements = Array.from(document.querySelectorAll('table, tbody, tr, td')).map(el => ({
-          tag: el.tagName.toLowerCase(),
-          className: el.className,
-          text: el.textContent?.trim().substring(0, 50)
-        }));
-        
-        const antdElements = Array.from(document.querySelectorAll('[class*="ant-"], [class*="css-"]')).slice(0, 20).map(el => ({
-          tag: el.tagName.toLowerCase(),
-          className: el.className,
-          text: el.textContent?.trim().substring(0, 50),
-          visible: el.offsetParent !== null
-        }));
-        
-        return {
-          title: document.title,
-          url: window.location.href,
-          totalElements: document.querySelectorAll('*').length,
-          bodyChildrenCount: bodyChildren.length,
-          bodyElements: bodyElementInfo,
-          navElements: navElements,
-          tableElements: tableElements,
-          antdElements: antdElements,
-          bodyClasses: document.body?.className || '',
-          bodyStyle: document.body?.style?.cssText || '',
-          hasReact: !!window.React,
-          hasSystemJS: !!window.System,
-          hasAntd: !!document.querySelector('[class*="ant-"]')
-        };
-      });
-      console.log('🔍 Dashboard analysis:', JSON.stringify(dashboardAnalysis, null, 2));
-      
     } catch (error) {
       console.error('❌ FreightTiger authentication failed:', error.message);
       throw new Error(`FreightTiger authentication failed: ${error.message}`);
@@ -921,16 +1061,16 @@ export class UnifiedWebExtractor {
       try {
         // First try to wait for any input fields (more flexible for custom forms)
         await page.waitForSelector('input', { timeout: selectorTimeout });
-        
+
         // Get all input fields to analyze
         const allInputs = await page.$$('input');
         console.log(`🔍 Found ${allInputs.length} input fields on the page`);
-        
+
         // If we have fewer than 2 inputs, this might not be a login form
         if (allInputs.length < 2) {
           throw new Error(`Insufficient input fields for login: found ${allInputs.length}, need at least 2`);
         }
-        
+
         // Try to find password field, but don't fail if not found
         let hasPasswordField = false;
         try {
@@ -944,7 +1084,7 @@ export class UnifiedWebExtractor {
         // Enhanced field filling approach
         let usernameField = null;
         let passwordField = null;
-        
+
         if (hasPasswordField) {
           // Standard approach with typed password field
           const usernameSelectors = [
@@ -966,30 +1106,30 @@ export class UnifiedWebExtractor {
               // Try next selector
             }
           }
-          
+
           passwordField = 'input[type="password"]';
-          
+
         } else {
           // Positional approach for custom forms (like FreightTiger)
           console.log('🎯 Using positional approach for custom form');
-          
+
           // Use first two visible input fields
           usernameField = allInputs[0];
           passwordField = allInputs[1];
-          
+
           // Verify they're visible and interactable
           const isUsernameVisible = await page.evaluate(el => {
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
             return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
           }, usernameField);
-          
+
           const isPasswordVisible = await page.evaluate(el => {
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
             return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
           }, passwordField);
-          
+
           if (!isUsernameVisible || !isPasswordVisible) {
             throw new Error('Input fields are not visible or interactable');
           }
@@ -1020,9 +1160,9 @@ export class UnifiedWebExtractor {
 
         // Enhanced form submission
         console.log('🚀 Attempting to submit form...');
-        
+
         let submitted = false;
-        
+
         // Strategy 1: Look for buttons with login text
         const buttons = await page.$$('button');
         for (const button of buttons) {
@@ -1038,7 +1178,7 @@ export class UnifiedWebExtractor {
             // Continue to next button
           }
         }
-        
+
         // Strategy 2: Try standard submit selectors
         if (!submitted) {
           const submitSelectors = [
@@ -1111,33 +1251,37 @@ export class UnifiedWebExtractor {
     const isFreightTiger = page.url().includes('freighttiger.com');
     // FreightTiger needs longer stability timeout due to complex SystemJS loading
     const defaultStabilityTimeout = isFreightTiger ? 30000 : 5000; // 30s for FreightTiger, 5s for others
-    // For FreightTiger, always use the longer timeout regardless of passed options
-    const stabilityTimeout = isFreightTiger ? 30000 : (options.stabilityTimeout || defaultStabilityTimeout);
-    
+    // Respect caller-provided stability timeout; use default as the floor.
+    const requested = options?.stabilityTimeout ? Number(options.stabilityTimeout) : 0;
+    const stabilityTimeout = Math.max(
+      defaultStabilityTimeout,
+      Number.isFinite(requested) ? requested : 0
+    );
+
     console.log(`⏱️ Using stability timeout: ${stabilityTimeout}ms (FreightTiger: ${isFreightTiger})`);
-    
+
     try {
       // Check if this looks like a JavaScript-heavy site
       const isJSHeavy = await page.evaluate(() => {
-        return !!(window.React || window.Vue || window.Angular || 
-                 document.querySelector('[data-reactroot], [data-vue], .ng-app') ||
-                 document.scripts.length > 10);
+        return !!(window.React || window.Vue || window.Angular ||
+          document.querySelector('[data-reactroot], [data-vue], .ng-app') ||
+          document.scripts.length > 10);
       });
 
       if (isJSHeavy) {
         console.log('🔍 Detected JS-heavy site, waiting for stability...');
-        
+
         // Wait for loading indicators to disappear
         try {
           await page.waitForFunction(() => {
             const loadingIndicators = document.querySelectorAll(
               '.loading, .spinner, [class*="loading"], [class*="spinner"], .loader'
             );
-            return loadingIndicators.length === 0 || 
-                   Array.from(loadingIndicators).every(el => 
-                     getComputedStyle(el).display === 'none' || 
-                     getComputedStyle(el).visibility === 'hidden'
-                   );
+            return loadingIndicators.length === 0 ||
+              Array.from(loadingIndicators).every(el =>
+                getComputedStyle(el).display === 'none' ||
+                getComputedStyle(el).visibility === 'hidden'
+              );
           }, { timeout: stabilityTimeout });
         } catch (e) {
           console.log('⚠️ Loading indicator check timed out');
@@ -1160,10 +1304,10 @@ export class UnifiedWebExtractor {
           await page.waitForFunction(() => document.querySelectorAll('body *').length > 50, { timeout: stabilityTimeout });
         } catch (_) { /* ignore */ }
       }
-      
+
       // Additional stability wait
       await new Promise(resolve => setTimeout(resolve, 1200));
-      
+
     } catch (error) {
       console.warn('⚠️ Page stability check failed:', error.message);
       // Don't throw - continue with extraction
@@ -1192,7 +1336,59 @@ export class UnifiedWebExtractor {
    */
   async performExtraction(page, url, options) {
     console.log('🔍 Starting DOM extraction...');
-    
+
+    const debugEnabled = options?.debug === true || process.env.DEBUG_WEB_EXTRACTION === 'true';
+    let totalElementsEstimate = null;
+
+    // Avoid expensive pre-flight DOM scanning on large pages (can cause long stalls/timeouts).
+    // Keep a lightweight count for the "page looks empty" heuristic.
+    try {
+      totalElementsEstimate = await page.evaluate(() => document.querySelectorAll('*').length);
+    } catch (e) {
+      totalElementsEstimate = null;
+    }
+
+    if (debugEnabled) {
+      try {
+        const pageDebugInfo = await page.evaluate(() => {
+          const totalElements = document.querySelectorAll('*').length;
+          const bodyChildren = document.body?.children?.length || 0;
+          const title = document.title;
+          const readyState = document.readyState;
+          const hasAntd = !!document.querySelector('[class*="ant-"]');
+          const hasTable = !!document.querySelector('table, tbody, tr');
+
+          const nodes = document.querySelectorAll('body *');
+          const sampleSize = Math.min(nodes.length, 500);
+          let visibleSample = 0;
+          for (let i = 0; i < sampleSize; i += 1) {
+            const el = nodes[i];
+            // eslint-disable-next-line no-undef
+            if (el instanceof HTMLElement && el.offsetParent !== null) visibleSample += 1;
+          }
+
+          return {
+            totalElements,
+            bodyChildren,
+            title,
+            readyState,
+            hasAntd,
+            hasTable,
+            visibleSample,
+            visibleSampleSize: sampleSize
+          };
+        });
+        console.log('📊 Page debug info before extraction:', JSON.stringify(pageDebugInfo, null, 2));
+      } catch (e) {
+        console.warn('⚠️ Page debug pre-check failed (continuing):', e?.message || String(e));
+      }
+    }
+
+    if (typeof totalElementsEstimate === 'number' && totalElementsEstimate < 10) {
+      console.log('⚠️ Page has very few elements, waiting 5 more seconds...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+
     // Core extractor function to run inside any frame
     const extractorFn = (pageUrl) => {
       const elements = [];
@@ -1213,14 +1409,14 @@ export class UnifiedWebExtractor {
         '[class*="ant-"]',
         '[class*="css-"]',
         'nav[class*="topnav"]',
-        'div[class*="ant-layout"]', 
+        'div[class*="ant-layout"]',
         'div[class*="ant-layout-content"]',
         'div[class*="main-content"]',
         'main[class*="ant-layout-content"]',
         'table, tbody, tr, td, th',
         '.ant-table, .ant-table-body',
         'div[class*="journey"], div[class*="vehicle"], div[class*="transport"]',
-        
+
         // Standard semantic elements
         'h1, h2, h3, h4, h5, h6',
         'p, span:not(:empty)',
@@ -1351,13 +1547,13 @@ export class UnifiedWebExtractor {
             // Add CSS selector for easier identification
             selector: this.generateCSSSelector ? this.generateCSSSelector(element) : `${tag}${element.id ? '#' + element.id : ''}${element.className ? '.' + element.className.split(' ')[0] : ''}`
           };
-          
+
           // Add color-element associations for web extraction
           // Note: This runs in browser context, so we'll need to collect this data and process it outside
           if (typeof window !== 'undefined') {
             // Store color mapping data for later processing
             if (!window._colorMappingData) window._colorMappingData = [];
-            
+
             if (styles.color && styles.color !== 'rgba(0, 0, 0, 0)' && styles.color !== 'transparent') {
               window._colorMappingData.push({
                 color: styles.color,
@@ -1366,7 +1562,7 @@ export class UnifiedWebExtractor {
                 elementData: elementData
               });
             }
-            
+
             if (styles.backgroundColor && styles.backgroundColor !== 'rgba(0, 0, 0, 0)' && styles.backgroundColor !== 'transparent') {
               window._colorMappingData.push({
                 color: styles.backgroundColor,
@@ -1375,7 +1571,7 @@ export class UnifiedWebExtractor {
                 elementData: elementData
               });
             }
-            
+
             if (styles.borderColor && styles.borderColor !== 'rgba(0, 0, 0, 0)' && styles.borderColor !== 'transparent') {
               window._colorMappingData.push({
                 color: styles.borderColor,
@@ -1385,7 +1581,7 @@ export class UnifiedWebExtractor {
               });
             }
           }
-          
+
           elements.push(elementData);
           elementCount++;
         }
@@ -1397,7 +1593,7 @@ export class UnifiedWebExtractor {
             try {
               const nodeList = root.querySelectorAll ? root.querySelectorAll(selector) : [];
               nodeList.forEach((el, idx) => addElement(el, selectorIndex, idx));
-            } catch (_) {}
+            } catch (_) { }
           });
 
           const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -1407,7 +1603,7 @@ export class UnifiedWebExtractor {
               visitNode(node.shadowRoot, selectorIndex + 1);
             }
           }
-        } catch (_) {}
+        } catch (_) { }
       };
 
       const collectFromDocument = (doc) => {
@@ -1450,7 +1646,7 @@ export class UnifiedWebExtractor {
     try {
       const top = await page.evaluate(extractorFn, url);
       results.push(top);
-      
+
       // Collect color mapping data from browser context
       try {
         const colorMappingData = await page.evaluate(() => {
@@ -1458,7 +1654,7 @@ export class UnifiedWebExtractor {
           delete window._colorMappingData; // Clean up
           return data;
         });
-        
+
         // Process color mapping data in Node.js context
         this.processColorMappingData(colorMappingData);
       } catch (e) {
@@ -1471,13 +1667,22 @@ export class UnifiedWebExtractor {
     // Evaluate in all frames (same-origin and cross-origin)
     const frames = page.frames();
     for (const frame of frames) {
+      let frameUrl = '<unknown>';
+      try {
+        frameUrl = frame.url();
+      } catch (_) {
+        frameUrl = '<detached>';
+      }
+
       try {
         // Skip main frame as it's already processed
         if (frame === page.mainFrame()) continue;
-        const frameResult = await frame.evaluate(extractorFn, frame.url());
+        const pageUrlForFrame = /^https?:\/\//.test(frameUrl) ? frameUrl : url;
+        const frameResult = await frame.evaluate(extractorFn, pageUrlForFrame);
         results.push(frameResult);
       } catch (e) {
-        console.warn(`⚠️ Frame extraction failed for ${frame.url()}:`, e.message);
+        // IMPORTANT: frame.url() may itself throw if the frame got detached; use the safe value above.
+        console.warn(`⚠️ Frame extraction failed for ${frameUrl}:`, e?.message || String(e));
       }
     }
 
@@ -1527,11 +1732,11 @@ export class UnifiedWebExtractor {
   async captureScreenshot(page, options = {}) {
     const maxRetries = 2;
     const screenshotTimeout = 15000;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         console.log(`📸 Screenshot attempt ${attempt + 1}/${maxRetries}`);
-        
+
         const screenshot = await Promise.race([
           page.screenshot({
             type: options.type || 'png',
@@ -1540,18 +1745,18 @@ export class UnifiedWebExtractor {
             fullPage: options.fullPage !== false,
             encoding: 'base64'
           }),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Screenshot timeout')), screenshotTimeout)
           )
         ]);
-        
+
         console.log('✅ Screenshot captured successfully');
         return {
           data: screenshot,
           type: options.type || 'png',
           timestamp: new Date().toISOString()
         };
-        
+
       } catch (error) {
         console.warn(`📸 Screenshot attempt ${attempt + 1} failed: ${error.message}`);
         if (attempt === maxRetries - 1) {
@@ -1561,7 +1766,7 @@ export class UnifiedWebExtractor {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
-    
+
     return null;
   }
 
@@ -1580,28 +1785,28 @@ export class UnifiedWebExtractor {
     if (!extraction) {
       return; // Already cleaned up or doesn't exist
     }
-    
+
     const { pageId, controller } = extraction;
-    
+
     try {
       // Abort if still running
       if (controller && !controller.signal.aborted) {
         controller.abort();
       }
-      
+
       // Mark page as inactive before cleanup
       if (pageId) {
         this.browserPool.markPageInactive(pageId);
       }
-      
+
       // Close page through browser pool
       if (pageId) {
         await this.browserPool.closePage(pageId);
       }
-      
+
       // Clean up from resource manager
       await this.resourceManager.cleanup(extractionId);
-      
+
     } catch (error) {
       console.error(`⚠️ Error during cleanup of ${extractionId}:`, error.message);
     } finally {
@@ -1644,14 +1849,14 @@ export class UnifiedWebExtractor {
    */
   processColorMappingData(colorMappingData) {
     if (!Array.isArray(colorMappingData)) return;
-    
+
     console.log(`🎨 Processing ${colorMappingData.length} color-element associations`);
-    
+
     colorMappingData.forEach(({ color, elementId, colorType, elementData }) => {
       try {
         // Convert RGB colors to hex for consistency
         const normalizedColor = this.normalizeColor(color);
-        
+
         colorElementMapping.addColorElementAssociation(
           normalizedColor,
           elementData,
@@ -1673,17 +1878,17 @@ export class UnifiedWebExtractor {
     if (!color || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
       return '#000000';
     }
-    
+
     // If already hex, return as is
     if (color.startsWith('#')) {
       return color.toLowerCase();
     }
-    
+
     // Handle rgb/rgba format
     if (color.startsWith('rgb')) {
       return this.rgbToHex(color);
     }
-    
+
     // Handle named colors (basic support)
     const namedColors = {
       'black': '#000000',
@@ -1697,7 +1902,7 @@ export class UnifiedWebExtractor {
       'gray': '#808080',
       'grey': '#808080'
     };
-    
+
     return namedColors[color.toLowerCase()] || '#000000';
   }
 
@@ -1709,7 +1914,7 @@ export class UnifiedWebExtractor {
   rgbToHex(rgb) {
     const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
     if (!match) return '#000000';
-    
+
     const [, r, g, b] = match;
     return `#${[r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('')}`;
   }

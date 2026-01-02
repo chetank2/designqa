@@ -7,8 +7,7 @@ import {
   ChevronRightIcon,
   ArrowsRightLeftIcon,
   CameraIcon,
-  DocumentTextIcon,
-  Squares2X2Icon
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -28,8 +27,11 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ]
 
+import { useAppMode } from '../../contexts/ModeContext'
+
 const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const location = useLocation()
+  const { isElectron } = useAppMode()
 
   return (
     <motion.div
@@ -45,10 +47,21 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
       )}
     >
       {/* Header */}
-      <div className="h-20 flex items-center justify-between px-6 border-b border-border/40">
+      <div
+        className={cn(
+          "h-20 flex items-center justify-between px-6 border-b border-border/40 transition-all duration-200",
+          // Add top padding for traffic lights in Electron on Mac
+          isElectron && "pt-8 h-28 items-end pb-4"
+        )}
+        style={isElectron ? { WebkitAppRegion: 'drag' } as any : undefined}
+      >
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="min-w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <Squares2X2Icon className="w-6 h-6 text-primary-foreground" />
+          <div className="min-w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden p-0 bg-transparent shadow-none">
+            <img
+              src="/logo.svg"
+              alt="Design QA"
+              className="w-full h-full object-contain"
+            />
           </div>
           {isOpen && (
             <motion.div
@@ -86,7 +99,18 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
             (item.href === '/new-comparison' && location.pathname === '/')
 
           return (
-            <Link key={item.name} to={item.href}>
+            <Link 
+              key={item.name} 
+              to={item.href}
+              onClick={(e) => {
+                // #region agent log
+                const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
+                const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
+                const targetHref = item.href;
+                fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.tsx:102', message: 'Link click', data: { origin, currentHref: href, targetHref, linkText: item.name }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+                // #endregion
+              }}
+            >
               <div className={cn(
                 "group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 relative",
                 isActive

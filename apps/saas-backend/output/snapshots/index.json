@@ -1,65 +1,24 @@
 {
   "records": [
     {
-      "id": "compare-1761732805458",
-      "createdAt": "2025-10-29T10:13:28.223Z",
+      "id": "compare-1767099931559",
+      "createdAt": "2025-12-30T13:05:31.559Z",
       "extractionType": "compare",
       "metadata": {
         "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-10-29T10:11:49.645Z",
-          "totalComponents": 1000
+          "fileId": "test-file-id",
+          "totalComponents": 2
         },
         "web": {
-          "url": "https://www.freighttiger.com/v10/journey/listing",
-          "extractedAt": "2025-10-29T10:13:25.436Z",
-          "totalElements": 1000
-        },
-        "summary": {
-          "totalComponents": 0,
-          "totalDeviations": 0,
-          "totalMatches": 0,
-          "severity": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Comparision tool/output/snapshots/compare-1761732805458.json"
-    },
-    {
-      "id": "compare-1765075599872",
-      "createdAt": "2025-12-07T02:46:39.875Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T02:44:40.342Z",
-          "totalComponents": 53
-        },
-        "web": {
-          "url": "https://www.freighttiger.com/v10/journey/listing",
-          "extractedAt": "2025-12-07T02:46:39.860Z",
+          "url": "https://example.com",
           "totalElements": 0
         },
         "summary": {
-          "totalComponents": 53,
-          "totalDeviations": 53,
+          "totalComponents": 2,
+          "totalDeviations": 2,
           "totalMatches": 0,
           "severity": {
-            "high": 53,
+            "high": 2,
             "medium": 0,
             "low": 0
           },
@@ -76,252 +35,723 @@
         },
         "options": {}
       },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765075599872.json"
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767099931559.json"
     },
     {
-      "id": "compare-1765085966668",
-      "createdAt": "2025-12-07T05:39:26.834Z",
+      "id": "compare-1767099931574",
+      "createdAt": "2025-12-30T13:05:31.574Z",
       "extractionType": "compare",
       "metadata": {
         "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T05:37:56.607Z",
-          "totalComponents": 53
-        },
-        "web": {
-          "url": "https://www.freighttiger.com/v10/journey/listing",
-          "extractedAt": "2025-12-07T05:39:26.654Z",
-          "totalElements": 1000
-        },
-        "summary": {
-          "totalComponents": 0,
-          "totalDeviations": 0,
-          "totalMatches": 0,
-          "severity": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765085966668.json"
-    },
-    {
-      "id": "compare-1765089810813",
-      "createdAt": "2025-12-07T06:43:30.987Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T06:41:59.869Z",
-          "totalComponents": 53
-        },
-        "web": {
-          "url": "https://www.freighttiger.com/v10/journey/listing",
-          "extractedAt": "2025-12-07T06:43:30.793Z",
-          "totalElements": 1000
-        },
-        "summary": {
-          "totalComponents": 0,
-          "totalDeviations": 0,
-          "totalMatches": 0,
-          "severity": {
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765089810813.json"
-    },
-    {
-      "id": "compare-1765105077467",
-      "createdAt": "2025-12-07T10:57:58.118Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T10:56:27.139Z",
-          "totalComponents": 401
-        },
-        "web": {
-          "url": "https://www.freighttiger.com/v10/journey/listing",
-          "extractedAt": "2025-12-07T10:57:57.442Z",
-          "totalElements": 1000
-        },
-        "summary": {
-          "totalComponents": 9,
-          "totalDeviations": 9,
-          "totalMatches": 0,
-          "severity": {
-            "high": 9,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765105077467.json"
-    },
-    {
-      "id": "compare-1765106086932",
-      "createdAt": "2025-12-07T11:14:47.756Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T11:13:57.658Z",
-          "totalComponents": 496
-        },
-        "web": {
-          "url": "https://www.figma.com",
-          "extractedAt": "2025-12-07T11:14:46.921Z",
-          "totalElements": 550
-        },
-        "summary": {
-          "totalComponents": 1,
-          "totalDeviations": 1,
-          "totalMatches": 0,
-          "severity": {
-            "high": 1,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106086932.json"
-    },
-    {
-      "id": "compare-1765106199862",
-      "createdAt": "2025-12-07T11:16:40.677Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T11:15:52.038Z",
-          "totalComponents": 496
-        },
-        "web": {
-          "url": "https://www.figma.com",
-          "extractedAt": "2025-12-07T11:16:39.844Z",
-          "totalElements": 550
-        },
-        "summary": {
-          "totalComponents": 1,
-          "totalDeviations": 1,
-          "totalMatches": 0,
-          "severity": {
-            "high": 1,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106199862.json"
-    },
-    {
-      "id": "compare-1765106434582",
-      "createdAt": "2025-12-07T11:20:34.696Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
-          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
-          "extractedAt": "2025-12-07T11:19:45.474Z",
-          "totalComponents": 91
-        },
-        "web": {
-          "url": "https://www.figma.com",
-          "extractedAt": "2025-12-07T11:20:34.570Z",
-          "totalElements": 548
-        },
-        "summary": {
-          "totalComponents": 1,
-          "totalDeviations": 1,
-          "totalMatches": 0,
-          "severity": {
-            "high": 1,
-            "medium": 0,
-            "low": 0
-          },
-          "regressionRisk": {
-            "critical": 0,
-            "major": 0,
-            "minor": 0
-          },
-          "accessibility": {
-            "issues": 0,
-            "impactedComponents": 0,
-            "details": []
-          }
-        },
-        "options": {}
-      },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106434582.json"
-    },
-    {
-      "id": "compare-1765106633994",
-      "createdAt": "2025-12-07T11:23:54.004Z",
-      "extractionType": "compare",
-      "metadata": {
-        "figma": {
+          "fileId": "test",
           "totalComponents": 1
         },
         "web": {
-          "totalElements": 1
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 1,
+          "totalDeviations": 4,
+          "totalMatches": 0,
+          "severity": {
+            "high": 4,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767099931574.json"
+    },
+    {
+      "id": "compare-1767099931582",
+      "createdAt": "2025-12-30T13:05:31.584Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "large-test",
+          "totalComponents": 100
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 100
+        },
+        "summary": {
+          "totalComponents": 100,
+          "totalDeviations": 100,
+          "totalMatches": 0,
+          "severity": {
+            "high": 100,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767099931582.json"
+    },
+    {
+      "id": "compare-1767099931591",
+      "createdAt": "2025-12-30T13:05:31.591Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767099931591.json"
+    },
+    {
+      "id": "compare-1767099931608",
+      "createdAt": "2025-12-30T13:05:31.609Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767099931608.json"
+    },
+    {
+      "id": "compare-1767099931625",
+      "createdAt": "2025-12-30T13:05:31.625Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767099931625.json"
+    },
+    {
+      "id": "compare-1767102152598",
+      "createdAt": "2025-12-30T13:42:32.604Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152598.json"
+    },
+    {
+      "id": "compare-1767102152623",
+      "createdAt": "2025-12-30T13:42:32.623Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152623.json"
+    },
+    {
+      "id": "compare-1767102152651",
+      "createdAt": "2025-12-30T13:42:32.651Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152651.json"
+    },
+    {
+      "id": "compare-1767102152672",
+      "createdAt": "2025-12-30T13:42:32.673Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152672.json"
+    },
+    {
+      "id": "compare-1767102152694",
+      "createdAt": "2025-12-30T13:42:32.695Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152694.json"
+    },
+    {
+      "id": "compare-1767102152717",
+      "createdAt": "2025-12-30T13:42:32.717Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 3
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 3,
+          "totalDeviations": 7,
+          "totalMatches": 1,
+          "severity": {
+            "high": 7,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152717.json"
+    },
+    {
+      "id": "compare-1767102152741",
+      "createdAt": "2025-12-30T13:42:32.741Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152741.json"
+    },
+    {
+      "id": "compare-1767102152760",
+      "createdAt": "2025-12-30T13:42:32.761Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152760.json"
+    },
+    {
+      "id": "compare-1767102152776",
+      "createdAt": "2025-12-30T13:42:32.777Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152776.json"
+    },
+    {
+      "id": "compare-1767102152791",
+      "createdAt": "2025-12-30T13:42:32.791Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152791.json"
+    },
+    {
+      "id": "compare-1767102152807",
+      "createdAt": "2025-12-30T13:42:32.807Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152807.json"
+    },
+    {
+      "id": "compare-1767102152828",
+      "createdAt": "2025-12-30T13:42:32.828Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152828.json"
+    },
+    {
+      "id": "compare-1767102152851",
+      "createdAt": "2025-12-30T13:42:32.851Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152851.json"
+    },
+    {
+      "id": "compare-1767102152875",
+      "createdAt": "2025-12-30T13:42:32.876Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152875.json"
+    },
+    {
+      "id": "compare-1767102152897",
+      "createdAt": "2025-12-30T13:42:32.897Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test",
+          "totalComponents": 0
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
         },
         "summary": {
           "totalComponents": 0,
@@ -345,23 +775,765 @@
         },
         "options": {}
       },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106633994.json"
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152897.json"
     },
     {
-      "id": "compare-1765106685818",
-      "createdAt": "2025-12-07T11:24:45.821Z",
+      "id": "compare-1767102152919",
+      "createdAt": "2025-12-30T13:42:32.919Z",
       "extractionType": "compare",
       "metadata": {
         "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 0
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 2,
+          "totalMatches": 0,
+          "severity": {
+            "high": 2,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152919.json"
+    },
+    {
+      "id": "compare-1767102152938",
+      "createdAt": "2025-12-30T13:42:32.938Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test",
           "totalComponents": 1
         },
         "web": {
-          "totalElements": 1
+          "url": "https://example.com",
+          "totalElements": 2
         },
         "summary": {
           "totalComponents": 1,
+          "totalDeviations": 4,
+          "totalMatches": 0,
+          "severity": {
+            "high": 4,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152938.json"
+    },
+    {
+      "id": "compare-1767102152953",
+      "createdAt": "2025-12-30T13:42:32.955Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "large-test",
+          "totalComponents": 100
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 100
+        },
+        "summary": {
+          "totalComponents": 100,
+          "totalDeviations": 100,
+          "totalMatches": 0,
+          "severity": {
+            "high": 100,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152953.json"
+    },
+    {
+      "id": "compare-1767102152970",
+      "createdAt": "2025-12-30T13:42:32.970Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152970.json"
+    },
+    {
+      "id": "compare-1767102152985",
+      "createdAt": "2025-12-30T13:42:32.986Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102152985.json"
+    },
+    {
+      "id": "compare-1767102153000",
+      "createdAt": "2025-12-30T13:42:33.000Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102153000.json"
+    },
+    {
+      "id": "compare-1767102165686",
+      "createdAt": "2025-12-30T13:42:45.690Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165686.json"
+    },
+    {
+      "id": "compare-1767102165697",
+      "createdAt": "2025-12-30T13:42:45.698Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165697.json"
+    },
+    {
+      "id": "compare-1767102165706",
+      "createdAt": "2025-12-30T13:42:45.707Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165706.json"
+    },
+    {
+      "id": "compare-1767102165714",
+      "createdAt": "2025-12-30T13:42:45.714Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165714.json"
+    },
+    {
+      "id": "compare-1767102165722",
+      "createdAt": "2025-12-30T13:42:45.723Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165722.json"
+    },
+    {
+      "id": "compare-1767102165731",
+      "createdAt": "2025-12-30T13:42:45.731Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 3
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 3,
+          "totalDeviations": 7,
+          "totalMatches": 1,
+          "severity": {
+            "high": 7,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165731.json"
+    },
+    {
+      "id": "compare-1767102165739",
+      "createdAt": "2025-12-30T13:42:45.739Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165739.json"
+    },
+    {
+      "id": "compare-1767102165747",
+      "createdAt": "2025-12-30T13:42:45.747Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165747.json"
+    },
+    {
+      "id": "compare-1767102165754",
+      "createdAt": "2025-12-30T13:42:45.754Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165754.json"
+    },
+    {
+      "id": "compare-1767102165763",
+      "createdAt": "2025-12-30T13:42:45.763Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165763.json"
+    },
+    {
+      "id": "compare-1767102165771",
+      "createdAt": "2025-12-30T13:42:45.771Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165771.json"
+    },
+    {
+      "id": "compare-1767102165781",
+      "createdAt": "2025-12-30T13:42:45.781Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165781.json"
+    },
+    {
+      "id": "compare-1767102165790",
+      "createdAt": "2025-12-30T13:42:45.790Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165790.json"
+    },
+    {
+      "id": "compare-1767102165799",
+      "createdAt": "2025-12-30T13:42:45.800Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165799.json"
+    },
+    {
+      "id": "compare-1767102165808",
+      "createdAt": "2025-12-30T13:42:45.808Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test",
+          "totalComponents": 0
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 0,
           "totalDeviations": 0,
-          "totalMatches": 4,
+          "totalMatches": 0,
           "severity": {
             "high": 0,
             "medium": 0,
@@ -380,7 +1552,303 @@
         },
         "options": {}
       },
-      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106685818.json"
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165808.json"
+    },
+    {
+      "id": "compare-1767102165816",
+      "createdAt": "2025-12-30T13:42:45.816Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 0
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 2,
+          "totalMatches": 0,
+          "severity": {
+            "high": 2,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165816.json"
+    },
+    {
+      "id": "compare-1767102165824",
+      "createdAt": "2025-12-30T13:42:45.824Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test",
+          "totalComponents": 1
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 1,
+          "totalDeviations": 4,
+          "totalMatches": 0,
+          "severity": {
+            "high": 4,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165824.json"
+    },
+    {
+      "id": "compare-1767102165833",
+      "createdAt": "2025-12-30T13:42:45.834Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "large-test",
+          "totalComponents": 100
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 100
+        },
+        "summary": {
+          "totalComponents": 100,
+          "totalDeviations": 100,
+          "totalMatches": 0,
+          "severity": {
+            "high": 100,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165833.json"
+    },
+    {
+      "id": "compare-1767102165843",
+      "createdAt": "2025-12-30T13:42:45.844Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165843.json"
+    },
+    {
+      "id": "compare-1767102165852",
+      "createdAt": "2025-12-30T13:42:45.852Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165852.json"
+    },
+    {
+      "id": "compare-1767102165863",
+      "createdAt": "2025-12-30T13:42:45.864Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file-id",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "https://example.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102165863.json"
+    },
+    {
+      "id": "compare-1767102246244",
+      "createdAt": "2025-12-30T13:44:06.250Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "test-file",
+          "totalComponents": 2
+        },
+        "web": {
+          "url": "http://test.com",
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 6,
+          "totalMatches": 1,
+          "severity": {
+            "high": 6,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767102246244.json"
+    },
+    {
+      "id": "compare-1767153211869",
+      "createdAt": "2025-12-31T03:53:31.872Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "totalComponents": 2
+        },
+        "web": {
+          "totalElements": 2
+        },
+        "summary": {
+          "totalComponents": 2,
+          "totalDeviations": 2,
+          "totalMatches": 2,
+          "severity": {
+            "high": 2,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {
+          "designSystemId": "test-ds-1767153211869"
+        }
+      },
+      "payloadPath": "/Users/user/Downloads/designqa/apps/saas-backend/output/snapshots/compare-1767153211869.json"
     }
   ]
 }

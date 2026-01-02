@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { compareUrls } from '../../services/api'
+import { unifiedApiService } from '../../services/unified-api'
 import { getApiBaseUrl } from '../../utils/environment'
 import ProgressIndicator, { ProgressStage } from '../ui/ProgressIndicator'
-import { useAuth } from '../../contexts/AuthContext'
+import { DesignSystemSelect } from '../common/DesignSystemSelect'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   DocumentTextIcon,
@@ -35,7 +35,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
-import { supabase } from '../../lib/supabase'
 
 // Add error type definition
 interface ComparisonError {
@@ -55,6 +54,7 @@ interface ComparisonFormProps {
 }
 
 export default function ComparisonForm({ onSuccess, onComparisonStart }: ComparisonFormProps) {
+  const emptyCredentialValue = '__none__'
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [authType, setAuthType] = useState<'none' | 'credentials' | 'cookies' | 'headers'>('none')
   const [progressStages, setProgressStages] = useState<ProgressStage[]>([])
@@ -68,11 +68,11 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const [selectedCredentialId, setSelectedCredentialId] = useState<string>('')
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const { user } = useAuth()
 
   const { control, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }>({
     defaultValues: {
       figmaUrl: '',
+      designSystemId: '',
       webUrl: '',
       webSelector: '',
       includeVisual: true,
@@ -88,88 +88,163 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
     }
   })
 
-  // Load saved credentials when credentials auth type is selected or user changes
+  // Load saved credentials on mount and when credentials auth type is selected
   useEffect(() => {
+    loadCredentials()
+  }, [])
+
+  // Also reload credentials when auth type changes to credentials
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:95', message: 'authType useEffect triggered', data: { authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'C' }) }).catch(() => { });
+    // #endregion
     if (authType === 'credentials') {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:97', message: 'Reloading credentials due to authType change', data: { authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'C' }) }).catch(() => { });
+      // #endregion
       loadCredentials()
     }
-  }, [authType, user])
+  }, [authType])
+
+  // Track savedCredentials and authType changes
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:106', message: 'State update', data: { savedCredentialsCount: savedCredentials.length, selectedCredentialId, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'F' }) }).catch(() => { });
+    console.log('[DEBUG] State update - credentials:', savedCredentials.length, 'selected:', selectedCredentialId, 'authType:', authType)
+    // #endregion
+  }, [savedCredentials, selectedCredentialId, authType])
 
   const loadCredentials = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:107', message: 'loadCredentials called', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'F' }) }).catch(() => { });
+    console.log('[DEBUG] loadCredentials called')
+    // #endregion
     try {
       const apiBaseUrl = getApiBaseUrl()
-      const headers: HeadersInit = {}
-      
-      // Try to get auth token if user is signed in and Supabase is available
-      if (user && supabase) {
-        const session = await supabase.auth.getSession()
-        if (session?.data.session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.data.session.access_token}`
-        }
-      }
-      
-      // Load credentials (works with or without auth for local storage)
-      const response = await fetch(`${apiBaseUrl}/api/credentials`, { headers })
-      
+      const response = await fetch(`${apiBaseUrl}/api/credentials`)
+
       if (response.ok) {
         const result = await response.json()
-        setSavedCredentials(result.data || [])
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:114', message: 'Credentials loaded from API', data: { credentialsCount: result.data?.length || 0, credentials: result.data?.map((c: any) => ({ id: c.id, name: c.name, url: c.url })) || [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'F' }) }).catch(() => { });
+        console.log('[DEBUG] Credentials loaded:', result.data?.length || 0, 'credentials', 'response:', result)
+        // #endregion
+        const credentials = result.data || result.credentials || []
+        console.log('[DEBUG] Setting savedCredentials to:', credentials.length, 'items')
+        setSavedCredentials(credentials)
+      } else {
+        const errorText = await response.text().catch(() => 'Unknown error')
+        console.log('[DEBUG] Failed to load credentials - response not ok:', response.status, errorText)
+        setSavedCredentials([])
       }
     } catch (error) {
-      console.error('Failed to load credentials:', error)
+      console.error('[DEBUG] Failed to load credentials:', error)
       // Silently fail - local mode may not have credentials yet
     }
   }
 
   const handleCredentialSelect = async (credentialId: string) => {
-    setSelectedCredentialId(credentialId)
-    
-    if (!credentialId) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:116', message: 'handleCredentialSelect entry', data: { credentialId, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'A' }) }).catch(() => { });
+    console.log('[DEBUG] handleCredentialSelect:', credentialId, 'current authType:', authType)
+    // #endregion
+    const resolvedCredentialId = credentialId === emptyCredentialValue ? '' : credentialId
+    setSelectedCredentialId(resolvedCredentialId)
+
+    if (!resolvedCredentialId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:121', message: 'None selected - clearing auth fields', data: { authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
+      // #endregion
       // Clear form if "None" selected
+      if (authType === 'credentials') {
+        setAuthType('none')
+      }
       setValue('authentication.username', '')
       setValue('authentication.password', '')
+      setValue('authentication.loginUrl', '')
       return
     }
-    
+
     try {
       const apiBaseUrl = getApiBaseUrl()
-      const headers: HeadersInit = {}
-      
-      // Try to get auth token if user is signed in (optional for local mode)
-      if (user && supabase) {
-        const session = await supabase.auth.getSession()
-        if (session?.data.session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.data.session.access_token}`
-        }
-      }
-      
-      const response = await fetch(`${apiBaseUrl}/api/credentials/${credentialId}/decrypt`, {
-        headers
-      })
-      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:130', message: 'Fetching credential decrypt', data: { resolvedCredentialId, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
+      // #endregion
+      const response = await fetch(`${apiBaseUrl}/api/credentials/${resolvedCredentialId}/decrypt`)
+
       if (response.ok) {
         const result = await response.json()
         const credential = result.data
-        
-        // Auto-fill form fields
-        setValue('authentication.username', credential.username || '')
-        setValue('authentication.password', credential.password || '')
-        if (credential.loginUrl) {
-          setValue('authentication.loginUrl', credential.loginUrl)
-        }
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:137', message: 'Credential loaded from API', data: { credentialUrl: credential.url, hasUsername: !!credential.username, hasPassword: !!credential.password, hasLoginUrl: !!credential.loginUrl, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'D' }) }).catch(() => { });
+        console.log('[DEBUG] Credential loaded:', { url: credential.url, username: credential.username, password: credential.password ? '***' : '', authType })
+        // #endregion
+
+        // Auto-fill Web URL
         if (credential.url) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:139', message: 'Setting webUrl', data: { url: credential.url }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'D' }) }).catch(() => { });
+          console.log('[DEBUG] Setting webUrl to:', credential.url)
+          // #endregion
           setValue('webUrl', credential.url)
+        } else {
+          console.log('[DEBUG] Credential has no URL!')
         }
-        
-        toast({
-          title: 'Credential loaded',
-          description: `Loaded credentials for ${credential.name || credential.id || 'selected credential'}`
-        })
+
+        // Only set authType to credentials if username/password exist (not empty strings)
+        const hasAuth = (credential.username && credential.username.trim()) || (credential.password && credential.password.trim())
+        console.log('[DEBUG] hasAuth check:', hasAuth, 'username:', credential.username, 'password:', credential.password ? 'exists' : 'empty')
+        if (hasAuth) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:145', message: 'Credential has auth - setting authType', data: { currentAuthType: authType, willSetToCredentials: authType !== 'credentials' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+          // #endregion
+          if (authType !== 'credentials') {
+            setAuthType('credentials')
+          }
+          // Auto-fill auth fields
+          setValue('authentication.username', credential.username || '')
+          setValue('authentication.password', credential.password || '')
+          if (credential.loginUrl) {
+            setValue('authentication.loginUrl', credential.loginUrl)
+          }
+
+          toast({
+            title: 'Credential loaded',
+            description: `Loaded credentials for ${credential.name || credential.id || 'selected credential'}. URL and authentication fields filled.`
+          })
+        } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:159', message: 'Credential has no auth - clearing fields', data: { currentAuthType: authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'A' }) }).catch(() => { });
+          console.log('[DEBUG] Credential has no auth, current authType:', authType)
+          // #endregion
+          // No auth needed, reset authType to 'none' if it was 'credentials'
+          if (authType === 'credentials') {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:186', message: 'Resetting authType from credentials to none', data: { previousAuthType: authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'A' }) }).catch(() => { });
+            console.log('[DEBUG] Resetting authType from credentials to none')
+            // #endregion
+            setAuthType('none')
+          } else {
+            console.log('[DEBUG] authType is already:', authType, '- no reset needed')
+          }
+          setValue('authentication.username', '')
+          setValue('authentication.password', '')
+          setValue('authentication.loginUrl', '')
+
+          toast({
+            title: 'Credential loaded',
+            description: `Loaded URL for ${credential.name || credential.id || 'selected credential'}. No authentication required.`
+          })
+        }
       } else {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to load credential')
       }
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:172', message: 'Error loading credential', data: { error: error instanceof Error ? error.message : 'Unknown' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+      // #endregion
       toast({
         title: 'Failed to load credential',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -204,11 +279,15 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
     }
 
     switch (apiError.status) {
+      case 422:
+        return apiError.details ? `${apiError.message} ${apiError.details}` : (apiError.message || 'Web extraction failed to produce usable DOM output.')
       case 401:
       case 403:
         return 'Authentication failed. Check your Figma token and any web credentials configured in Settings.'
       case 404:
         return 'The /api/compare endpoint is unavailable. Verify the backend is running the latest build.'
+      case 504:
+        return apiError.details || 'The comparison server timed out while extracting the web page. Try again with authentication enabled or a simpler URL.'
       case 429:
         return 'Too many requests in a short period. Wait a moment before running another comparison.'
       case 500:
@@ -242,26 +321,26 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         // Parse and validate Figma URL
         let figmaUrl = data.figmaUrl;
         let nodeId: string | null = null;
-        
+
         try {
           // Validate Figma URL format
           if (!figmaUrl.match(/^https:\/\/www\.figma\.com\/(file|design|proto)\/[a-zA-Z0-9-]+\//)) {
             throw new Error('Invalid Figma URL format. Expected format: https://www.figma.com/file/... or https://www.figma.com/design/...');
           }
-          
+
           // Extract nodeId from URL if present
           const nodeIdMatch = figmaUrl.match(/[?&]node-id=([^&]+)/);
           if (nodeIdMatch) {
             nodeId = nodeIdMatch[1].replace('-', ':');
           }
-          
+
           // Ensure URL is in file format for API compatibility
           if (figmaUrl.includes('/design/')) {
             figmaUrl = figmaUrl.replace('/design/', '/file/');
           } else if (figmaUrl.includes('/proto/')) {
             figmaUrl = figmaUrl.replace('/proto/', '/file/');
           }
-          
+
           setFigmaUrlError(null);
         } catch (urlError: any) {
           setFigmaUrlError(urlError.message);
@@ -289,35 +368,35 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             }
           }
         };
-        
+
         console.log('🚀 Sending comparison request:', payload);
-        
+
         // Update progress: validation complete
-        setProgressStages(prev => prev.map(stage => 
-          stage.stage === 'validation' 
+        setProgressStages(prev => prev.map(stage =>
+          stage.stage === 'validation'
             ? { ...stage, progress: 100 }
             : stage
         ));
         setCurrentStage('figma-extraction');
-        
-        // Use the compareUrls function from the API service
-        const result = await compareUrls(payload);
-        
+
+        // Use the compareUrls function from the unified API service
+        const result = await unifiedApiService.compareUrls(payload);
+
         // Update progress: extraction complete
-        setProgressStages(prev => prev.map(stage => 
-          stage.stage === 'comparison' 
+        setProgressStages(prev => prev.map(stage =>
+          stage.stage === 'comparison'
             ? { ...stage, progress: 100 }
             : stage
         ));
-        
+
         // The API now returns the comparison result directly
         const comparisonResult = result as ComparisonResult;
-        
+
         // If the result contains a comparisonId, notify the parent component
         if ((comparisonResult.comparisonId) && onComparisonStart) {
           onComparisonStart(comparisonResult.comparisonId);
         }
-        
+
         return comparisonResult;
       } catch (error) {
         console.error('❌ Request failed:', error);
@@ -328,29 +407,29 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       console.log('🔥 COMPARISON FORM onSuccess CALLED!');
       console.log('✅ Comparison mutation successful:', result);
       queryClient.invalidateQueries({ queryKey: ['reports'] });
-      
+
       // Store report URLs for UI access
       const resultData = result as any;
       const reports = resultData.reports;
-      
+
       if (reports?.directUrl) {
         setReportUrls({
           directUrl: reports.directUrl,
           downloadUrl: reports.downloadUrl,
           hasError: reports.hasError || false
         });
-        
+
         // Open the report in a new tab
         const apiBaseUrl = getApiBaseUrl();
         const fullDirectUrl = `${apiBaseUrl}${reports.directUrl}`;
-        
+
         // Reset report open attempts counter
         setReportOpenAttempts(0);
-        
+
         // Open the report in a new tab
         try {
           const newWindow = window.open(fullDirectUrl, '_blank');
-          
+
           // Check if popup was blocked
           if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
             console.warn('⚠️ Popup blocked or failed to open');
@@ -364,13 +443,13 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           setReportOpenAttempts(prev => prev + 1);
         }
       }
-      
+
       // Debug the result structure before passing to parent
       console.log('🔍 ComparisonForm: Raw result structure:', JSON.stringify(result, null, 2));
       console.log('🔍 ComparisonForm: result.data exists?', !!result.data);
       console.log('🔍 ComparisonForm: result.extractionDetails exists?', !!result.extractionDetails);
       console.log('🔍 ComparisonForm: result.data?.extractionDetails exists?', !!result.data?.extractionDetails);
-      
+
       onSuccess?.(result);
       setLastErrorMessage(null)
     },
@@ -390,11 +469,11 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         return newStages.map(stage =>
           stage.stage === currentStage
             ? {
-                ...stage,
-                error: true,
-                message: errorMessage,
-                details: comparisonError?.code ? `Error code: ${comparisonError.code}` : undefined
-              }
+              ...stage,
+              error: true,
+              message: errorMessage,
+              details: comparisonError?.code ? `Error code: ${comparisonError.code}` : undefined
+            }
             : stage
         );
       });
@@ -442,9 +521,16 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const openReportInNewTab = () => {
     if (reportUrls.directUrl) {
       const apiBaseUrl = getApiBaseUrl();
+      const url = `${apiBaseUrl}${reportUrls.directUrl}`;
       try {
-        const newWindow = window.open(`${apiBaseUrl}${reportUrls.directUrl}`, '_blank');
-        
+        if (window.electronAPI?.openExternal) {
+          window.electronAPI.openExternal(url);
+          setReportOpenAttempts(0);
+          return;
+        }
+
+        const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+
         // Check if popup was blocked
         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
           console.warn('⚠️ Popup blocked or failed to open');
@@ -464,14 +550,20 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const downloadReport = () => {
     if (reportUrls.downloadUrl) {
       const apiBaseUrl = getApiBaseUrl();
+      const url = `${apiBaseUrl}${reportUrls.downloadUrl}`;
       try {
-        window.open(`${apiBaseUrl}${reportUrls.downloadUrl}`, '_blank');
+        if (window.electronAPI?.openExternal) {
+          window.electronAPI.openExternal(url);
+          return;
+        }
+
+        window.open(url, '_blank', 'noopener,noreferrer');
       } catch (error) {
         console.error('❌ Failed to download report:', error);
-        
+
         // Create a direct link as fallback
         const link = document.createElement('a');
-        link.href = `${apiBaseUrl}${reportUrls.downloadUrl}`;
+        link.href = url;
         link.download = `comparison-report.html`;
         document.body.appendChild(link);
         link.click();
@@ -495,19 +587,45 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
 
   return (
     <div className="w-full">
-      <div className="mb-8 text-center">
-        <Alert className="max-w-2xl mx-auto">
-          <InformationCircleIcon className="h-4 w-4" />
-          <AlertDescription>
-            Comparison feature is disabled in this version. Only extraction data will be shown.
-          </AlertDescription>
-        </Alert>
-      </div>
-      
       <form onSubmit={handleSubmit(onSubmit)} className="form-standard">
-        
+
+        {/* Design System Selection (Source of Truth) */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-6"
+        >
+          <Card className="border-primary/20 bg-white/5">
+            <CardHeader className="pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                  <AdjustmentsHorizontalIcon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Design System (Source of Truth)</CardTitle>
+                  <CardDescription>Select the design system to validate against</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                name="designSystemId"
+                control={control}
+                render={({ field }) => (
+                  <DesignSystemSelect
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    disabled={comparisonMutation.isPending}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Main Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+        <div className="flex flex-col gap-5 mb-8">
           {/* Figma Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -534,7 +652,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <Controller
                     name="figmaUrl"
                     control={control}
-                    rules={{ 
+                    rules={{
                       required: 'Figma URL is required',
                       pattern: {
                         value: /^https:\/\/www\.figma\.com\/(file|design|proto)\/[a-zA-Z0-9-]+\//,
@@ -574,9 +692,9 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={comparisonMutation.isPending}
-                        className="grid grid-cols-1 gap-4"
+                        className="flex flex-row gap-4"
                       >
-                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors w-full">
                           <RadioGroupItem value="frame-only" id="frame-only" className="mt-1" />
                           <div className="flex-1 space-y-1">
                             <Label htmlFor="frame-only" className="text-base font-medium cursor-pointer">
@@ -587,8 +705,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                             </p>
                           </div>
                         </div>
-                        
-                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors w-full">
                           <RadioGroupItem value="global-styles" id="global-styles" className="mt-1" />
                           <div className="flex-1 space-y-1">
                             <Label htmlFor="global-styles" className="text-base font-medium cursor-pointer">
@@ -599,8 +717,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                             </p>
                           </div>
                         </div>
-                        
-                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors w-full">
                           <RadioGroupItem value="both" id="both" className="mt-1" />
                           <div className="flex-1 space-y-1">
                             <Label htmlFor="both" className="text-base font-medium cursor-pointer">
@@ -632,12 +750,46 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                     <GlobeAltIcon className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Web Implementation</CardTitle>
+                    <CardTitle className="text-lg">Web Extraction</CardTitle>
                     <CardDescription>Enter the live website URL</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+                  <Label>Use Saved Credential</Label>
+                  <Select
+                    value={selectedCredentialId || undefined}
+                    onValueChange={handleCredentialSelect}
+                    disabled={false}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a saved credential (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedCredentials.length > 0 ? (
+                        <>
+                          <SelectItem value={emptyCredentialValue}>None (enter manually)</SelectItem>
+                          {savedCredentials.map((cred) => (
+                            <SelectItem key={cred.id} value={cred.id}>
+                              {cred.name} - {cred.url}
+                            </SelectItem>
+                          ))}
+                        </>
+                      ) : (
+                        <SelectItem value={emptyCredentialValue} disabled>
+                          No saved credentials
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {savedCredentials.length === 0
+                      ? 'No saved credentials yet. Add one in Settings.'
+                      : 'Selecting a credential will auto-fill the Web URL. If the credential has username/password, authentication fields will also be filled.'}
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="webUrl">Web URL</Label>
                   <Controller
@@ -699,215 +851,192 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                     </Alert>
                   </motion.div>
                 )}
+
+                {/* Advanced Options */}
+                <div className="space-y-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    className="rounded-xl border bg-card text-card-foreground p-6"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center justify-between w-full text-left rounded-lg hover:bg-accent/50 transition-colors p-0 border-0 bg-transparent"
+                    >
+                      <div className="flex items-center space-x-3 w-full">
+                        <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                          <CogIcon className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Advanced Options</h3>
+                          <p className="text-sm text-muted-foreground">Authentication, visual comparison settings</p>
+                        </div>
+                      </div>
+                      <motion.div
+                        animate={{ rotate: showAdvanced ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </motion.div>
+                    </button>
+
+                    <AnimatePresence>
+                      {showAdvanced && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-6 space-y-6"
+                        >
+                          {/* Authentication */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                              Authentication Required?
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                              {[
+                                { value: 'none', label: 'None', desc: 'Public page' },
+                                { value: 'credentials', label: 'Login', desc: 'Username/Password' },
+                                { value: 'cookies', label: 'Cookies', desc: 'Session cookies' },
+                                { value: 'headers', label: 'Headers', desc: 'Custom headers' }
+                              ].map((option) => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => setAuthType(option.value as any)}
+                                  className={`p-3 rounded-lg border text-left transition-colors w-full ${authType === option.value
+                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                    : 'border-border hover:border-border/80'
+                                    }`}
+                                >
+                                  <div className="font-medium text-sm">{option.label}</div>
+                                  <div className="text-xs text-muted-foreground">{option.desc}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {authType === 'credentials' && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="space-y-4"
+                            >
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Login URL
+                                  </label>
+                                  <Controller
+                                    name="authentication.loginUrl"
+                                    control={control}
+                                    render={({ field }) => (
+                                      <input
+                                        {...field}
+                                        type="url"
+                                        placeholder=""
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                      />
+                                    )}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Success Indicator
+                                  </label>
+                                  <Controller
+                                    name="authentication.successIndicator"
+                                    control={control}
+                                    render={({ field }) => (
+                                      <input
+                                        {...field}
+                                        type="text"
+                                        placeholder=""
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                      />
+                                    )}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Username
+                                  </label>
+                                  <Controller
+                                    name="authentication.username"
+                                    control={control}
+                                    render={({ field }) => (
+                                      <input
+                                        {...field}
+                                        type="text"
+                                        placeholder=""
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                      />
+                                    )}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Password
+                                  </label>
+                                  <Controller
+                                    name="authentication.password"
+                                    control={control}
+                                    render={({ field }) => (
+                                      <input
+                                        {...field}
+                                        type="password"
+                                        placeholder=""
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                      />
+                                    )}
+                                  />
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {/* Visual Comparison Options */}
+                          <div>
+                            <label className="flex items-center space-x-3">
+                              <Controller
+                                name="includeVisual"
+                                control={control}
+                                render={({ field }) => (
+                                  <input
+                                    type="checkbox"
+                                    checked={field.value}
+                                    onChange={field.onChange}
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                  />
+                                )}
+                              />
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">
+                                  Include Visual Comparison
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  Generate pixel-perfect visual diff images
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
 
-        {/* Advanced Options */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          className="rounded-xl border bg-card text-card-foreground shadow p-6"
-        >
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center justify-between w-full text-left p-4 rounded-lg border bg-background hover:bg-accent/50 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                <CogIcon className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Advanced Options</h3>
-                <p className="text-sm text-muted-foreground">Authentication, visual comparison settings</p>
-              </div>
-            </div>
-            <motion.div
-              animate={{ rotate: showAdvanced ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </motion.div>
-          </button>
-
-          <AnimatePresence>
-            {showAdvanced && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-6 space-y-6"
-              >
-                {/* Authentication */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Authentication Required?
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-                    {[
-                      { value: 'none', label: 'None', desc: 'Public page' },
-                      { value: 'credentials', label: 'Login', desc: 'Username/Password' },
-                      { value: 'cookies', label: 'Cookies', desc: 'Session cookies' },
-                      { value: 'headers', label: 'Headers', desc: 'Custom headers' }
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setAuthType(option.value as any)}
-                        className={`p-3 rounded-lg border text-left transition-colors w-full ${
-                          authType === option.value
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                            : 'border-border hover:border-border/80'
-                        }`}
-                      >
-                        <div className="font-medium text-sm">{option.label}</div>
-                        <div className="text-xs text-muted-foreground">{option.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Authentication Details */}
-                {authType === 'credentials' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-4"
-                  >
-                    {/* Saved Credentials Selector */}
-                    {savedCredentials.length > 0 && (
-                      <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
-                        <Label>Use Saved Credential</Label>
-                        <Select value={selectedCredentialId} onValueChange={handleCredentialSelect}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a saved credential (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">None (enter manually)</SelectItem>
-                            {savedCredentials.map((cred) => (
-                              <SelectItem key={cred.id} value={cred.id}>
-                                {cred.name} - {cred.url}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Selecting a credential will auto-fill the fields below
-                        </p>
-                      </div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Login URL
-                      </label>
-                      <Controller
-                        name="authentication.loginUrl"
-                        control={control}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="url"
-                            placeholder=""
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        )}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Success Indicator
-                      </label>
-                      <Controller
-                        name="authentication.successIndicator"
-                        control={control}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="text"
-                            placeholder=""
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        )}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Username
-                      </label>
-                      <Controller
-                        name="authentication.username"
-                        control={control}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="text"
-                            placeholder=""
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        )}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Password
-                      </label>
-                      <Controller
-                        name="authentication.password"
-                        control={control}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="password"
-                            placeholder=""
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                        )}
-                      />
-                    </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Visual Comparison Options */}
-                <div>
-                  <label className="flex items-center space-x-3">
-                    <Controller
-                      name="includeVisual"
-                      control={control}
-                      render={({ field }) => (
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                        />
-                      )}
-                    />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Include Visual Comparison
-                      </span>
-                      <p className="text-xs text-muted-foreground">
-                        Generate pixel-perfect visual diff images
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
         {/* Submit Section */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
           <Button
             type="button"
             onClick={() => setResetDialogOpen(true)}
@@ -975,8 +1104,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
               <div>
                 <h4 className="font-medium text-destructive">Extraction Failed</h4>
                 <p className="text-sm text-destructive/80">
-                  {comparisonMutation.error instanceof Error 
-                    ? comparisonMutation.error.message 
+                  {comparisonMutation.error instanceof Error
+                    ? comparisonMutation.error.message
                     : 'An unexpected error occurred'}
                 </p>
               </div>

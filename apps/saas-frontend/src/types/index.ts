@@ -7,7 +7,9 @@ export interface ComparisonRequest {
   nodeId?: string | null
   authentication?: AuthenticationConfig
   includeVisual?: boolean
+  designSystemId?: string | null
 }
+
 
 export interface AuthenticationConfig {
   type: 'form' | 'credentials' | 'cookies' | 'headers' | 'manual' | 'none'
@@ -136,6 +138,7 @@ export interface ComparisonData {
       extractorVersion?: string
     }
     comparison: {
+      totalComparisons: number
       matches: number
       deviations: number
       matchPercentage: number
@@ -170,6 +173,32 @@ export interface ComparisonData {
     downloadUrl?: string
     hasError?: boolean
   }
+  export?: any
+  comparisons?: ComparisonResultItem[]
+}
+
+export interface ComparisonResultItem {
+  componentId: string
+  componentName: string
+  componentType: string
+  selector?: string
+  status: 'matches' | 'has_deviations' | 'no_match'
+  deviations: any[]
+  matches: any[]
+  matchScore: number
+  designSystemResults?: DesignSystemValidationResult | null
+}
+
+export interface DesignSystemValidationResult {
+  figma: {
+    matches: Array<{ property: string, token: string, value: any }>
+    deviations: Array<{ property: string, value: any, suggestedToken: string, message: string }>
+  }
+  web: {
+    matches: Array<{ property: string, token: string, value: any }>
+    deviations: Array<{ property: string, value: any, suggestedToken: string, message: string }>
+  }
+  summary: 'consistent' | 'deviates_from_system'
 }
 
 export interface Report {

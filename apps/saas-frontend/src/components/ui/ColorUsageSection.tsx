@@ -46,9 +46,11 @@ const ColorUsageSection: React.FC<ColorUsageSectionProps> = ({ data, source, cla
       const colors = extractColorsFromData(data)
       
       // For each color, fetch associated elements
+      const { getApiBaseUrl } = await import('@/config/ports');
+      const apiBaseUrl = getApiBaseUrl();
       const colorUsagePromises = colors.map(async (color) => {
         try {
-          const response = await fetch(`/api/colors/colors/${encodeURIComponent(color)}/elements`)
+          const response = await fetch(`${apiBaseUrl}/api/colors/colors/${encodeURIComponent(color)}/elements`)
           if (response.ok) {
             const elements = await response.json()
             return {

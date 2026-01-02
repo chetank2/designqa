@@ -6,8 +6,8 @@
 import { DesignSystemRepository } from '../database/repositories/DesignSystemRepository.js';
 
 export class DesignSystemService {
-  constructor(adapter) {
-    this.repository = new DesignSystemRepository(adapter);
+  constructor(adapter, repository = null) {
+    this.repository = repository || new DesignSystemRepository(adapter);
   }
 
   /**

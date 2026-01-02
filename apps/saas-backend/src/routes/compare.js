@@ -15,7 +15,7 @@ export class CompareAPI {
   async handleCompareRequest(req, res) {
     const startTime = Date.now();
     console.log('🚀 Compare API: Request received');
-    
+
     try {
       // Step 1: Validate request
       const validationErrors = validateComparisonRequest(req.body);
@@ -27,8 +27,9 @@ export class CompareAPI {
         ));
       }
 
-      const { figmaUrl, webUrl, authentication, includeVisual, nodeId } = req.body;
-      console.log('✅ Request validated:', { figmaUrl, webUrl, hasAuth: !!authentication });
+      const { figmaUrl, webUrl, authentication, includeVisual, nodeId, designSystemId } = req.body;
+      console.log('✅ Request validated:', { figmaUrl, webUrl, hasAuth: !!authentication, designSystemId });
+
 
       // Step 2: Extract Figma Data
       console.log('🎨 Starting Figma extraction...');
@@ -73,13 +74,13 @@ export class CompareAPI {
       // Step 5: Send Response
       const processingTime = ((Date.now() - startTime) / 1000).toFixed(2);
       const response = createComparisonResponse(comparisonResult, processingTime);
-      
+
       console.log('📤 Sending response:', {
         success: response.success,
         similarity: response.data.comparison.overallSimilarity,
         processingTime: response.processingTime
       });
-      
+
       return this.sendResponse(res, 200, response);
 
     } catch (error) {
@@ -117,17 +118,19 @@ export class CompareAPI {
         threshold: options.threshold || 0.7,
         includePositional: options.includePositional !== false,
         includeStyle: options.includeStyle !== false,
-        includeContent: options.includeContent !== false
+        includeContent: options.includeContent !== false,
+        designSystemId: options.designSystemId || null
       });
-      
+
       return await service.compareExtractedData(figmaData, webData, options);
     }
-    
+
     // Fallback comparison logic
     return this.createMockComparison(figmaData, webData);
   }
 
   createMockFigmaData(figmaUrl) {
+
     return {
       components: [
         {
@@ -227,7 +230,7 @@ export class CompareAPI {
   }
 
   sendResponse(res, statusCode, data) {
-    res.writeHead(statusCode, { 
+    res.writeHead(statusCode, {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',

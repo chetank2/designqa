@@ -29,6 +29,9 @@ loadJWT();
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET || 'desktop-jwt-secret-change-in-production';
 const JWT_EXPIRY = '15m'; // 15 minutes
 
+// Simple in-memory user preferences store for desktop/local mode
+const userPreferencesStore = new Map();
+
 // Helper function to get jwt (may need to wait for load)
 async function getJWT() {
   if (!jwt && !jwtLoading) {
@@ -130,20 +133,61 @@ export async function getDesktopCapabilities(req, res) {
       });
     }
 
-    // Check if user has registered desktop agents
-    // For now, return basic capability
-    // In production, check desktop_agents table
+    // Cloud/SaaS deployments do not have access to the user's local Figma Desktop app.
+    // Treat true cloud only when not running in desktop mode or local development.
+    const isDesktopLikeEnvironment =
+      process.env.DEPLOYMENT_MODE === 'desktop' ||
+      process.env.NODE_ENV === 'development';
 
-    // Check for desktop MCP availability (this would be set by desktop app registration)
-    const desktopMCPAvailable = false; // TODO: Check database for registered desktop agents
+    const hasSupabaseConfig =
+      !!(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
 
-    res.json({
-      success: true,
-      desktopMCPAvailable: desktopMCPAvailable,
-      message: desktopMCPAvailable 
-        ? 'Desktop MCP is available for this user'
-        : 'No desktop agents registered for this user'
-    });
+    const isCloudEnvironment = !isDesktopLikeEnvironment && hasSupabaseConfig;
+
+    if (isCloudEnvironment) {
+      return res.json({
+        success: true,
+        desktopMCPAvailable: false,
+        message: 'Desktop MCP is only available when running the DesignQA Desktop app or local server.'
+      });
+    }
+
+    // Local/desktop environment: attempt to detect Figma Desktop MCP directly
+    try {
+      const { discoverMCPPort, isFigmaRunning } = await import('@designqa/mcp-client/discovery');
+
+      const figmaRunning = await isFigmaRunning();
+      if (!figmaRunning) {
+        return res.json({
+          success: true,
+          desktopMCPAvailable: false,
+          message: 'Figma Desktop app is not running. Please start Figma to use Desktop MCP.'
+        });
+      }
+
+      const discovery = await discoverMCPPort();
+      if (!discovery.port) {
+        return res.json({
+          success: true,
+          desktopMCPAvailable: false,
+          message: 'Could not find Figma MCP port. Ensure Dev Mode and the Figma MCP server are enabled.'
+        });
+      }
+
+      return res.json({
+        success: true,
+        desktopMCPAvailable: true,
+        mcpPort: discovery.port,
+        message: `Desktop MCP is available on port ${discovery.port}.`
+      });
+    } catch (error) {
+      console.warn('⚠️ Desktop MCP capability detection failed:', error.message);
+      return res.json({
+        success: true,
+        desktopMCPAvailable: false,
+        message: 'Failed to detect Desktop MCP. Make sure the DesignQA Desktop app and Figma are installed locally.'
+      });
+    }
   } catch (error) {
     console.error('❌ Failed to get desktop capabilities:', error);
     res.status(500).json({
@@ -212,8 +256,61 @@ export async function validateDesktopToken(req, res, next) {
   }
 }
 
+/**
+ * Get stored desktop-related user preferences
+ */
+export async function getUserPreferences(req, res) {
+  try {
+    const userId = req.user?.id || req.query.userId || req.params?.userId || 'local-user';
+    const preferences = userPreferencesStore.get(userId) || {
+      desktopMCPEnabled: false
+    };
+
+    return res.json({
+      success: true,
+      data: preferences
+    });
+  } catch (error) {
+    console.error('❌ Failed to load user preferences:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Save desktop-related user preferences
+ */
+export async function saveUserPreferences(req, res) {
+  try {
+    const userId = req.user?.id || req.body?.userId || 'local-user';
+    const currentPreferences = userPreferencesStore.get(userId) || {};
+    const mergedPreferences = {
+      ...currentPreferences,
+      ...(req.body || {}),
+      updatedAt: new Date().toISOString()
+    };
+
+    userPreferencesStore.set(userId, mergedPreferences);
+
+    return res.json({
+      success: true,
+      data: mergedPreferences
+    });
+  } catch (error) {
+    console.error('❌ Failed to save user preferences:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
 export default {
   registerDesktop,
   getDesktopCapabilities,
-  validateDesktopToken
+  validateDesktopToken,
+  getUserPreferences,
+  saveUserPreferences
 };

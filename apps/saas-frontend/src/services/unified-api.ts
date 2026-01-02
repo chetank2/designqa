@@ -7,24 +7,31 @@ import { ComparisonRequest, ComparisonResult, ApiResponse } from '../types';
 import { getApiBaseUrl } from '../utils/environment';
 
 class UnifiedApiService {
-  private baseURL: string;
   private timeout: number;
 
   constructor() {
-    this.baseURL = getApiBaseUrl();
-    this.timeout = 300000; // 5 minutes for comparison operations (handles slow web extraction)
+    this.timeout = 600000; // 10 minutes for comparison operations (handles slow web extraction + login flows)
+  }
+
+  /**
+   * Get the base URL dynamically (respects mode changes)
+   * @returns The current API base URL
+   */
+  private getBaseURL(): string {
+    // Get base URL dynamically to respect mode changes
+    return getApiBaseUrl();
   }
 
   /**
    * Generic API request method with standardized error handling
    */
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
+    const url = `${this.getBaseURL()}${endpoint}`;
     const controller = new AbortController();
-    
+
     // Set timeout
     const timeoutId = setTimeout(() => {
       controller.abort();
@@ -32,12 +39,13 @@ class UnifiedApiService {
 
     try {
       console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-      
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          'x-app-mode': typeof localStorage !== 'undefined' ? (localStorage.getItem('appMode') || 'cloud') : 'cloud',
           ...options.headers,
         },
       });
@@ -45,7 +53,7 @@ class UnifiedApiService {
       clearTimeout(timeoutId);
 
       const data = await response.json() as ApiResponse<T>;
-      
+
       console.log(`📥 API Response [${response.status}]:`, {
         success: data.success,
         hasData: !!data.data,
@@ -64,11 +72,11 @@ class UnifiedApiService {
       return data;
     } catch (error: any) {
       clearTimeout(timeoutId);
-      
+
       if (error.name === 'AbortError') {
         throw new Error(`Request timeout after ${this.timeout / 1000} seconds`);
       }
-      
+
       console.error(`❌ API Error (${endpoint}):`, error.message);
       throw error;
     }
@@ -101,8 +109,10 @@ class UnifiedApiService {
       nodeId: request.nodeId,
       includeVisual: request.includeVisual || false,
       authentication: request.authentication,
-      extractionMode: (request as any).extractionMode || 'both'
+      extractionMode: (request as any).extractionMode || 'both',
+      designSystemId: request.designSystemId || null
     };
+
 
     const result = await this.request<any>('/api/compare', {
       method: 'POST',
@@ -153,7 +163,7 @@ class UnifiedApiService {
    */
   private transformComparisonResponse(apiResponse: ApiResponse<any>): ComparisonResult {
     const data = apiResponse.data;
-    
+
     if (!data) {
       throw new Error('No comparison data received from API');
     }
@@ -217,7 +227,7 @@ class UnifiedApiService {
    */
   getConfig(): { baseURL: string; timeout: number } {
     return {
-      baseURL: this.baseURL,
+      baseURL: this.getBaseURL(),
       timeout: this.timeout
     };
   }

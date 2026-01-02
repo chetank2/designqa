@@ -14,17 +14,37 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface DesktopMCPCapabilities {
   desktopMCPAvailable: boolean;
+  mcpPort?: number | null;
   message?: string;
 }
 
-export default function DesktopMCPSettings() {
+interface DesktopMCPSettingsProps {
+  backendReachable?: boolean | null;
+}
+
+export default function DesktopMCPSettings({ backendReachable }: DesktopMCPSettingsProps) {
   const { user } = useAuth();
   const [capabilities, setCapabilities] = useState<DesktopMCPCapabilities | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const backendState =
+    backendReachable === undefined ? true : backendReachable;
+
   useEffect(() => {
+    if (backendState === false) {
+      setLoading(false);
+      setError('Local backend unavailable. Start the embedded server to enable Desktop MCP.');
+      return;
+    }
+
+    if (backendState === null) {
+      setLoading(true);
+      setError(null);
+      return;
+    }
+
     if (!user?.id) {
       setLoading(false);
       return;
@@ -32,10 +52,14 @@ export default function DesktopMCPSettings() {
 
     loadCapabilities();
     loadPreference();
-  }, [user]);
+  }, [user, backendState]);
 
   const loadCapabilities = async () => {
     try {
+      if (backendState !== true) {
+        return;
+      }
+
       const apiBaseUrl = getApiBaseUrl();
       const response = await fetch(`${apiBaseUrl}/api/desktop/capabilities/${user?.id}`, {
         headers: {

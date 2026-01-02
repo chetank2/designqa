@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './components/layout/Sidebar'
 import Header from './components/layout/Header'
@@ -9,75 +9,34 @@ import SingleSourcePage from './pages/SingleSourcePage'
 import ScreenshotComparison from './pages/ScreenshotComparison'
 import Reports from './pages/Reports'
 import ColorAnalytics from './pages/ColorAnalytics'
-import SignIn from './pages/SignIn'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
-import { useAuth } from './contexts/AuthContext'
-import { isAuthRequired } from './utils/auth'
+import { ModeProvider } from './contexts/ModeContext'
 
-/**
- * Protected Route Component
- * Redirects to sign-in if auth is required and user is not authenticated
- */
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const [authRequired, setAuthRequired] = useState(false);
-
-  useEffect(() => {
-    setAuthRequired(isAuthRequired());
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (authRequired && !user) {
-    return <Navigate to="/signin" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-/**
- * Main App Content Component
- * SaaS-only version - no local server management
- */
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
-  const navigate = useNavigate()
-  const { user, loading } = useAuth()
-  const [authRequired, setAuthRequired] = useState(false)
 
-  // Check auth requirement after component mounts
+  // #region agent log
   useEffect(() => {
-    setAuthRequired(isAuthRequired())
-  }, [])
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
+    const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'N/A';
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:18', message: 'AppContent mount - window location', data: { origin, href, protocol, pathname: location.pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+  }, [location.pathname]);
+  // #endregion
 
-  // Immediate redirect check before rendering any content
+  // #region agent log
   useEffect(() => {
-    if (!loading && authRequired && !user && location.pathname !== '/signin') {
-      navigate('/signin', { replace: true })
-    }
-  }, [user, loading, authRequired, location.pathname, navigate])
-
-  const getPageTitle = (pathname: string): string => {
-    if (pathname.includes('signin')) return 'Sign In'
-    if (pathname.includes('new-comparison')) return 'Compare'
-    if (pathname.includes('screenshot-comparison')) return 'Screenshot Comparison'
-    if (pathname.includes('settings')) return 'Settings'
-    if (pathname.includes('single-source')) return 'Single Source'
-    if (pathname.includes('color-analytics')) return 'Color Analytics'
-    if (pathname.includes('reports')) return 'Reports'
-    return 'Comparison Tool'
-  }
+    const handlePopState = () => {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
+      const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:25', message: 'PopState event', data: { origin, href, pathname: location.pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [location.pathname]);
+  // #endregion
 
   const pageVariants = {
     initial: { opacity: 0, scale: 0.98, y: 10 },
@@ -85,19 +44,17 @@ function AppContent() {
     out: { opacity: 0, scale: 1.02, y: -10 }
   }
 
-  // Don't show sidebar/header on sign-in page
-  const isSignInPage = location.pathname === '/signin'
-  
-  // If auth is required and user is not authenticated, show sign-in page immediately
-  // This prevents any flash of sidebar/header before redirect
-  if (isSignInPage || (!loading && authRequired && !user)) {
-    return (
-      <Routes>
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="*" element={<Navigate to="/signin" replace />} />
-      </Routes>
-    )
+  const getPageTitle = (pathname: string) => {
+    if (pathname.includes('/new-comparison')) return 'Compare'
+    if (pathname.includes('/screenshot-comparison')) return 'Screenshot Comparison'
+    if (pathname.includes('/settings')) return 'Settings'
+    if (pathname.includes('/single-source')) return 'Single Source'
+    if (pathname.includes('/color-analytics')) return 'Color Analytics'
+    if (pathname.includes('/reports')) return 'Reports'
+    return 'Design QA'
   }
+
+  const isAuthPage = ['/signin', '/signup'].includes(location.pathname)
 
   return (
     <div className="app-container flex h-screen overflow-hidden bg-background text-foreground">
@@ -107,7 +64,6 @@ function AppContent() {
       />
 
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-        {/* Decorative Background Elements - Subtle Monochrome */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
           <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-foreground/5 blur-[100px]" />
@@ -131,16 +87,14 @@ function AppContent() {
               className="min-h-full"
             >
               <Routes location={location}>
-                <Route path="/signin" element={<SignIn />} />
-                <Route path="/" element={<ProtectedRoute><NewComparison /></ProtectedRoute>} />
-                <Route path="/new-comparison" element={<ProtectedRoute><NewComparison /></ProtectedRoute>} />
-                <Route path="/screenshot-comparison" element={<ProtectedRoute><ScreenshotComparison /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/single-source" element={<ProtectedRoute><SingleSourcePage /></ProtectedRoute>} />
-                <Route path="/color-analytics" element={<ProtectedRoute><ColorAnalytics /></ProtectedRoute>} />
-                {/* Redirect any other routes */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="/" element={<NewComparison />} />
+                <Route path="/new-comparison" element={<NewComparison />} />
+                <Route path="/screenshot-comparison" element={<ScreenshotComparison />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/single-source" element={<SingleSourcePage />} />
+                <Route path="/color-analytics" element={<ColorAnalytics />} />
+                <Route path="*" element={<NewComparison />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
@@ -153,10 +107,12 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <AppContent />
-        <Toaster />
-      </Router>
+      <ModeProvider>
+        <Router>
+          <AppContent />
+          <Toaster />
+        </Router>
+      </ModeProvider>
     </ErrorBoundary>
   )
 }

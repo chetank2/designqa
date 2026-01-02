@@ -68,6 +68,7 @@ export function VersionBadge({ variant = 'secondary', className = '' }: VersionB
               versionsMatch && !error && "bg-green-500",
               !versionsMatch && !error && "bg-yellow-500"
             )} />
+            <span>v{frontendVersion}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-sm">

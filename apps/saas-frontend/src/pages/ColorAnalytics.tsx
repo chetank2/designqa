@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Component } from 'lucide-react';
+import { getApiBaseUrl } from '@/config/ports';
 
 interface ColorElement {
   id: string;
@@ -41,7 +42,8 @@ export default function ColorAnalytics() {
     setError(null);
     
     try {
-      const response = await fetch(`/api/colors/${encodeURIComponent(color)}/elements`);
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/colors/${encodeURIComponent(color)}/elements`);
       const data = await response.json();
       
       if (data.success) {

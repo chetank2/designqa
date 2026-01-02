@@ -3,6 +3,13 @@
  * Exports all repositories
  */
 
+import { ComparisonRepository } from './ComparisonRepository.js';
+import { ReportRepository } from './ReportRepository.js';
+import { CredentialRepository } from './CredentialRepository.js';
+import { DesignSystemRepository } from './DesignSystemRepository.js';
+import { ScreenshotRepository } from './ScreenshotRepository.js';
+import { CacheRepository } from './CacheRepository.js';
+
 export { ComparisonRepository } from './ComparisonRepository.js';
 export { ReportRepository } from './ReportRepository.js';
 export { CredentialRepository } from './CredentialRepository.js';

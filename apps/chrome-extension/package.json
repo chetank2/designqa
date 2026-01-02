@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsup && cp manifest.json popup.html dist/",
+    "build": "tsup && cp manifest.json popup.html dist/ && cp -r icons dist/",
     "build:prod": "EXTENSION_BACKEND_URL=${EXTENSION_BACKEND_URL:-http://localhost:3847} pnpm build",
     "dev": "tsup src/popup.tsx --format esm --watch --out-dir dist"
   },

@@ -7,6 +7,8 @@ import {
   listSnapshots,
   pruneSnapshots
 } from '../storage/ComparisonSnapshots.js';
+import { getDesignSystemRegistry } from '../design-system/DesignSystemRegistry.js';
+import { TokenMappingService } from '../services/TokenMappingService.js';
 
 /**
  * Real Comparison Engine
@@ -15,35 +17,70 @@ import {
 class ComparisonEngine {
   constructor(config = {}) {
     this.config = config;
+
+    // Load design system if specified
+    this.designSystem = null;
+    this.tokenMapper = null;
+    const dsId = config.designSystemId;
+    if (dsId) {
+      try {
+        const registry = getDesignSystemRegistry();
+        this.designSystem = registry.get(dsId);
+        if (this.designSystem) {
+          console.log(`🎨 Loaded design system: ${this.designSystem.name}`);
+          this.tokenMapper = new TokenMappingService(dsId);
+        }
+      } catch (err) {
+        console.warn('Failed to load design system:', err.message);
+      }
+    }
+
+    // Use design system tokens for thresholds if available
+    const dsTokens = this.designSystem?.tokens || {};
     this.thresholds = {
       ...config.thresholds,
-      colorDifference: 10,
-      sizeDifference: 5,
-      spacingDifference: 3,
-      fontSizeDifference: 2
+      colorDifference: dsTokens.colorTolerance || 10,
+      sizeDifference: dsTokens.sizeTolerance || 5,
+      spacingDifference: dsTokens.spacingTolerance || 3,
+      fontSizeDifference: dsTokens.fontSizeTolerance || 2
     };
-    
+
     // Add memory management settings
     this.maxComponentsPerChunk = 10;
     this.maxArrayLength = 1000;
     this.maxStringLength = 1000;
-    
+
     // Initialize advanced algorithms
     this.advancedAlgorithms = new AdvancedAlgorithms();
     this.useAdvancedAlgorithms = config.useAdvancedAlgorithms !== false; // Default to true
   }
+
 
   /**
    * Compare Figma design data with web implementation data
    * Now supports pagination and streaming for large datasets
    */
   async compareDesigns(figmaData, webData, options = {}) {
+    // Re-initialize design system for this specific request if provided
+    if (options.designSystemId && (!this.tokenMapper || this.tokenMapper.designSystemId !== options.designSystemId)) {
+      try {
+        const registry = getDesignSystemRegistry();
+        this.designSystem = registry.get(options.designSystemId);
+        if (this.designSystem) {
+          console.log(`🎨 Loaded design system for request: ${this.designSystem.name}`);
+          this.tokenMapper = new TokenMappingService(options.designSystemId);
+        }
+      } catch (err) {
+        console.warn('Failed to load design system for request:', err.message);
+      }
+    }
+
     try {
       const shouldSnapshot = this.config?.snapshots?.enabled !== false && options.snapshot !== false;
       const snapshotId = options.snapshotId || `compare-${Date.now()}`;
       const maxSnapshotRecords = this.config?.snapshots?.maxRecords || 50;
       const accessibilityChecksEnabled = options.accessibility !== false;
-      
+
       // Initialize results
       const comparisons = [];
       const summary = {
@@ -173,10 +210,10 @@ class ComparisonEngine {
     try {
       // Sanitize input component
       const sanitizedComponent = this.sanitizeObject(figmaComponent);
-      
+
       // Find the best matching web element
       const matchedElement = await this.findBestMatch(sanitizedComponent, webElements);
-      
+
       if (!matchedElement) {
         return {
           componentId: sanitizedComponent.id,
@@ -206,7 +243,8 @@ class ComparisonEngine {
         status: deviations.length > 0 ? 'has_deviations' : 'matches',
         deviations: this.sanitizeArray(deviations),
         matches: this.sanitizeArray(matches),
-        matchScore: matchedElement.matchScore
+        matchScore: matchedElement.matchScore,
+        designSystemResults: this.tokenMapper ? await this.validateAgainstDesignSystem(sanitizedComponent, matchedElement) : null
       };
 
     } catch (error) {
@@ -278,7 +316,7 @@ class ComparisonEngine {
     // Dimension similarity - check both possible locations for dimensions
     const figmaDimensions = figmaComponent.dimensions || figmaComponent.properties?.dimensions;
     const webDimensions = webElement.dimensions || webElement.boundingRect;
-    
+
     if (figmaDimensions && webDimensions) {
       const dimensionSimilarity = this.calculateDimensionSimilarity(
         figmaDimensions,
@@ -321,8 +359,8 @@ class ComparisonEngine {
 
     // Font family
     if (figmaTypography.fontFamily && webStyles.fontFamily) {
-      if (this.normalizeFontFamily(figmaTypography.fontFamily) !== 
-          this.normalizeFontFamily(webStyles.fontFamily)) {
+      if (this.normalizeFontFamily(figmaTypography.fontFamily) !==
+        this.normalizeFontFamily(webStyles.fontFamily)) {
         deviations.push({
           property: 'fontFamily',
           figmaValue: figmaTypography.fontFamily,
@@ -345,7 +383,7 @@ class ComparisonEngine {
       const figmaSize = parseFloat(figmaTypography.fontSize);
       const webSize = parseFloat(webStyles.fontSize);
       const difference = Math.abs(figmaSize - webSize);
-      
+
       if (difference > this.thresholds.fontSizeDifference) {
         deviations.push({
           property: 'fontSize',
@@ -368,7 +406,7 @@ class ComparisonEngine {
     if (figmaTypography.fontWeight && webStyles.fontWeight) {
       const figmaWeight = this.normalizeFontWeight(figmaTypography.fontWeight);
       const webWeight = this.normalizeFontWeight(webStyles.fontWeight);
-      
+
       if (figmaWeight !== webWeight) {
         deviations.push({
           property: 'fontWeight',
@@ -400,7 +438,7 @@ class ComparisonEngine {
   compareColors(figmaColor, webColor, property) {
     const figmaRgb = this.hexToRgb(figmaColor);
     const webRgb = this.parseWebColor(webColor);
-    
+
     if (!figmaRgb || !webRgb) {
       return {
         deviation: {
@@ -415,7 +453,7 @@ class ComparisonEngine {
     }
 
     const difference = this.calculateColorDifference(figmaRgb, webRgb);
-    
+
     if (difference > this.thresholds.colorDifference) {
       return {
         deviation: {
@@ -940,7 +978,7 @@ class ComparisonEngine {
   compareBorderRadius(figmaBorderRadius, webBorderRadius) {
     const figmaValue = typeof figmaBorderRadius === 'number' ? figmaBorderRadius : parseFloat(figmaBorderRadius);
     const webValue = parseFloat(webBorderRadius);
-    
+
     if (isNaN(figmaValue) || isNaN(webValue)) {
       return {
         deviation: {
@@ -953,9 +991,9 @@ class ComparisonEngine {
         }
       };
     }
-    
+
     const difference = Math.abs(figmaValue - webValue);
-    
+
     if (difference > this.thresholds.spacingDifference) {
       return {
         deviation: {
@@ -987,16 +1025,16 @@ class ComparisonEngine {
   compareBorderRadii(figmaRadii, webRadii) {
     const deviations = [];
     const matches = [];
-    
+
     const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
-    
+
     corners.forEach(corner => {
       const figmaValue = figmaRadii[corner];
       const webValue = parseFloat(webRadii[corner] || '0');
-      
+
       if (figmaValue !== undefined && !isNaN(webValue)) {
         const difference = Math.abs(figmaValue - webValue);
-        
+
         if (difference > this.thresholds.spacingDifference) {
           deviations.push({
             property: `borderRadius${corner.charAt(0).toUpperCase() + corner.slice(1)}`,
@@ -1015,7 +1053,7 @@ class ComparisonEngine {
         }
       }
     });
-    
+
     return { deviations, matches };
   }
 
@@ -1025,7 +1063,7 @@ class ComparisonEngine {
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
     if (longer.length === 0) return 1.0;
-    
+
     const distance = this.levenshteinDistance(longer, shorter);
     return (longer.length - distance) / longer.length;
   }
@@ -1064,14 +1102,14 @@ class ComparisonEngine {
 
     const webTag = webTagName.toLowerCase();
     const expectedTags = typeMap[figmaType] || [];
-    
+
     return expectedTags.includes(webTag) ? 1 : 0.3;
   }
 
   calculateDimensionSimilarity(figmaDim, webDim) {
     const widthDiff = Math.abs(figmaDim.width - webDim.width) / Math.max(figmaDim.width, webDim.width);
     const heightDiff = Math.abs(figmaDim.height - webDim.height) / Math.max(figmaDim.height, webDim.height);
-    
+
     return 1 - (widthDiff + heightDiff) / 2;
   }
 
@@ -1125,7 +1163,7 @@ class ComparisonEngine {
       'extrabold': '800',
       'black': '900'
     };
-    
+
     const normalized = fontWeight.toString().toLowerCase();
     return weightMap[normalized] || normalized;
   }
@@ -1139,7 +1177,7 @@ class ComparisonEngine {
     };
 
     const thresholds = severityThresholds[propertyType] || { high: 20, medium: 10 };
-    
+
     if (difference >= thresholds.high) return 'high';
     if (difference >= thresholds.medium) return 'medium';
     return 'low';
@@ -1169,7 +1207,7 @@ class ComparisonEngine {
   }
 
   // Helper methods for data sanitization and chunking
-  
+
   sanitizeObject(obj) {
     if (!obj || typeof obj !== 'object') return obj;
     const sanitized = {};
@@ -1217,7 +1255,7 @@ class ComparisonEngine {
       logger.debug('Using advanced color matching algorithms');
       return this.advancedAlgorithms.matchColors(figmaColors, webColors);
     }
-    
+
     // Fallback to basic comparison
     return this.compareColorsBasic(figmaColors, webColors);
   }
@@ -1230,7 +1268,7 @@ class ComparisonEngine {
       logger.debug('Using advanced typography matching algorithms');
       return this.advancedAlgorithms.matchTypography(figmaTypography, webTypography);
     }
-    
+
     // Fallback to basic comparison
     return this.compareTypographyBasic(figmaTypography, webTypography);
   }
@@ -1243,7 +1281,7 @@ class ComparisonEngine {
       logger.debug('Using advanced component matching algorithms');
       return this.advancedAlgorithms.matchComponents(figmaComponents, webElements);
     }
-    
+
     // Fallback to basic comparison
     return this.compareComponentsBasic(figmaComponents, webElements);
   }
@@ -1258,10 +1296,10 @@ class ComparisonEngine {
 
     // Simple hex-based matching
     figmaColors.forEach(figmaColor => {
-      const match = webColors.find(webColor => 
+      const match = webColors.find(webColor =>
         (figmaColor.hex || figmaColor.value) === (webColor.hex || webColor.value)
       );
-      
+
       if (match) {
         matches.push({
           figma: figmaColor,
@@ -1299,11 +1337,11 @@ class ComparisonEngine {
 
     // Simple property-based matching
     figmaTypography.forEach(figmaType => {
-      const match = webTypography.find(webType => 
+      const match = webTypography.find(webType =>
         figmaType.fontFamily === webType.fontFamily &&
         Math.abs(parseFloat(figmaType.fontSize) - parseFloat(webType.fontSize)) <= 2
       );
-      
+
       if (match) {
         matches.push({
           figma: figmaType,
@@ -1311,7 +1349,7 @@ class ComparisonEngine {
           type: 'typography',
           algorithm: 'basic'
         });
-        
+
         figmaOnly.splice(figmaOnly.indexOf(figmaType), 1);
         webOnly.splice(webOnly.indexOf(match), 1);
       }
@@ -1336,11 +1374,11 @@ class ComparisonEngine {
 
     // Simple type-based matching
     figmaComponents.forEach(figmaComp => {
-      const match = webElements.find(webElem => 
+      const match = webElements.find(webElem =>
         figmaComp.type && webElem.tagName &&
         figmaComp.type.toLowerCase().includes(webElem.tagName.toLowerCase())
       );
-      
+
       if (match) {
         matches.push({
           figma: figmaComp,
@@ -1348,7 +1386,7 @@ class ComparisonEngine {
           type: 'component',
           algorithm: 'basic'
         });
-        
+
         figmaOnly.splice(figmaOnly.indexOf(figmaComp), 1);
         webOnly.splice(webOnly.indexOf(match), 1);
       }
@@ -1361,6 +1399,72 @@ class ComparisonEngine {
       algorithm: 'basic',
       score: matches.length / (figmaComponents.length || 1)
     };
+  }
+
+  /**
+   * Validate both Figma component and Web element against the Design System
+   */
+  async validateAgainstDesignSystem(figmaComponent, webElement) {
+    if (!this.tokenMapper) return null;
+
+    const results = {
+      figma: {
+        matches: [],
+        deviations: []
+      },
+      web: {
+        matches: [],
+        deviations: []
+      },
+      summary: 'consistent'
+    };
+
+    // Properties to validate
+    const props = [
+      { figma: 'backgroundColor', web: 'backgroundColor', cat: 'colors', prop: 'background' },
+      { figma: 'color', web: 'color', cat: 'colors', prop: 'foreground' },
+      { figma: 'fontSize', web: 'fontSize', cat: 'typography', prop: 'fontSize' },
+      { figma: 'paddingTop', web: 'paddingTop', cat: 'spacing', prop: 'padding' },
+      { figma: 'borderRadius', web: 'borderRadius', cat: 'borderRadius', prop: 'radius' }
+    ];
+
+    for (const config of props) {
+      // 1. Check Figma
+      const figmaValue = figmaComponent[config.figma] || figmaComponent.properties?.[config.figma];
+      if (figmaValue) {
+        const token = this.tokenMapper.mapToToken(config.cat, config.prop, figmaValue);
+        if (token && token.isExact) {
+          results.figma.matches.push({ property: config.figma, token: token.tokenName, value: figmaValue });
+        } else {
+          results.figma.deviations.push({
+            property: config.figma,
+            value: figmaValue,
+            suggestedToken: token ? token.tokenName : 'No close match',
+            message: token ? `Value ${figmaValue} is slightly off from token ${token.tokenName} (${token.tokenValue})` : `Value ${figmaValue} does not match any design system token`
+          });
+          results.summary = 'deviates_from_system';
+        }
+      }
+
+      // 2. Check Web
+      const webValue = webElement.styles?.[config.web];
+      if (webValue) {
+        const token = this.tokenMapper.mapToToken(config.cat, config.prop, webValue);
+        if (token && token.isExact) {
+          results.web.matches.push({ property: config.web, token: token.tokenName, value: webValue });
+        } else {
+          results.web.deviations.push({
+            property: config.web,
+            value: webValue,
+            suggestedToken: token ? token.tokenName : 'No close match',
+            message: token ? `Value ${webValue} is slightly off from token ${token.tokenName} (${token.tokenValue})` : `Value ${webValue} does not match any design system token`
+          });
+          results.summary = 'deviates_from_system';
+        }
+      }
+    }
+
+    return results;
   }
 }
 

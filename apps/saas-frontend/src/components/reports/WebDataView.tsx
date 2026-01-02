@@ -241,7 +241,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
     <div className="space-y-6">
       <div className="p-4">
         <div className="mb-4">
-          <h2 className="text-xl font-semibold mb-2">Web Implementation Details</h2>
+          <h2 className="text-xl font-semibold mb-2">Web Extraction Details</h2>
           <div className="text-sm text-muted-foreground">
             Extracted at: {new Date(data.timestamp).toLocaleString()}
           </div>

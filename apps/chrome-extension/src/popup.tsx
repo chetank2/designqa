@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { buildComparisonReport, compareColors, ComparisonResult, NormalizedNode } from '@myapp/compare-engine';
+import { ComparisonResult } from '@myapp/compare-engine';
 import { GlobalComparisonPayload, StyleSystemSnapshot } from './lib/styleTypes';
+import { BACKEND_URL } from './config';
 
 type SectionKey = 'colors' | 'typography' | 'spacing' | 'radius' | 'shadows';
 
@@ -33,49 +34,16 @@ const STORAGE_KEYS = {
   url: 'figmaUrl'
 };
 
-const buildTokens = (snapshot: StyleSystemSnapshot) => {
-  const tokens: Record<string, string | number> = {};
-  const append = (prefix: string, items: Record<string, string | number>) => {
-    Object.entries(items).forEach(([key, value]) => {
-      tokens[`${prefix}:${key}`] = value;
-    });
-  };
-
-  append('font', snapshot.fontFamilies);
-  append('font-size', snapshot.fontSizes);
-  append('font-weight', snapshot.fontWeights);
-  append('line-height', snapshot.lineHeights);
-  append('spacing', snapshot.spacing);
-  append('radius', snapshot.radius);
-  append('shadow', snapshot.shadows);
-
-  return tokens;
+type HybridCompareResponse = {
+  figmaStyles: StyleSystemSnapshot;
+  webStyles: StyleSystemSnapshot;
+  tokenComparison: { results: ComparisonResult[]; summary: ComparisonSummary };
+  visualComparison: any;
 };
 
-const snapshotToNode = (snapshot: StyleSystemSnapshot, nodeId: string): NormalizedNode => {
-  const colors: Record<string, string> = {};
-  Object.entries(snapshot.colors).forEach(([key, value], index) => {
-    colors[key || `color-${index}`] = value;
-  });
-
-  return {
-    nodeId,
-    name: nodeId,
-    styles: {
-      colors,
-      typography: {},
-      spacing: {},
-      radius: {},
-      layout: {},
-      shadows: {},
-      tokens: buildTokens(snapshot)
-    }
-  };
-};
-
-const requestGlobalStyles = (payload: GlobalComparisonPayload) =>
-  new Promise<{ figmaStyles: StyleSystemSnapshot; webStyles: StyleSystemSnapshot }>((resolve, reject) => {
-    chrome.runtime.sendMessage({ type: 'global-style-comparison', payload }, response => {
+const requestHybridCompare = (payload: GlobalComparisonPayload) =>
+  new Promise<HybridCompareResponse>((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: 'hybrid-compare', payload }, response => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
@@ -128,6 +96,7 @@ const Popup = () => {
   const [results, setResults] = useState<ComparisonResult[]>([]);
   const [sections, setSections] = useState<ComparisonSections>(defaultState);
   const [summary, setSummary] = useState<ComparisonSummary>({ total: 0, matches: 0, mismatches: 0, score: 0 });
+  const [visualComparison, setVisualComparison] = useState<any | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -167,25 +136,18 @@ const Popup = () => {
       }
 
       const token = figmaToken.trim();
-      const { figmaStyles, webStyles } = await requestGlobalStyles({
+      const { tokenComparison, visualComparison: visual } = await requestHybridCompare({
         figmaUrl: figmaUrl.trim(),
         figmaToken: token || undefined
       });
 
       savePreferences(figmaUrl.trim(), token, rememberToken);
 
-      const figmaNode = snapshotToNode(figmaStyles, 'figma');
-      const webNode = snapshotToNode(webStyles, 'web');
-
-      const comparison = buildComparisonReport([figmaNode], [webNode], { normalizeInput: false });
-
-      // Augment with color similarity coverage between systems to capture unique cases
-      const colorOnly = compareColors('global-color', figmaNode.styles.colors, webNode.styles.colors);
-      const combinedResults = [...comparison, ...colorOnly];
-
+      const combinedResults = tokenComparison?.results || [];
       setResults(combinedResults);
       setSections(buildBuckets(combinedResults));
-      setSummary(buildSummary(combinedResults));
+      setSummary(tokenComparison?.summary || buildSummary(combinedResults));
+      setVisualComparison(visual || null);
       setStatus('idle');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to complete comparison.';
@@ -311,6 +273,53 @@ const Popup = () => {
         <div style={{ background: '#7f1d1d', padding: '0.6rem', borderRadius: '0.5rem', color: '#fecdd3', fontSize: '0.8rem' }}>
           {error}
         </div>
+      )}
+      {visualComparison?.status === 'completed' && (
+        <section style={{ border: '1px solid #1e293b', borderRadius: '0.5rem', padding: '0.75rem' }}>
+          <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Visual</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+            <div>
+              <div>Similarity</div>
+              <strong>{visualComparison?.metrics?.similarity ?? '—'}%</strong>
+            </div>
+            <div>
+              <div>Diff</div>
+              <strong>{visualComparison?.metrics?.diffPercentage ?? '—'}%</strong>
+            </div>
+            <div>
+              <div>Method</div>
+              <strong>{String(visualComparison?.method ?? '—')}</strong>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+            <a
+              href={new URL(visualComparison.urls.diff, BACKEND_URL).toString()}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#93c5fd', fontSize: '0.8rem' }}
+            >
+              Open diff image
+            </a>
+            <img
+              alt="Visual diff"
+              src={new URL(visualComparison.urls.diff, BACKEND_URL).toString()}
+              style={{ width: '100%', borderRadius: '0.5rem', border: '1px solid #1e293b', background: '#0b1020' }}
+            />
+          </div>
+        </section>
+      )}
+      {visualComparison?.status === 'skipped' && (
+        <section style={{ border: '1px solid #1e293b', borderRadius: '0.5rem', padding: '0.75rem' }}>
+          <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Visual</h2>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
+            {String(
+              visualComparison?.message ||
+                (visualComparison?.reason === 'no_figma_token_for_image_export'
+                  ? 'Visual diff needs a Figma PAT for image export, or select the target frame in Figma Desktop so MCP get_screenshot can capture it.'
+                  : `Skipped: ${visualComparison?.reason || 'unknown'}`)
+            )}
+          </p>
+        </section>
       )}
       {summary.total > 0 && (
         <section style={{ border: '1px solid #1e293b', borderRadius: '0.5rem', padding: '0.75rem' }}>

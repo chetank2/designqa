@@ -1,12 +1,12 @@
 /**
  * Repository Integration Tests
- * Tests repositories against both SQLite and Supabase adapters
+ * Tests repositories against both Local and Supabase adapters
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { SQLiteAdapter } from '../../../src/database/adapters/SQLiteAdapter.js';
+import { LocalAdapter } from '../../../src/database/adapters/LocalAdapter.js';
 import { SupabaseAdapter } from '../../../src/database/adapters/SupabaseAdapter.js';
-import { createRepositories } from '../../../src/database/repositories/index.js';
+import { createRepositories, ComparisonRepository } from '../../../src/database/repositories/index.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -27,7 +27,7 @@ async function testRepositories(adapter, adapterName) {
 
     afterAll(async () => {
       await adapter.disconnect();
-      if (adapterName === 'SQLite' && fs.existsSync(TEST_DB_PATH)) {
+      if (adapterName === 'Local' && fs.existsSync(TEST_DB_PATH)) {
         fs.unlinkSync(TEST_DB_PATH);
       }
     });
@@ -108,24 +108,26 @@ async function testRepositories(adapter, adapterName) {
       });
 
       it('should find design system by slug', async () => {
+        const uniqueSlug = `test-system-2-${Date.now()}`;
         const created = await repositories.designSystems.create({
           name: 'Test System 2',
-          slug: 'test-system-2',
+          slug: uniqueSlug,
           tokens: {}
         });
 
-        const found = await repositories.designSystems.findBySlug('test-system-2');
+        const found = await repositories.designSystems.findBySlug(uniqueSlug);
         expect(found).toBeDefined();
         expect(found.id).toBe(created.id);
+        expect(found.slug).toBe(uniqueSlug);
       });
     });
   });
 }
 
-// Run tests for SQLite adapter
+// Run tests for Local adapter
 describe('Repository Integration Tests', () => {
-  const sqliteAdapter = new SQLiteAdapter(TEST_DB_PATH);
-  testRepositories(sqliteAdapter, 'SQLite');
+  const localAdapter = new LocalAdapter();
+  testRepositories(localAdapter, 'Local');
 
   // Uncomment to test against Supabase (requires SUPABASE_URL env var)
   // if (process.env.SUPABASE_URL) {

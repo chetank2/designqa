@@ -69,6 +69,7 @@ export default function NewComparison() {
     }
 
     const comparisonId = result?.comparisonId || result?.id
+    const reportPath = result?.reportPath || result?.reports?.directUrl
 
     try {
       setIsSavingReport(true)
@@ -76,7 +77,7 @@ export default function NewComparison() {
       const response = await fetch(`${apiBaseUrl}/api/reports/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comparisonId })
+        body: JSON.stringify({ comparisonId, reportPath })
       })
 
       if (!response.ok) {

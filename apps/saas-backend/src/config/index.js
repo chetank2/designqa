@@ -25,6 +25,7 @@ export async function loadConfig() {
   }
 
   const env = process.env;
+  const isDesktopElectron = env.RUNNING_IN_ELECTRON === 'true' || env.DEPLOYMENT_MODE === 'desktop';
 
   // Base configuration from environment
   const baseConfig = {
@@ -51,7 +52,9 @@ export async function loadConfig() {
     puppeteer: {
       headless: env.PUPPETEER_HEADLESS === 'false' ? false :
         env.PUPPETEER_HEADLESS === 'true' ? true : 'new',
-      timeout: parseInt(env.PUPPETEER_TIMEOUT || '30000', 10),
+      // In desktop/local mode we default to a higher launch timeout since some system Chrome installs
+      // can be slower to start and DevTools can take longer to become ready.
+      timeout: parseInt(env.PUPPETEER_TIMEOUT || (isDesktopElectron ? '90000' : '30000'), 10),
       protocolTimeout: parseInt(env.PUPPETEER_PROTOCOL_TIMEOUT || '300000', 10), // 5 minutes for slow sites
       executablePath: env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: env.PUPPETEER_ARGS ? env.PUPPETEER_ARGS.split(',') : [
@@ -81,7 +84,8 @@ export async function loadConfig() {
     },
     timeouts: {
       figmaExtraction: parseInt(env.FIGMA_EXTRACTION_TIMEOUT || '60000', 10),
-      webExtraction: parseInt(env.WEB_EXTRACTION_TIMEOUT || '30000', 10),
+      // Desktop app commonly targets internal/SPA pages; give it a more forgiving default.
+      webExtraction: parseInt(env.WEB_EXTRACTION_TIMEOUT || (isDesktopElectron ? '60000' : '30000'), 10),
       comparison: parseInt(env.COMPARISON_TIMEOUT || '10000', 10),
     },
     security: {

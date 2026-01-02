@@ -16,6 +16,9 @@ export class RemoteMCPClient {
     this.tokenProvider = config.tokenProvider; // async () => token
     this.userId = config.userId;
 
+    // Allow unauthenticated connections (used for Figma Desktop MCP on localhost)
+    this.requireToken = config.requireToken !== undefined ? config.requireToken : true;
+
     this.config = config;
   }
 
@@ -35,18 +38,22 @@ export class RemoteMCPClient {
 
       const token = await this.getToken();
 
-      if (!token) {
+      if (!token && this.requireToken) {
         throw new Error('Figma token required for remote MCP connection');
       }
 
       // Step 1: Initialize with authentication
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const initResponse = await fetch(this.baseUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/event-stream',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: ++this.messageId,
@@ -84,14 +91,18 @@ export class RemoteMCPClient {
 
       // Step 2: Send initialized notification
       try {
+        const notifyHeaders = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
+          ...(this.sessionId && { 'mcp-session-id': this.sessionId })
+        };
+        if (token) {
+          notifyHeaders['Authorization'] = `Bearer ${token}`;
+        }
+
         const notifyResponse = await fetch(this.baseUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json, text/event-stream',
-            'Authorization': `Bearer ${token}`,
-            ...(this.sessionId && { 'mcp-session-id': this.sessionId })
-          },
+          headers: notifyHeaders,
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "notifications/initialized",
@@ -144,15 +155,17 @@ export class RemoteMCPClient {
 
       const token = await this.getToken();
 
-      if (!token) {
+      if (!token && this.requireToken) {
         throw new Error('Figma token required for remote MCP connection');
       }
 
       const headers = {
         'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream',
-        'Authorization': `Bearer ${token}`
+        'Accept': 'application/json, text/event-stream'
       };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       // Add session ID if available
       if (this.sessionId) {

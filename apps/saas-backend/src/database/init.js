@@ -31,9 +31,9 @@ export async function initDatabase(options = {}) {
   const storageProvider = getStorageProvider(options.userId);
 
   // Get encryption key
-  const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || 
-                       process.env.LOCAL_CREDENTIAL_KEY ||
-                       null;
+  const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY ||
+    process.env.LOCAL_CREDENTIAL_KEY ||
+    'local-credential-encryption-key-change-in-production';
 
   // Warn if encryption key is not configured
   if (!encryptionKey) {

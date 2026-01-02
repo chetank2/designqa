@@ -111,37 +111,29 @@ export function getServerPort(): number {
   return port;
 }
 
+// Check if running in Electron
+function isElectronEnv(): boolean {
+  return typeof window !== 'undefined' && 
+         typeof (window as any).electronAPI !== 'undefined';
+}
+
+// Default cloud API URL for Electron Cloud mode
+const DEFAULT_CLOUD_API_URL = 'https://designqa.onrender.com';
+
 // Get the API base URL with the correct port
 export function getApiBaseUrl(): string {
-  // Priority 1: Explicit environment variable (build-time)
-  const envApiUrl = (typeof import.meta !== 'undefined' && import.meta.env)
-    ? import.meta.env.VITE_API_URL
-    : undefined;
-
+  const envApiUrl = import.meta.env.VITE_API_URL;
   if (envApiUrl && shouldUseConfiguredUrl(envApiUrl)) {
     return envApiUrl;
   }
 
-  // Priority 2: Runtime environment variable (for dynamic configuration)
   if (typeof window !== 'undefined') {
     const runtimeApiUrl = (window as any).__env?.VITE_API_URL;
     if (runtimeApiUrl && shouldUseConfiguredUrl(runtimeApiUrl)) {
       return runtimeApiUrl;
     }
-
-    // Priority 3: Use current origin (works for same-domain deployments like Render)
-    // This MUST be checked before falling back to localhost
-    const origin = window.location?.origin;
-    if (origin && origin !== 'null' && !origin.startsWith('file://')) {
-      // Always use the current origin in browser context (production or development)
-      // This handles Render deployments where both are served from the same domain
-      // Also works for local development when accessing via localhost
-      return origin;
-    }
   }
 
-  // Fallback: Only use localhost if we're in Node.js context or truly can't determine origin
-  // This should rarely be reached in browser context
   return `http://localhost:${APP_SERVER_PORT}`;
 }
 

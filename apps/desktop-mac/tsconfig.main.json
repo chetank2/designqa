@@ -5,11 +5,11 @@
     "rootDir": "./src/main",
     "module": "ESNext",
     "target": "ES2022",
-                                    "moduleResolution": "bundler",
-                                    "esModuleInterop": true,
-                                    "skipLibCheck": true,
-                                    "allowJs": true,
-                                    "noEmit": false
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "noEmit": false
   },
   "include": ["src/main/**/*"],
   "exclude": [
@@ -20,16 +20,5 @@
     "../saas-backend/**",
     "../../../saas-backend/**",
     "**/*.js"
-  ],
-  "compilerOptions": {
-    "outDir": "./dist/main",
-    "rootDir": "./src/main",
-    "module": "ESNext",
-    "target": "ES2022",
-    "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "allowJs": false,
-    "noEmit": false
-  }
+  ]
 }

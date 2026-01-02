@@ -9,9 +9,12 @@ import { FramelinkMCPAdapter } from './FramelinkMCPAdapter.js';
 
 export class FigmaDataAdapter {
   constructor() {
+    const mcpAdapter = new MCPXMLAdapter();
     this.adapters = new Map([
       ['figma-api', new FigmaAPIAdapter()],
-      ['figma-mcp', new MCPXMLAdapter()],
+      // Desktop MCP returns the same structured MCP payload as figma-mcp.
+      ['figma-mcp', mcpAdapter],
+      ['desktop-mcp', mcpAdapter],
       ['framelink-mcp', new FramelinkMCPAdapter()]
     ]);
   }

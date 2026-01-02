@@ -35,7 +35,7 @@ export class ComparisonService {
             nodeId: extractedNodeId || '0:1'
           };
         }
-        
+
         const error = new Error('Invalid Figma URL or file key');
         error.code = 'INVALID_FIGMA_URL';
         error.stage = 'url_validation';
@@ -115,7 +115,7 @@ export class ComparisonService {
    */
   async extractWebData(webUrl, authentication, options = {}) {
     try {
-      
+
       // Initialize web extractor if needed
       if (!this.webExtractor.isReady()) {
         await this.webExtractor.initialize();
@@ -183,7 +183,7 @@ export class ComparisonService {
    */
   async generateReports(comparisonResults, options = {}) {
     try {
-      
+
       // Generate reports with streaming
       const reports = await this.reportGenerator.generateReports(comparisonResults, {
         onProgress: options.onProgress,
@@ -203,12 +203,15 @@ export class ComparisonService {
 
   /**
    * Compare already extracted Figma and web data
+   * Uses the real comparison engine to perform actual design comparison
    */
   async compareExtractedData(figmaData, webData, options = {}) {
     try {
-      console.log('🔍 DEBUG compareExtractedData called with:', {
+      console.log('🔍 compareExtractedData called with:', {
         figmaDataType: typeof figmaData,
         webDataType: typeof webData,
+        figmaComponents: figmaData?.components?.length || figmaData?.elements?.length || 0,
+        webElements: webData?.elements?.length || 0,
         options
       });
 
@@ -216,40 +219,84 @@ export class ComparisonService {
       if (!figmaData || (!figmaData.components && !figmaData.elements)) {
         throw new Error('Invalid Figma data: missing components or elements');
       }
-      
+
       if (!webData || !webData.elements) {
         throw new Error('Invalid web data: missing elements');
       }
 
-      // Normalize data structure - use elements if components not present
-      const figmaElements = figmaData.components || figmaData.elements || [];
-      const webElements = webData.elements || [];
+      // Normalize data structure for comparison engine
+      const normalizedFigmaData = {
+        fileId: figmaData.fileId || figmaData.metadata?.fileKey || 'unknown',
+        fileName: figmaData.fileName || figmaData.metadata?.fileName || 'Figma Design',
+        extractedAt: figmaData.extractedAt || figmaData.metadata?.extractedAt || new Date().toISOString(),
+        components: figmaData.components || figmaData.elements || []
+      };
 
-      // Create comparison result
+      const normalizedWebData = {
+        url: webData.url || webData.metadata?.url || 'unknown',
+        extractedAt: webData.extractedAt || webData.metadata?.extractedAt || new Date().toISOString(),
+        elements: webData.elements || []
+      };
+
       const startTime = Date.now();
-      
-      // Perform the actual comparison logic
+
+      // Perform REAL comparison using the comparison engine
+      console.log('⚖️ Starting real design comparison...');
+      const engineResult = await this.comparisonEngine.compareDesigns(
+        normalizedFigmaData,
+        normalizedWebData,
+        {
+          ...options,
+          chunkSize: options.chunkSize || 10,
+          maxComponents: options.maxComponents || 1000
+        }
+      );
+      console.log('✅ Comparison engine completed:', {
+        totalComponents: engineResult.summary?.totalComponents || 0,
+        totalMatches: engineResult.summary?.totalMatches || 0,
+        totalDeviations: engineResult.summary?.totalDeviations || 0
+      });
+
+      // Calculate overall similarity from engine results
+      const totalComponents = engineResult.summary?.totalComponents || 1;
+      const totalMatches = engineResult.summary?.totalMatches || 0;
+      const totalDeviations = engineResult.summary?.totalDeviations || 0;
+
+      // Calculate similarity: higher matches and lower deviations = higher similarity
+      // Weight matches heavily, penalize deviations
+      const matchScore = totalMatches / Math.max(totalComponents, 1);
+      const deviationPenalty = totalDeviations / Math.max(totalComponents * 10, 1); // Less penalty per deviation
+      const overallSimilarity = Math.max(0, Math.min(1, matchScore - deviationPenalty));
+
+      // Build comparison summary from engine results
+      const comparison = {
+        totalFigmaComponents: normalizedFigmaData.components.length,
+        totalWebElements: normalizedWebData.elements.length,
+        matches: engineResult.comparisons?.filter(c => c.status === 'matches') || [],
+        discrepancies: engineResult.comparisons?.filter(c => c.status === 'has_deviations' || c.status === 'no_match') || [],
+        overallSimilarity: overallSimilarity
+      };
+
+      // Transform engine result to API response format
       const comparisonResult = {
         figmaData: figmaData,
         webData: webData,
-        comparison: {
-          totalFigmaComponents: figmaElements.length,
-          totalWebElements: webElements.length,
-          matches: [],
-          discrepancies: [],
-          overallSimilarity: 0.85 // Mock similarity for testing
-        },
+        comparison,
         summary: {
-          overallSimilarity: 0.85,
-          totalComparisons: figmaElements.length,
-          matchedElements: Math.floor(figmaElements.length * 0.8),
-          discrepancies: Math.floor(figmaElements.length * 0.2)
+          overallSimilarity: overallSimilarity,
+          totalComparisons: totalComponents,
+          matchedElements: totalMatches,
+          discrepancies: totalDeviations,
+          severity: engineResult.summary?.severity || { high: 0, medium: 0, low: 0 },
+          regressionRisk: engineResult.summary?.regressionRisk || { critical: 0, major: 0, minor: 0 },
+          accessibility: engineResult.summary?.accessibility || { issues: 0, impactedComponents: 0, details: [] }
         },
+        // Detailed comparisons from the engine
+        comparisons: engineResult.comparisons || [],
         extractionDetails: {
           figma: {
             ...figmaData.metadata,
-            componentCount: figmaElements.length,
-            // Include design properties for UI display
+            componentCount: normalizedFigmaData.components.length,
             colors: figmaData.colorPalette || [],
             typography: figmaData.typography || {},
             spacing: figmaData.spacing || [],
@@ -257,19 +304,25 @@ export class ComparisonService {
           },
           web: {
             ...webData.metadata,
-            elementCount: webElements.length,
-            // Include design properties for UI display
+            elementCount: normalizedWebData.elements.length,
             colors: webData.colorPalette || [],
             typography: webData.typography || {},
             spacing: webData.spacing || [],
             borderRadius: webData.borderRadius || []
           }
         },
+        metadata: engineResult.metadata,
         processingTime: Date.now() - startTime,
         timestamp: new Date().toISOString()
       };
 
-      console.log('✅ Mock comparison completed successfully');
+      console.log('✅ Comparison completed:', {
+        similarity: (overallSimilarity * 100).toFixed(1) + '%',
+        matches: totalMatches,
+        deviations: totalDeviations,
+        processingTime: comparisonResult.processingTime + 'ms'
+      });
+
       return comparisonResult;
 
     } catch (error) {
@@ -295,26 +348,26 @@ export class ComparisonService {
 
       // Validate URLs first
       const { nodeId, fileKey } = this.validateFigmaUrl(figmaUrl);
-      
+
       if (!webUrl || !webUrl.startsWith('http')) {
         throw new Error('Invalid web URL');
       }
 
       // Set default timeout
       const timeout = options.timeout || 60000; // 60 seconds default
-      
+
       // Extract data from both sources with timeout
-      
+
       const extractionPromises = [
         Promise.race([
           this.extractFigmaData(fileKey, nodeId),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Figma extraction timeout')), timeout)
           )
         ]),
         Promise.race([
           this.extractWebData(webUrl, options.authentication),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Web extraction timeout')), timeout)
           )
         ])
@@ -332,7 +385,7 @@ export class ComparisonService {
           ...options,
           onProgress: options.onProgress
         }),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Comparison timeout')), timeout)
         )
       ]);
@@ -343,14 +396,14 @@ export class ComparisonService {
         try {
           const { EnhancedVisualComparison } = await import('../visual/enhancedVisualComparison.js');
           const visualComparison = new EnhancedVisualComparison(this.config);
-          
+
           const visualResults = await visualComparison.performVisualComparison(
-            figmaData, 
-            webData, 
-            this.webExtractor, 
+            figmaData,
+            webData,
+            this.webExtractor,
             this.figmaExtractor
           );
-          
+
           // Integrate visual results into comparison results
           comparisonResults.visual = visualResults;
           console.log('✅ Visual comparison completed');
@@ -367,7 +420,7 @@ export class ComparisonService {
           stream: true,
           chunkSize: 10
         }),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Report generation timeout')), timeout)
         )
       ]);

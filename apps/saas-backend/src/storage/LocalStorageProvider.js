@@ -6,8 +6,16 @@
 import fs from 'fs';
 import path from 'path';
 import { promises as fsPromises } from 'fs';
+import crypto from 'crypto';
 import { StorageProvider } from './StorageProvider.js';
-import { getOutputBaseDir, getReportsDir, getScreenshotsDir } from '../utils/outputPaths.js';
+import {
+  getOutputBaseDir,
+  getReportsDir,
+  getScreenshotsDir,
+  getDesignSystemsDir,
+  getCredentialsDir,
+  getSessionsDir
+} from '../utils/outputPaths.js';
 
 export class LocalStorageProvider extends StorageProvider {
   constructor() {
@@ -15,7 +23,9 @@ export class LocalStorageProvider extends StorageProvider {
     this.baseDir = getOutputBaseDir();
     this.reportsDir = getReportsDir();
     this.screenshotsDir = getScreenshotsDir();
-    this.designSystemsDir = path.join(this.baseDir, 'design-systems');
+    this.designSystemsDir = getDesignSystemsDir();
+    this.credentialsDir = getCredentialsDir();
+    this.sessionsDir = getSessionsDir();
     
     // Ensure directories exist
     this.ensureDirectories();
@@ -26,7 +36,8 @@ export class LocalStorageProvider extends StorageProvider {
       this.reportsDir,
       this.screenshotsDir,
       this.designSystemsDir,
-      path.join(this.baseDir, 'credentials'),
+      this.credentialsDir,
+      this.sessionsDir,
       path.join(this.screenshotsDir, 'uploads'),
       path.join(this.screenshotsDir, 'comparisons')
     ];
@@ -40,6 +51,52 @@ export class LocalStorageProvider extends StorageProvider {
 
   getStorageMode() {
     return 'local';
+  }
+
+  async getCredentialEncryptionKey() {
+    const envKey = process.env.CREDENTIAL_ENCRYPTION_KEY || process.env.LOCAL_CREDENTIAL_KEY;
+    if (envKey && envKey.trim()) return envKey;
+
+    const isDesktop =
+      process.env.RUNNING_IN_ELECTRON === 'true' || process.env.DEPLOYMENT_MODE === 'desktop';
+
+    // Keep strictness for real production (cloud/server) deployments.
+    if (process.env.NODE_ENV === 'production' && !isDesktop) {
+      console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
+      throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
+    }
+
+    // Desktop local mode: auto-generate a per-install key and persist it to disk.
+    if (isDesktop) {
+      const credentialsDir = path.join(this.baseDir, 'credentials');
+      const keyPath = path.join(credentialsDir, '.credential-encryption-key');
+
+      try {
+        const existing = await fsPromises.readFile(keyPath, 'utf8');
+        const trimmed = existing.trim();
+        if (trimmed) return trimmed;
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+
+      const generated = crypto.randomBytes(32).toString('hex');
+      try {
+        await fsPromises.mkdir(credentialsDir, { recursive: true });
+        await fsPromises.writeFile(keyPath, `${generated}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+        return generated;
+      } catch (error) {
+        // Another process may have created it first; fall back to reading.
+        if (error.code === 'EEXIST') {
+          const existing = await fsPromises.readFile(keyPath, 'utf8');
+          const trimmed = existing.trim();
+          if (trimmed) return trimmed;
+        }
+        throw error;
+      }
+    }
+
+    // Dev default (safe enough for local dev, not for production).
+    return 'local-credential-encryption-key-change-in-production';
   }
 
   async isAvailable() {
@@ -62,9 +119,21 @@ export class LocalStorageProvider extends StorageProvider {
     const filename = `${reportId}.${format}`;
     const filePath = path.join(this.reportsDir, filename);
     
+    // Ensure directory exists
+    try {
+      await fsPromises.mkdir(this.reportsDir, { recursive: true });
+    } catch (mkdirError) {
+      throw mkdirError;
+    }
+    
     // Write report file
     const data = typeof reportData === 'string' ? reportData : reportData.toString();
-    await fsPromises.writeFile(filePath, data, 'utf8');
+    
+    try {
+      await fsPromises.writeFile(filePath, data, 'utf8');
+    } catch (writeError) {
+      throw writeError;
+    }
     
     // Get file stats
     const stats = await fsPromises.stat(filePath);
@@ -336,17 +405,8 @@ export class LocalStorageProvider extends StorageProvider {
     const credentialId = metadata?.id || `cred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Encrypt credentials
-    const { encrypt } = await import('../../services/CredentialEncryption.js');
-    // Use a consistent encryption key for local storage
-    // In production, this should be stored securely (e.g., keychain on macOS)
-    const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || 
-                         process.env.LOCAL_CREDENTIAL_KEY ||
-                         (process.env.NODE_ENV === 'production'
-                           ? (() => {
-                               console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
-                               throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
-                             })()
-                           : 'local-credential-encryption-key-change-in-production');
+    const { encrypt } = await import('../services/CredentialEncryption.js');
+    const encryptionKey = await this.getCredentialEncryptionKey();
     
     let encryptedData;
     
@@ -368,16 +428,13 @@ export class LocalStorageProvider extends StorageProvider {
         };
       } catch (e) {
         // If existing not found, create new
-        if (!username || !password) {
-          throw new Error('Username and password are required for new credentials');
-        }
         encryptedData = {
           id: credentialId,
           name: name.trim(),
           url: url.trim(),
           loginUrl: loginUrl?.trim() || null,
-          username_encrypted: encrypt(username, encryptionKey),
-          password_encrypted: encrypt(password, encryptionKey),
+          username_encrypted: (username && username.trim()) ? encrypt(username.trim(), encryptionKey) : null,
+          password_encrypted: (password && password.trim()) ? encrypt(password.trim(), encryptionKey) : null,
           notes: notes?.trim() || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -386,19 +443,13 @@ export class LocalStorageProvider extends StorageProvider {
       }
     } else {
       // Create new credential
-      if (!username || !username.trim()) {
-        throw new Error('Username is required');
-      }
-      if (!password || !password.trim()) {
-        throw new Error('Password is required');
-      }
       encryptedData = {
         id: credentialId,
         name: name.trim(),
         url: url.trim(),
         loginUrl: loginUrl?.trim() || null,
-        username_encrypted: encrypt(username, encryptionKey),
-        password_encrypted: encrypt(password, encryptionKey),
+        username_encrypted: (username && username.trim()) ? encrypt(username.trim(), encryptionKey) : null,
+        password_encrypted: (password && password.trim()) ? encrypt(password.trim(), encryptionKey) : null,
         notes: notes?.trim() || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -492,20 +543,16 @@ export class LocalStorageProvider extends StorageProvider {
   async decryptCredential(credentialId) {
     const credential = await this.getCredential(credentialId);
     
-    // Decrypt credentials
-    const { decrypt } = await import('../../services/CredentialEncryption.js');
-    // Use same encryption key as saveCredential
-    const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || 
-                         process.env.LOCAL_CREDENTIAL_KEY ||
-                         (process.env.NODE_ENV === 'production'
-                           ? (() => {
-                               console.error('❌ CRITICAL: CREDENTIAL_ENCRYPTION_KEY not set in production!');
-                               throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required in production');
-                             })()
-                           : 'local-credential-encryption-key-change-in-production');
+    // Decrypt credentials (handle null/empty values)
+    const { decrypt } = await import('../services/CredentialEncryption.js');
+    const encryptionKey = await this.getCredentialEncryptionKey();
     
-    const username = decrypt(credential.username_encrypted, encryptionKey);
-    const password = decrypt(credential.password_encrypted, encryptionKey);
+    const username = (credential.username_encrypted) 
+      ? decrypt(credential.username_encrypted, encryptionKey) 
+      : '';
+    const password = (credential.password_encrypted) 
+      ? decrypt(credential.password_encrypted, encryptionKey) 
+      : '';
     
     // Update last_used_at
     credential.last_used_at = new Date().toISOString();

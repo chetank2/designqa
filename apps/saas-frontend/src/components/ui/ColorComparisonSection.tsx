@@ -142,7 +142,9 @@ const ColorComparisonSection: React.FC<ColorComparisonSectionProps> = ({
 
   const getElementsForColor = async (color: string, source: 'figma' | 'web'): Promise<string[]> => {
     try {
-      const response = await fetch(`/api/colors/colors/${encodeURIComponent(color)}/elements`)
+      const { getApiBaseUrl } = await import('@/config/ports');
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/colors/colors/${encodeURIComponent(color)}/elements`)
       if (response.ok) {
         const elements = await response.json()
         return elements

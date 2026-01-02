@@ -4,9 +4,9 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import { WebExtractor } from '../../../src/scraper/webExtractor.js';
+import { UnifiedWebExtractor } from '../../../src/web/UnifiedWebExtractor.js';
 
-describe('WebExtractor', () => {
+describe('UnifiedWebExtractor', () => {
   let webExtractor;
   let config;
 
@@ -16,7 +16,7 @@ describe('WebExtractor', () => {
       timeout: 30000,
       viewport: { width: 1200, height: 800 }
     };
-    webExtractor = new WebExtractor(config);
+    webExtractor = new UnifiedWebExtractor();
   });
 
   afterEach(async () => {

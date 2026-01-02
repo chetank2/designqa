@@ -22,7 +22,7 @@ export function configureSecurityMiddleware(app, config = {}) {
     origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true,
     methods: corsConfig.methods || ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: corsConfig.allowedHeaders || ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: corsConfig.allowedHeaders || ['Content-Type', 'Authorization', 'Cache-Control', 'X-Requested-With']
   };
 
   app.set('trust proxy', 1);

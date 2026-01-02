@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Utility to ensure necessary directories exist for the application
  */

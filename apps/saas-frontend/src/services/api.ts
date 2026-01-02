@@ -1,14 +1,42 @@
 import { getApiBaseUrl } from '../utils/environment';
 import axios from 'axios';
 import { AuthenticationConfig, ComparisonResult } from '../types';
-import { FigmaData, WebData } from '../../../src/types/extractor';
-import { supabase } from '../lib/supabase';
+// import { FigmaData, WebData } from '../../../src/types/extractor'; // Invalid path
+// defining placeholders if not available globally
+export interface FigmaData { [key: string]: any }
+export interface WebData { [key: string]: any }
+
+export interface FigmaOnlyResponse {
+  success: boolean;
+  data: any;
+  error?: string;
+}
+
+export interface WebOnlyResponse {
+  success: boolean;
+  data: any;
+  error?: string;
+}
+
+// Temporary dev-only helper used by some API calls.
+// Must be defined in both browser and Electron builds to avoid runtime ReferenceError.
+const enableLoggingIfElectron = async (): Promise<void> => {
+  try {
+    const isElectron =
+      typeof window !== 'undefined' && typeof (window as any).electronAPI !== 'undefined';
+    if (!isElectron) return;
+
+    // No-op for now: keep hook for future Electron-only logging toggles.
+    // Intentionally does not rely on preload APIs (not exposed today).
+  } catch {
+    // Ignore logging setup failures
+  }
+};
 
 // API Configuration
 const API_CONFIG = {
-  baseURL: getApiBaseUrl(),
   // Extended timeout for comparison operations that include web extraction with authentication
-  timeout: 300000, // 5 minutes - allows for slow web extraction (FreightTiger authentication)
+  timeout: 600000, // 10 minutes - allows for slow web extraction + login flows
   retries: 3
 };
 
@@ -28,14 +56,21 @@ export interface ApiError {
 }
 
 class ApiService {
-  private baseURL: string
   private timeout: number
   private retries: number
 
   constructor() {
-    this.baseURL = API_CONFIG.baseURL
     this.timeout = API_CONFIG.timeout
     this.retries = API_CONFIG.retries
+  }
+
+  /**
+   * Get the base URL dynamically (respects mode changes)
+   * @returns The current API base URL
+   */
+  private getBaseURL(): string {
+    // Get base URL dynamically to respect mode changes
+    return getApiBaseUrl();
   }
 
   /**
@@ -44,35 +79,22 @@ class ApiService {
    * @returns The complete URL to use
    */
   private getApiUrl(url: string): string {
+    const baseURL = this.getBaseURL();
     // Prevent duplication if the URL already contains the base URL
-    if (url.startsWith(this.baseURL)) {
+    if (url.startsWith(baseURL)) {
       return url;
     }
-    
+
     // Always use local server - no Netlify Functions
-    return `${this.baseURL}${url}`;
+    return `${baseURL}${url}`;
   }
 
   private async fetchWithRetry(url: string, options: RequestInit = {}, retryCount = 0): Promise<Response> {
     // Get the correct API URL
     const apiUrl = this.getApiUrl(url);
 
-    // Get Supabase session token for authentication
-    let authHeader = '';
-    if (supabase) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          authHeader = `Bearer ${session.access_token}`;
-        }
-      } catch (error) {
-        console.warn('Failed to get auth token:', error);
-      }
-    }
-
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(new Error(`Client request timeout after ${this.timeout}ms`)), this.timeout)
-
     try {
       console.log(`🌐 API Request: ${apiUrl}`);
       const response = await fetch(apiUrl, {
@@ -80,7 +102,6 @@ class ApiService {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          ...(authHeader ? { 'Authorization': authHeader } : {}),
           ...options.headers,
         },
       })
@@ -89,11 +110,11 @@ class ApiService {
       return response
     } catch (error) {
       clearTimeout(timeoutId)
-      
+
       // Normalize abort errors with a helpful message
       if ((error as Error).name === 'AbortError' || /aborted/i.test((error as Error).message)) {
-        const friendly = new Error(`Request aborted: timed out after ${Math.round(this.timeout/1000)}s`)
-        ;(friendly as any).code = 'ABORT_TIMEOUT'
+        const friendly = new Error(`Request aborted: timed out after ${Math.round(this.timeout / 1000)}s`)
+          ; (friendly as any).code = 'ABORT_TIMEOUT'
         throw friendly
       }
 
@@ -102,16 +123,19 @@ class ApiService {
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000))
         return this.fetchWithRetry(url, options, retryCount + 1)
       }
-      
+
       throw error
     }
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:118', message: 'handleResponse entry', data: { status: response.status, ok: response.ok, statusText: response.statusText, contentType: response.headers.get('content-type') }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+    // #endregion
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`
       let errorDetails = '';
-      
+
       try {
         const errorData = await response.json()
         errorMessage = errorData.error || errorData.message || errorMessage
@@ -119,20 +143,33 @@ class ApiService {
       } catch {
         // If response is not JSON, use status text
       }
-      
+
       const error: ApiError = {
         message: errorMessage,
         status: response.status,
         code: response.status.toString(),
         details: errorDetails
       }
-      
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:137', message: 'handleResponse throwing ApiError', data: { errorMessage, status: response.status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+      // #endregion
       throw error
     }
 
     try {
-      return await response.json()
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:141', message: 'Before JSON parse', data: { status: response.status, ok: response.ok }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+      // #endregion
+      const jsonData = await response.json();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:142', message: 'After JSON parse success', data: { jsonDataType: typeof jsonData, hasJsonData: !!jsonData, jsonDataKeys: jsonData ? Object.keys(jsonData).slice(0, 15) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+      // #endregion
+      return jsonData;
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:144', message: 'JSON parse failed', data: { errorMessage: error instanceof Error ? error.message : String(error) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+      // #endregion
       throw new Error('Invalid JSON response from server')
     }
   }
@@ -143,9 +180,9 @@ class ApiService {
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
-      // No cache busting
-  const dataWithCacheBuster = data || {};
-    
+    // No cache busting
+    const dataWithCacheBuster = data || {};
+
     const options: RequestInit = {
       method: 'POST',
       headers: {
@@ -153,7 +190,7 @@ class ApiService {
       },
       body: JSON.stringify(dataWithCacheBuster)
     };
-    
+
     const response = await this.fetchWithRetry(endpoint, options);
     return this.handleResponse<T>(response);
   }
@@ -176,7 +213,8 @@ class ApiService {
   }
 
   async getReports(): Promise<any> {
-    return this.get('/api/reports')
+    // Backend exposes reports via /api/reports/list
+    return this.get('/api/reports/list')
   }
 
   async getCurrentSettings(): Promise<any> {
@@ -214,7 +252,7 @@ class ApiService {
 
   getConfig() {
     return {
-      baseURL: this.baseURL,
+      baseURL: this.getBaseURL(),
       timeout: this.timeout,
       retries: this.retries
     }
@@ -225,19 +263,19 @@ class ApiService {
     try {
       const apiUrl = this.getApiUrl(url);
       console.log(`🌐 Axios Request: ${apiUrl}`);
-      
+
       const headers = options?.headers || {};
-      
+
       // Don't set Content-Type for FormData - let axios handle it
       if (!(data instanceof FormData)) {
         headers['Content-Type'] = 'application/json';
       }
-      
+
       const response = await axios.post(apiUrl, data, {
         headers,
         timeout: this.timeout
       });
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -257,14 +295,14 @@ class ApiService {
     try {
       const apiUrl = this.getApiUrl(url);
       console.log(`🌐 Axios Request: ${apiUrl}`);
-      
+
       const response = await axios.get(apiUrl, {
         headers: {
           'Content-Type': 'application/json',
         },
         timeout: this.timeout
       });
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -290,6 +328,7 @@ export interface ComparisonRequest {
   includeVisual?: boolean
   nodeId?: string | null
   extractionMode?: 'frame-only' | 'global-styles' | 'both'
+  designSystemId?: string
   authentication?: {
     type?: 'credentials' | 'cookies' | 'headers'
     figmaToken?: string
@@ -305,278 +344,40 @@ export interface ComparisonRequest {
   } | null
 }
 
-export interface ExtractionDetails {
-  figma: {
-    componentCount: number;
-    colors: Array<{name: string, value: string, type: string}>;
-    typography: Array<{fontFamily: string, fontSize: number, fontWeight: number}>;
-    extractionTime: number;
-    fileInfo: {name: string, nodeId?: string};
-  };
-  web: {
-    elementCount: number;
-    colors: string[];
-    typography: {
-      fontFamilies: string[];
-      fontSizes: string[];
-      fontWeights: string[];
-    };
-    spacing: string[];
-    borderRadius: string[];
-    extractionTime: number;
-    urlInfo: {url: string, title?: string};
-  };
-  comparison: {
-    totalComparisons: number;
-    matches: number;
-    deviations: number;
-    matchPercentage: number;
-  };
-}
-
-// REMOVED: extractFigmaData function - unused legacy code that called old /api/figma/extract endpoint
-// All Figma extraction now uses extractFigmaOnly() -> /api/figma-only/extract (unified endpoint)
-
-// Extract Web data
-export const extractWebData = async (url: string): Promise<WebData> => {
-  try {
-    console.log('Extracting Web data from URL:', url);
-    
-    // Use the newer unified endpoint instead of legacy /api/web/extract
-    const response = await apiService.post<ApiResponse<WebData>>('/api/web/extract-v3', { url });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to extract Web data');
-    }
-    
-    return response.data as WebData;
-  } catch (error) {
-    console.error('Error extracting Web data:', error);
-    throw error;
-  }
-};
-
-// Compare URLs
-export const compareUrls = async (request: ComparisonRequest): Promise<ComparisonResult> => {
-  try {
-    console.log('Comparing URLs:', request);
-    
-    // Ensure extractionMode is set with a default value if not provided
-    const requestWithDefaults = {
-      ...request,
-      extractionMode: request.extractionMode || 'both'
-    };
-    
-    const response = await apiService.postAxios<{success: boolean, data: any, error?: string, timestamp?: string}>('/api/compare', requestWithDefaults);
-    
-    console.log('🔍 compareUrls: Raw response from API:', JSON.stringify(response, null, 2));
-    
-    // Validate response structure
-    if (!response || typeof response !== 'object') {
-      throw new Error('Invalid response format from API');
-    }
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Comparison failed');
-    }
-    
-    // Transform the response to match the ComparisonResult interface
-    const figmaCount = 
-      response.data?.figmaData?.componentCount ||
-      response.data?.extractionDetails?.figma?.componentCount ||
-      (Array.isArray(response.data?.figmaData?.components) ? response.data.figmaData.components.length : 0) ||
-      0;
-    
-    const webCount = 
-      // NEW STANDARDIZED FIELDS (preferred)
-      response.data?.webData?.elementCount ||
-      response.data?.extractionDetails?.web?.elementCount ||
-      
-      // LEGACY FIELDS (fallback for backward compatibility)
-      response.data?.webData?.elementsCount ||
-      (Array.isArray(response.data?.webData?.elements) ? response.data.webData.elements.length : 0) ||
-      response.data?.webData?.metadata?.elementCount || 0;
-
-    const comparisonResult: ComparisonResult = {
-      success: response.success,
-      data: {
-        comparison: {
-          overallSimilarity: response.data.comparison?.overallSimilarity || response.data.summary?.overallSimilarity || 0,
-          totalComparisons: response.data.comparison?.totalFigmaComponents || response.data.summary?.totalComparisons || 0,
-          matchedElements: response.data.summary?.matchedElements || 0,
-          discrepancies: response.data.summary?.discrepancies || 0
-        },
-        extractionDetails: {
-          figma: {
-            componentCount: figmaCount,
-            fileKey: response.data.extractionDetails?.figma?.fileKey || response.data.figmaData?.metadata?.fileKey,
-            fileName: response.data.extractionDetails?.figma?.fileName || response.data.figmaData?.metadata?.fileName,
-            url: response.data.extractionDetails?.figma?.url,
-            // Design properties from Figma extraction  
-            colors: response.data.extractionDetails?.figma?.colors || [],
-            typography: response.data.figmaData?.typography || {},
-            spacing: response.data.figmaData?.spacing || [],
-            borderRadius: response.data.figmaData?.borderRadius || []
-          },
-          web: {
-            elementCount: webCount,
-            urlInfo: {
-              url: response.data.extractionDetails?.web?.url || response.data.webData?.url,
-              title: response.data.extractionDetails?.web?.title || response.data.webData?.metadata?.title
-            },
-            extractorVersion: response.data.extractionDetails?.web?.extractorVersion || response.data.webData?.metadata?.extractorVersion,
-            // Design properties from web extraction
-            colors: response.data.extractionDetails?.web?.colors || [],
-            typography: response.data.webData?.typography || {},
-            spacing: response.data.webData?.spacing || [],
-            borderRadius: response.data.webData?.borderRadius || []
-          },
-          comparison: {
-            totalComparisons: response.data.summary?.totalComparisons || response.data.comparison?.totalFigmaComponents || 0,
-            matches: response.data.summary?.matchedElements || response.data.comparison?.matches?.length || 0,
-            deviations: response.data.summary?.discrepancies || response.data.comparison?.discrepancies?.length || 0,
-            matchPercentage: Math.round((response.data.summary?.overallSimilarity || response.data.comparison?.overallSimilarity || 0) * 100)
-          }
-        },
-        figmaData: response.data.figmaData,
-        webData: response.data.webData,
-        reportPath: response.data.reportPath,
-        reports: response.data.reports,
-        export: response.data.export
-      },
-      timestamp: response.timestamp || new Date().toISOString(),
-      processingTime: (response as any).processingTime,
-      error: (response as any).error,
-      comparisonId: response.data?.comparisonId || response.data?.id,
-      id: response.data?.id || response.data?.comparisonId,
-      reportPath: response.data?.reportPath,
-      reports: response.data?.reports,
-      extractionDetails: response.data?.extractionDetails,
-      figmaData: response.data?.figmaData,
-      webData: response.data?.webData
-    };
-
-    // Enhanced data with standardized fields
-    (comparisonResult as any).figmaData = { 
-      ...(response.data?.figmaData || {}),
-      componentCount: figmaCount,
-      components: response.data?.figmaData?.components || [],
-    };
-    (comparisonResult as any).webData = { 
-      ...(response.data?.webData || {}),
-      elementCount: webCount,
-      elements: response.data?.webData?.elements || [],
-    };
-    (comparisonResult as any).extractionDetails = comparisonResult.data?.extractionDetails;
-    
-    return comparisonResult;
-  } catch (error) {
-    console.error('Error comparing URLs:', error);
-    throw error;
-  }
-};
-
-// Get extractor status
-export const getExtractorStatus = async (type: 'figma' | 'web') => {
-  try {
-    const response = await apiService.get<any>(`/api/status/${type}`);
-    
-    return {
-      available: response.available || false,
-      status: response.status || 'unknown',
-      message: response.message || 'Status unknown',
-      timestamp: response.timestamp || new Date().toISOString()
-    };
-  } catch (error) {
-    console.error(`Error getting ${type} extractor status:`, error);
-    
-    return {
-      available: false,
-      status: 'error',
-      message: `Could not connect to ${type} extractor service`,
-      timestamp: new Date().toISOString()
-    };
-  }
-};
-
-// Define types for the extraction responses
-export interface FigmaOnlyResponse {
-  success: boolean;
-  data: {
-    components: any[];
-    colors: any[];
-    typography: any[];
-    spacing?: any[];
-    borderRadius?: any[];
-    styles?: any;
-    fileName: string;
-    fileId: string;
-    nodeId: string;
-    extractedAt: string;
-    metadata: {
-      fileName: string;
-      fileKey: string;
-      nodeId: string;
-      extractionMethod: string;
-      totalComponents: number;
-      colorCount: number;
-      typographyCount: number;
-      extractedAt?: string;
-    };
-    reportPath?: string;
-  };
-  error?: string;
-  timestamp?: string;
-}
-
-export interface WebOnlyResponse {
-  success: boolean;
-  data: {
-    elements: any[];
-    colorPalette: string[];
-    typography: {
-      fontFamilies: string[];
-      fontSizes: string[];
-      fontWeights: string[];
-    };
-    metadata: {
-      url: string;
-      timestamp: string;
-      elementsExtracted: number;
-    };
-    screenshot?: string;
-    reportPath?: string;
-  };
-  error?: string;
-}
+// ... existing code ...
 
 export interface FigmaExtractionOptions {
   figmaUrl: string;
   extractionMode?: 'frame-only' | 'global-styles' | 'both';
+  designSystemId?: string;
 }
 
 export const extractFigmaOnly = async (options: FigmaExtractionOptions): Promise<FigmaOnlyResponse['data']> => {
+  // Auto-enable logging for development debugging (temporary feature)
+  await enableLoggingIfElectron();
+
   try {
     const apiService = new ApiService();
-    
+
     // Add a timestamp to prevent caching
     const timestamp = new Date().getTime();
     const url = `${options.figmaUrl}${options.figmaUrl.includes('?') ? '&' : '?'}_t=${timestamp}`;
-    
+
     const response = await apiService.post<any>('/api/figma-only/extract', {
       figmaUrl: url,
-      extractionMode: options.extractionMode || 'both'
+      extractionMode: options.extractionMode || 'both',
+      designSystemId: options.designSystemId
     });
-    
+
     console.log('Raw API response:', response);
-    
+
     // Check if the response is in the expected format (with success field)
     if (response && typeof response === 'object') {
       if ('success' in response && response.success) {
         // Standard format with success field
         const data = response.data;
         console.log('Returning response.data:', data);
-        
+
         // Ensure all required fields are present - map new API structure to expected format
         return {
           components: data.elements || data.components || [],
@@ -625,7 +426,7 @@ export const extractFigmaOnly = async (options: FigmaExtractionOptions): Promise
         };
       }
     }
-    
+
     throw new Error('Invalid response format from server');
   } catch (error) {
     console.error('Error extracting Figma data:', error);
@@ -635,36 +436,187 @@ export const extractFigmaOnly = async (options: FigmaExtractionOptions): Promise
 
 // Extract Web data only
 export const extractWebOnly = async (
-  webUrl: string, 
+  webUrl: string,
   webSelector?: string,
-  authentication?: AuthenticationConfig
+  authentication?: AuthenticationConfig,
+  designSystemId?: string
 ): Promise<WebOnlyResponse['data']> => {
+  // Auto-enable logging for development debugging (temporary feature)
+  await enableLoggingIfElectron();
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:656', message: 'extractWebOnly entry', data: { webUrl, hasAuth: !!authentication }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
+  // #endregion
   try {
     console.log('Extracting Web-only data from URL:', webUrl);
-    
+
     // Use the UnifiedWebExtractor endpoint with FreightTiger authentication fixes
     const endpoint = '/api/web/extract-v3';
-    
-    const response = await apiService.post<WebOnlyResponse>(endpoint, { 
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:662', message: 'Before apiService.post', data: { endpoint, webUrl }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+    // #endregion
+
+    const response = await apiService.post<any>(endpoint, {
       url: webUrl, // UnifiedWebExtractor expects 'url', not 'webUrl'
       authentication,
+      designSystemId, // Pass the design system ID
       options: {
         includeScreenshot: false,
         viewport: { width: 1920, height: 1080 },
-        timeout: webUrl.includes('freighttiger.com') ? 300000 : 120000 // Extended timeout for FreightTiger (5 min vs 2 min)
+        timeout: webUrl.includes('freighttiger.com') ? 600000 : 180000 // Extended timeout for FreightTiger (10 min vs 3 min)
       }
     });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to extract web data');
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:671', message: 'After apiService.post - raw response', data: { responseType: typeof response, hasResponse: !!response, responseKeys: response ? Object.keys(response).slice(0, 20) : [], hasSuccess: typeof response?.success === 'boolean', success: response?.success, hasData: !!response?.data, hasElements: !!response?.elements, dataHasElements: !!response?.data?.elements }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B' }) }).catch(() => { });
+    // #endregion
+
+    // Log response structure for debugging
+    console.log('📥 Raw API response structure:', {
+      hasSuccess: typeof response?.success === 'boolean',
+      success: response?.success,
+      hasData: !!response?.data,
+      hasElements: !!response?.elements || !!response?.data?.elements,
+      topLevelKeys: Object.keys(response || {}).slice(0, 15),
+      dataKeys: response?.data ? Object.keys(response.data).slice(0, 15) : []
+    });
+
+    // Handle response structure - backend returns both { success, data } and top-level fields
+    const hasSuccessFlag = typeof response?.success === 'boolean';
+    const success = hasSuccessFlag ? response.success : true;
+    const errorMessage = hasSuccessFlag ? response.error : undefined;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:688', message: 'After parsing success flag', data: { hasSuccessFlag, success, errorMessage, hasData: !!response?.data, dataKeys: response?.data ? Object.keys(response.data).slice(0, 10) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
+    // #endregion
+
+    // Extract webData - prefer response.data, fallback to response itself
+    // Backend spreads webData both in data and at top level, so either should work
+    let webData = hasSuccessFlag ? (response.data ?? response) : response;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:690', message: 'After extracting webData', data: { webDataType: typeof webData, webDataIsNull: webData === null, webDataIsUndefined: webData === undefined, webDataKeys: webData ? Object.keys(webData).slice(0, 15) : [], webDataLength: webData && typeof webData === 'object' ? Object.keys(webData).length : 0, hasElements: !!webData?.elements }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
+    // #endregion
+
+    // If webData is empty object but response has elements at top level, use response
+    if ((!webData || Object.keys(webData).length === 0) && response?.elements) {
+      console.warn('⚠️ response.data is empty, using top-level response');
+      webData = response;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:694', message: 'Fallback to top-level response', data: { webDataKeys: webData ? Object.keys(webData).slice(0, 15) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
+      // #endregion
     }
-    
-    return response.data;
+
+    // Validate success flag
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:697', message: 'Before success validation', data: { success, willFail: !success }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
+    // #endregion
+    if (!success) {
+      const errorDetails = {
+        errorMessage,
+        responseStructure: {
+          hasSuccess: hasSuccessFlag,
+          hasData: !!response.data,
+          hasElements: !!webData?.elements,
+          elementsLength: Array.isArray(webData?.elements) ? webData.elements.length : 0,
+          responseKeys: Object.keys(response || {}).slice(0, 10)
+        }
+      };
+      console.error('❌ Extraction failed - success flag is false:', errorDetails);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:710', message: 'Throwing error - success false', data: errorDetails, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
+      // #endregion
+      throw new Error(errorMessage || 'Failed to extract web data');
+    }
+
+    // Validate webData exists and is not empty
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:713', message: 'Before webData validation', data: { webDataExists: !!webData, webDataType: typeof webData, isObject: typeof webData === 'object', webDataKeys: webData ? Object.keys(webData).slice(0, 10) : [], willFail: !webData || typeof webData !== 'object' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
+    // #endregion
+    if (!webData || typeof webData !== 'object') {
+      const errorDetails = {
+        webDataType: typeof webData,
+        webDataValue: webData,
+        responseStructure: {
+          hasSuccess: hasSuccessFlag,
+          hasData: !!response.data,
+          responseKeys: Object.keys(response || {}).slice(0, 10)
+        }
+      };
+      console.error('❌ Extraction failed - invalid webData:', errorDetails);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:725', message: 'Throwing error - invalid webData', data: errorDetails, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
+      // #endregion
+      throw new Error('Invalid response format: webData is missing or invalid');
+    }
+
+    // Validate that elements array exists and has content
+    const elements = webData.elements;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:729', message: 'Before elements validation', data: { elementsExists: !!elements, elementsType: typeof elements, isArray: Array.isArray(elements), elementsLength: Array.isArray(elements) ? elements.length : typeof elements, willFail: !Array.isArray(elements) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
+    // #endregion
+    if (!Array.isArray(elements)) {
+      const errorDetails = {
+        elementsType: typeof elements,
+        elementsValue: elements,
+        webDataKeys: Object.keys(webData || {}).slice(0, 10),
+        responseStructure: {
+          hasSuccess: hasSuccessFlag,
+          hasData: !!response.data,
+          responseKeys: Object.keys(response || {}).slice(0, 10)
+        }
+      };
+      console.error('❌ Extraction failed - elements is not an array:', errorDetails);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:742', message: 'Throwing error - elements not array', data: errorDetails, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
+      // #endregion
+      throw new Error('Invalid response format: elements array is missing or invalid');
+    }
+
+    if (elements.length === 0) {
+      const errorDetails = {
+        elementsLength: 0,
+        webDataKeys: Object.keys(webData || {}).slice(0, 10),
+        url: webData.url || webUrl,
+        extractedAt: webData.extractedAt
+      };
+      console.warn('⚠️ Extraction returned 0 elements:', errorDetails);
+      // Don't throw error for 0 elements - let the UI handle it
+      // The backend already validates this and returns 422 if needed
+    }
+
+    console.log('✅ Web extraction successful:', {
+      elementsCount: elements.length,
+      hasColors: !!webData.colorPalette,
+      hasTypography: !!webData.typography,
+      url: webData.url || webUrl
+    });
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:764', message: 'extractWebOnly success - returning', data: { elementsCount: elements.length, webDataKeys: Object.keys(webData).slice(0, 10) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
+    // #endregion
+    return webData;
   } catch (error) {
     console.error('Error extracting Web-only data:', error);
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:766', message: 'extractWebOnly catch block', data: { errorMessage: error instanceof Error ? error.message : String(error), errorName: error instanceof Error ? error.name : 'unknown', errorStack: error instanceof Error ? error.stack?.split('\n').slice(0, 3).join('|') : 'no stack' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
+    // #endregion
+
+    // Enhance error message with more context if it's a generic error
+    if (error instanceof Error && error.message === 'Failed to extract web data') {
+      const enhancedError = new Error(
+        `Failed to extract web data from ${webUrl}. ` +
+        `Please check the browser console for detailed error information.`
+      );
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
+    }
+
     throw error;
   }
-}; 
+};
 
 // Export convenience functions that use the singleton
 export const testConnection = async (data: { figmaPersonalAccessToken: string }) => {
@@ -688,22 +640,22 @@ export const getFigmaStatus = async () => {
 export const uploadScreenshots = async (formData: FormData): Promise<{ uploadId: string }> => {
   try {
     console.log('🌐 Uploading screenshots with FormData:', formData);
-    
+
     // Debug FormData contents
     console.log('📝 FormData contents before upload:');
     for (const [key, value] of formData.entries()) {
       console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
     }
-    
+
     const response = await apiService.postAxios<ApiResponse<{ uploadId: string }>>(
-      '/api/screenshots/upload', 
+      '/api/screenshots/upload',
       formData
     );
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Screenshot upload failed');
     }
-    
+
     return response.data as { uploadId: string };
   } catch (error) {
     console.error('Error uploading screenshots:', error);
@@ -712,7 +664,7 @@ export const uploadScreenshots = async (formData: FormData): Promise<{ uploadId:
 };
 
 export const startScreenshotComparison = async (
-  uploadId: string, 
+  uploadId: string,
   settings: any
 ): Promise<any> => {
   try {
@@ -720,11 +672,11 @@ export const startScreenshotComparison = async (
       '/api/screenshots/compare',
       { uploadId, settings }
     );
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Screenshot comparison failed');
     }
-    
+
     return response.data;
   } catch (error) {
     console.error('Error starting screenshot comparison:', error);
@@ -739,11 +691,11 @@ export const getScreenshotComparisonStatus = async (
     const response = await apiService.getAxios(
       `/api/screenshots/compare/${comparisonId}`
     );
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to get comparison status');
     }
-    
+
     return response.data;
   } catch (error) {
     console.error('Error getting comparison status:', error);
@@ -756,11 +708,11 @@ export const listScreenshotComparisons = async (): Promise<any[]> => {
     const response = await apiService.getAxios(
       '/api/screenshots/list'
     );
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to list comparisons');
     }
-    
+
     return response.data as any[];
   } catch (error) {
     console.error('Error listing comparisons:', error);

@@ -182,7 +182,7 @@ export function VisualTokenComparison({
             <div className="space-y-4">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-                Web Implementation
+                Web Extraction
               </h4>
               <div className={cn(
                 "grid gap-2",

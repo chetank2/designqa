@@ -2,6 +2,17 @@ import { StyleSystemSnapshot, createEmptySnapshot } from './lib/styleTypes';
 
 const MAX_ELEMENTS = 800;
 const MAX_VALUES = 120;
+const CONTENT_SCRIPT_FLAG = '__designqaContentScriptLoaded__';
+
+const globalObj = globalThis as unknown as Record<string, unknown>;
+if (globalObj[CONTENT_SCRIPT_FLAG]) {
+  // Avoid registering duplicate listeners when the content script is injected multiple times.
+  // (This can happen on extension reloads or fallback injection flows.)
+  // Note: keeping this guard at the module top-level prevents double-execution side effects.
+  // eslint-disable-next-line no-console
+  console.debug('[designqa] content script already loaded; skipping init');
+} else {
+  globalObj[CONTENT_SCRIPT_FLAG] = true;
 
 const sanitizeKey = (value: string, fallback: string, index: number) => {
   const clean = value
@@ -150,3 +161,4 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   return undefined;
 });
+}

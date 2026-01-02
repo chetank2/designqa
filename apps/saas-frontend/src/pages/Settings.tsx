@@ -1,1159 +1,177 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { useForm, Controller } from 'react-hook-form'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import MCPStatus, { useMCPStatus } from '../components/ui/MCPStatus';
+import { Button } from '@/components/ui/button';
 import {
-  CogIcon,
-  BellIcon,
-  ShieldCheckIcon,
-  EyeIcon,
-  ServerIcon,
-  DocumentTextIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  GlobeAltIcon,
-  UserCircleIcon
-} from '@heroicons/react/24/outline'
-import { checkApiHealth } from '../components/ui/OnlineStatus'
-import { getApiBaseUrl } from '../config/ports'
-import MCPStatus from '../components/ui/MCPStatus'
-import FigmaApiSettings from '../components/forms/FigmaApiSettings'
-import FigmaOAuthSettings from '../components/forms/FigmaOAuthSettings'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
-
-import { cn } from '@/lib/utils'
-import { useAuth } from '../contexts/AuthContext'
-import SignOutButton from '../components/auth/SignOutButton'
-import { supabase } from '../lib/supabase'
-import DesignSystemsManager from '../components/settings/DesignSystemsManager'
-import CredentialsManager from '../components/settings/CredentialsManager'
-import DesktopMCPSettings from '../components/settings/DesktopMCPSettings'
-
-
-type MCPConnectionMethod = 'api' | 'figma' | 'desktop' | 'proxy';
-
-interface SettingsForm {
-  // General Settings
-  defaultTimeout: number
-  maxConcurrentComparisons: number
-  autoDeleteOldReports: boolean
-  reportRetentionDays: number
-
-  // Figma Settings
-  figmaPersonalAccessToken: string
-  defaultFigmaExportFormat: 'svg' | 'png'
-  figmaExportScale: number
-
-  // MCP Settings
-  mcpConnectionMethod: MCPConnectionMethod
-  mcpServerUrl: string
-  mcpEndpoint: string
-
-  // Web Scraping Settings
-  defaultViewport: {
-    width: number
-    height: number
-  }
-  userAgent: string
-  enableJavaScript: boolean
-  waitForNetworkIdle: boolean
-
-  // Visual Comparison Settings
-  pixelMatchThreshold: number
-  includeAntiAliasing: boolean
-  ignoreColors: boolean
-
-  // Notifications
-  emailNotifications: boolean
-  slackWebhook: string
-  notifyOnCompletion: boolean
-  notifyOnError: boolean
-}
-
-// Settings form placeholders
-const SETTINGS_PLACEHOLDERS = {
-  figmaToken: 'figd_...',
-  webhookUrl: 'https://hooks.slack.com/services/...',
-  mcpServerUrl: 'https://mcp.figma.com/mcp',
-  searchReports: 'Search reports by name, date, or status...'
-}
-
-const normalizeConnectionMethod = (value?: string): MCPConnectionMethod => {
-  switch (value) {
-    case 'desktop':
-    case 'local':
-    case 'figma-desktop':
-      return 'desktop';
-    case 'proxy':
-    case 'mcp-proxy':
-      return 'proxy';
-    case 'mcp_server_remote':
-    case 'figma':
-    case 'remote':
-    case 'figma-cloud':
-    case 'cloud':
-      return 'figma';
-    case 'direct_api':
-    case 'api':
-      return 'api';
-    default:
-      return 'figma'; // Default to Remote MCP for cloud deployments
-  }
-};
-
-// Local storage key for cached settings
-// No settings cache key needed
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import CredentialsManager from '../components/settings/CredentialsManager';
+import DesignSystemsManager from '../components/settings/DesignSystemsManager';
+import DesktopMCPSettings from '../components/settings/DesktopMCPSettings';
+import ModeToggle from '../components/settings/ModeToggle';
+import { getApiBaseUrl } from '../config/ports';
+import { useBackendReachability } from '../hooks/useBackendReachability';
 
 export default function Settings() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tabFromUrl = searchParams.get('tab') || 'general'
-  const [activeTab, setActiveTab] = useState(tabFromUrl)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [isLoading, setIsLoading] = useState(true)
-  const [serverStatus, setServerStatus] = useState<'online' | 'offline' | 'checking'>('checking')
-  const [usingCachedSettings, setUsingCachedSettings] = useState(false)
-  const { user } = useAuth()
-
-  const tabs: Array<{ id: string; name: string; icon: any; disabled?: boolean; hint?: string }> = [
-    { id: 'general', name: 'General', icon: CogIcon },
-    { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
-    { id: 'design-systems', name: 'Design Systems', icon: DocumentTextIcon },
-    { id: 'credentials', name: 'Credentials', icon: ShieldCheckIcon },
-    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
-    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon },
-    { id: 'security', name: 'Security', icon: ShieldCheckIcon }
-  ]
-
-  // Sync activeTab with URL parameter
+  // #region agent log
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') || 'general'
-    // Validate that the tab exists in tabs array, default to 'general' if not (handles old 'auth' tab)
-    const validTab = tabs.find(tab => tab.id === tabFromUrl) ? tabFromUrl : 'general'
-    if (validTab !== tabFromUrl) {
-      // Remove invalid tab from URL (e.g., old 'auth' tab that was removed)
-      setSearchParams({ tab: validTab }, { replace: true })
-    }
-    if (validTab !== activeTab) {
-      setActiveTab(validTab)
-    }
-  }, [searchParams, activeTab, tabs])
-
-  // Update URL when tab changes
-  const handleTabChange = (value: string) => {
-    const nextTab = tabs.find(tab => tab.id === value)
-    if (nextTab?.disabled) {
-      return
-    }
-    setActiveTab(value)
-    setSearchParams({ tab: value })
-  }
-
-  const { control, handleSubmit, formState: { errors, isDirty }, reset } = useForm<SettingsForm>({
-    defaultValues: {
-      defaultTimeout: 30000,
-      maxConcurrentComparisons: 3,
-      autoDeleteOldReports: false,
-      reportRetentionDays: 30,
-      figmaPersonalAccessToken: '',
-      defaultFigmaExportFormat: 'svg',
-      figmaExportScale: 2,
-      mcpConnectionMethod: 'figma', // Default to Remote MCP for cloud deployments
-      mcpServerUrl: 'https://mcp.figma.com/mcp',
-      mcpEndpoint: '/sse',
-      defaultViewport: {
-        width: 1920,
-        height: 1080
-      },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      enableJavaScript: true,
-      waitForNetworkIdle: true,
-      pixelMatchThreshold: 0.1,
-      includeAntiAliasing: true,
-      ignoreColors: false,
-      emailNotifications: false,
-      slackWebhook: '',
-      notifyOnCompletion: true,
-      notifyOnError: true
-    }
-  })
-
-  // No caching of settings
-  const saveSettingsToCache = (settings: Partial<SettingsForm>) => {
-    // No caching
-  };
-
-  // No cached settings
-  const loadCachedSettings = () => {
-    setIsLoading(false);
-    setUsingCachedSettings(false);
-  };
-
-  const loadCurrentSettings = async () => {
-    try {
-      setIsLoading(true);
-      setUsingCachedSettings(false);
-
-      const apiBaseUrl = getApiBaseUrl();
-
-      // Always refresh server health before loading settings
-      try {
-        const healthResponse = await fetch(`${apiBaseUrl}/api/health`, {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          signal: AbortSignal.timeout(3000)
-        });
-
-        if (healthResponse.ok) {
-          const healthData = await healthResponse.json();
-          const isHealthy = healthData?.success && (healthData.data?.status === 'ok' || healthData.data?.status === 'healthy');
-          setServerStatus(isHealthy ? 'online' : 'offline');
-
-          if (isHealthy) {
-            window.dispatchEvent(new Event('server-status-updated'));
-          }
-        }
-      } catch (healthError) {
-        console.warn('Health check failed:', healthError);
-        setServerStatus('offline');
-      }
-
-      const response = await fetch(`${apiBaseUrl}/api/settings/current`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        signal: AbortSignal.timeout(5000) // 5 second timeout
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        const settings = result.settings || result.data || {};
-
-        // Map backend settings to form format
-        const formData: Partial<SettingsForm> = {
-          mcpConnectionMethod: normalizeConnectionMethod(settings.method),
-          mcpServerUrl: settings.mcpServer?.url || 'http://127.0.0.1:3845/mcp',
-          mcpEndpoint: settings.mcpServer?.endpoint || '/sse',
-          figmaPersonalAccessToken: settings.hasApiKey ? '••••••••' : '',
-          defaultTimeout: settings.defaultTimeout || 30000,
-          maxConcurrentComparisons: settings.maxConcurrentComparisons || 3,
-          autoDeleteOldReports: settings.autoDeleteOldReports || false,
-          reportRetentionDays: settings.reportRetentionDays || 30,
-          defaultFigmaExportFormat: settings.defaultFigmaExportFormat || 'svg',
-          figmaExportScale: settings.figmaExportScale || 2
-        };
-
-        // Update form with loaded settings
-        reset(current => ({ ...current, ...formData }));
-
-        // Cache the settings
-        saveSettingsToCache(formData);
-      }
-    } catch (error) {
-      console.error('Failed to load current settings:', error);
-      // Fall back to cached settings
-      loadCachedSettings();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const testMCPConnection = async (method: string, serverUrl?: string, endpoint?: string) => {
-    if (serverStatus === 'offline') {
-      return { success: false, error: 'Server is offline. Cannot test connection.' };
-    }
-
-    try {
-      const formData = control._formValues;
-      const testConfig = {
-        method,
-        serverUrl,
-        endpoint,
-        figmaPersonalAccessToken: formData.figmaPersonalAccessToken
-      };
-
-      const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/mcp/test-connection`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testConfig),
-      });
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('Connection test failed:', error);
-      return { success: false, error: 'Connection test failed' };
-    }
-  };
-
-  // Check server status on component mount
-  useEffect(() => {
-    const checkStatus = async () => {
-      const isHealthy = await checkApiHealth();
-      setServerStatus(isHealthy ? 'online' : 'offline');
-
-      if (isHealthy) {
-        loadCurrentSettings();
-      } else {
-        loadCachedSettings();
-      }
-    };
-
-    checkStatus();
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
+    const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'N/A';
+    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Settings.tsx:20', message: 'Settings page mount', data: { origin, href, protocol }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
   }, []);
+  // #endregion
 
-  const onSubmit = async (data: SettingsForm) => {
-    setIsSaving(true);
-    setSaveStatus('idle');
+  const {
+    reachable: backendReachable,
+    checking: backendChecking,
+    refetch: retryBackendReachability
+  } = useBackendReachability();
+  const { data: mcpData } = useMCPStatus({
+    enabled: backendReachable === true
+  });
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
-    // Always save to local cache regardless of server status
-    saveSettingsToCache(data);
-
-    // If server is offline, don't try to save to server
-    if (serverStatus === 'offline') {
-      setIsSaving(false);
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+  const handleExportDiagnostics = async () => {
+    setExporting(true);
+    setExportMessage(null);
+    if (backendReachable !== true) {
+      setExporting(false);
+      setExportMessage(
+        backendReachable === null
+          ? 'Waiting for the local backend to start before exporting diagnostics.'
+          : 'Local backend unreachable. Start the embedded server before exporting diagnostics.'
+      );
       return;
     }
-
     try {
-      // Prepare settings data for backend
-      const settingsData = {
-        method: data.mcpConnectionMethod,
-        // Only send token if it's not the mask value
-        figmaPersonalAccessToken: data.figmaPersonalAccessToken === '••••••••' ? undefined : data.figmaPersonalAccessToken,
-        mcpServerUrl: data.mcpServerUrl,
-        mcpEndpoint: data.mcpEndpoint,
-        // Include other settings as needed
-        defaultTimeout: data.defaultTimeout,
-        maxConcurrentComparisons: data.maxConcurrentComparisons,
-        autoDeleteOldReports: data.autoDeleteOldReports,
-        reportRetentionDays: data.reportRetentionDays,
-        defaultFigmaExportFormat: data.defaultFigmaExportFormat,
-        figmaExportScale: data.figmaExportScale
-      };
-
-      const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/settings/save`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settingsData),
+      const response = await fetch(`${getApiBaseUrl()}/api/diagnostics/export`, {
+        method: 'POST'
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings');
+      const json = await response.json();
+      if (json.success) {
+        setExportMessage(json.message || `Diagnostics exported to ${json.data?.location}`);
+      } else {
+        setExportMessage(json.error || 'Failed to export diagnostics');
       }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to save settings');
-      }
-
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      console.error('Settings save error:', error);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 5000);
+      console.warn('Export diagnostics failed', error);
+      setExportMessage('Unexpected error while exporting diagnostics');
     } finally {
-      setIsSaving(false);
+      setExporting(false);
     }
   };
 
-
-
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-3 text-muted-foreground">Loading settings...</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-muted-foreground">Configure your comparison tool preferences and integrations</p>
-            </div>
+    <div className="space-y-6">
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="inline-flex flex-wrap gap-2">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="credentials">Credentials</TabsTrigger>
+          <TabsTrigger value="design-systems">Design Systems</TabsTrigger>
+          <TabsTrigger value="desktop-mode">Desktop Mode</TabsTrigger>
+        </TabsList>
 
-            <div className="flex items-center gap-4">
-              {user && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <UserCircleIcon className="h-5 w-5" />
-                  <span>{user.email}</span>
-                  <SignOutButton variant="ghost" className="ml-2" />
-                </div>
-              )}
+        {backendReachable === false && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertTitle>Local backend unreachable</AlertTitle>
+            <AlertDescription>
+              The desktop server at <code>{getApiBaseUrl()}</code> is not responding. Start the embedded server to load credentials, design systems, and MCP status.
+            </AlertDescription>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={retryBackendReachability}
+                disabled={backendChecking}
+              >
+                {backendChecking ? 'Retrying…' : 'Retry connection'}
+              </Button>
             </div>
+          </Alert>
+        )}
+
+        <TabsContent value="overview">
+          <div className="space-y-6">
+            <section className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Figma Desktop Status</CardTitle>
+                  <CardDescription>Desktop MCP is the primary data source. Keep Figma Desktop open with Developer Mode enabled.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <MCPStatus showDetails className="text-xs text-muted-foreground" />
+                  {mcpData && (
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p><strong>Port:</strong> {mcpData.data?.port ?? 3845}</p>
+                      <p><strong>Figma running:</strong> {mcpData.data?.figmaRunning ? 'Yes' : 'No'}</p>
+                      <p><strong>Last checked:</strong> {new Date().toLocaleTimeString()}</p>
+                    </div>
+                  )}
+                  <Button variant="outline" onClick={() => window.location.reload()}>
+                    Refresh status
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Export Options</CardTitle>
+                  <CardDescription>Share diagnostics or copy data from the local output folder.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Reports, screenshots, and diagnostics are persisted locally. Use the buttons below to copy the current state.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleExportDiagnostics}
+                disabled={exporting || backendReachable !== true}
+                size="sm"
+                title={backendReachable === true ? undefined : 'Start local backend to export diagnostics'}
+              >
+                {exporting ? 'Exporting…' : 'Export Diagnostics'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`${getApiBaseUrl()}/reports`, '_blank')}
+                disabled={backendReachable !== true}
+                title={backendReachable === true ? undefined : 'Start the local server to view reports'}
+              >
+                View Reports
+              </Button>
+                  </div>
+                  {exportMessage && (
+                    <p className="text-xs text-muted-foreground mt-2">{exportMessage}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
           </div>
+        </TabsContent>
 
-          {usingCachedSettings && (
-            <Alert className="mt-2">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertDescription>
-                Using cached settings. Changes will be saved locally until the server comes back online.
-              </AlertDescription>
-            </Alert>
-          )}
+        <TabsContent value="credentials">
+          <CredentialsManager backendReachable={backendReachable} />
+        </TabsContent>
 
-          {serverStatus === 'offline' && !usingCachedSettings && (
-            <Alert variant="destructive" className="mt-2">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertDescription>
-                Server is offline. Changes will be saved locally only.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+        <TabsContent value="design-systems">
+          <DesignSystemsManager backendReachable={backendReachable} />
+        </TabsContent>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={handleTabChange}
-          className="section-standard"
-        >
-          <TabsList className="grid w-full grid-cols-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  disabled={tab.disabled}
-                  aria-disabled={tab.disabled ? 'true' : undefined}
-                  title={tab.disabled ? tab.hint : undefined}
-                  className={cn(
-                    'flex items-center space-x-2 text-xs',
-                    tab.disabled && 'opacity-60 cursor-not-allowed pointer-events-none'
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tab.name}</span>
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="section-standard">
-            <TabsContent value="general">
-              <Card>
-                <CardHeader>
-                  <CardTitle>General Settings</CardTitle>
-                  <CardDescription>
-                    Configure basic application settings and preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="layout-grid-forms">
-                    <div className="space-y-2">
-                      <Label htmlFor="defaultTimeout">Default Timeout (ms)</Label>
-                      <Controller
-                        name="defaultTimeout"
-                        control={control}
-                        rules={{ required: 'Timeout is required', min: 1000 }}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            id="defaultTimeout"
-                            type="number"
-                            min="1000"
-                            step="1000"
-                            className={cn(errors.defaultTimeout && 'border-destructive')}
-                          />
-                        )}
-                      />
-                      {errors.defaultTimeout && (
-                        <p className="text-sm text-destructive">{errors.defaultTimeout.message}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="maxConcurrentComparisons">Max Concurrent Comparisons</Label>
-                      <Controller
-                        name="maxConcurrentComparisons"
-                        control={control}
-                        rules={{ required: 'Required', min: 1, max: 10 }}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            id="maxConcurrentComparisons"
-                            type="number"
-                            min="1"
-                            max="10"
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="reportRetentionDays">Report Retention (days)</Label>
-                      <Controller
-                        name="reportRetentionDays"
-                        control={control}
-                        rules={{ required: 'Required', min: 1 }}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            id="reportRetentionDays"
-                            type="number"
-                            min="1"
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="autoDeleteOldReports"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="autoDeleteOldReports"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="autoDeleteOldReports">
-                        Auto-delete old reports
-                      </Label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="figma">
-              <div className="space-y-6">
-                {/* Figma API Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Figma API Configuration</CardTitle>
-                    <CardDescription>
-                      Configure your Figma API integration and connection method
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Connection Method Selection */}
-                    <div className="space-y-4">
-                      <Label htmlFor="mcpConnectionMethod">Connection Method</Label>
-                      <Controller
-                        name="mcpConnectionMethod"
-                        control={control}
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger id="mcpConnectionMethod">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="desktop">Desktop MCP</SelectItem>
-                              <SelectItem value="proxy">Proxy MCP</SelectItem>
-                              <SelectItem value="figma">Remote MCP (Figma)</SelectItem>
-                              <SelectItem value="api">Figma API</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Choose how to connect to Figma. Remote MCP is recommended for cloud deployments.
-                      </p>
-                    </div>
-
-                    {/* MCP Status */}
-                    <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
-                      <MCPStatus showDetails={true} />
-                    </div>
-
-                    {/* Connection Method Info Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border rounded-lg bg-green-50 border-green-200">
-                        <h4 className="font-medium text-green-900 mb-2 flex items-center">
-                          🖥️ Desktop MCP
-                        </h4>
-                        <p className="text-sm text-green-700">
-                          Connects to Figma Desktop app via local MCP server. Fastest and most reliable when Figma Desktop is running.
-                        </p>
-                      </div>
-
-                      <div className="p-4 border rounded-lg bg-orange-50 border-orange-200">
-                        <h4 className="font-medium text-orange-900 mb-2 flex items-center">
-                          🔗 Proxy MCP
-                        </h4>
-                        <p className="text-sm text-orange-700">
-                          Uses a local MCP proxy server. Useful for development and testing with custom MCP configurations.
-                        </p>
-                      </div>
-
-                      <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
-                        <h4 className="font-medium text-purple-900 mb-2 flex items-center">
-                          ☁️ Remote MCP
-                        </h4>
-                        <p className="text-sm text-purple-700">
-                          Uses Figma&apos;s hosted MCP service at https://mcp.figma.com/mcp (requires your token). Recommended for cloud deployments.
-                        </p>
-                      </div>
-
-                      <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
-                        <h4 className="font-medium text-blue-900 mb-2 flex items-center">
-                          🔑 Figma API
-                        </h4>
-                        <p className="text-sm text-blue-700">
-                          Uses your personal Figma access token. Simple and reliable for direct REST API calls.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Authentication Methods */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Figma Authentication</CardTitle>
-                    <CardDescription>
-                      Choose your authentication method. OAuth is recommended for automatic token refresh.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* OAuth Settings */}
-                    <div className="space-y-4">
-                      <FigmaOAuthSettings />
-                    </div>
-
-                    {/* Divider */}
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or</span>
-                      </div>
-                    </div>
-
-                    {/* PAT Settings (shown for api method) */}
-                    <Controller
-                      name="mcpConnectionMethod"
-                      control={control}
-                      render={({ field: methodField }) => (
-                        methodField.value === 'api' ? (
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="text-sm font-medium mb-2">Personal Access Token (Legacy)</h4>
-                              <p className="text-xs text-muted-foreground mb-4">
-                                Use a personal access token for direct API access. OAuth is recommended for better security and automatic token refresh.
-                              </p>
-                              <Controller
-                                name="figmaPersonalAccessToken"
-                                control={control}
-                                render={({ field }) => (
-                                  <FigmaApiSettings
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    onBlur={field.onBlur}
-                                  />
-                                )}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
-                            <p className="text-sm text-blue-800">
-                              <strong>Note:</strong> When using Remote MCP, OAuth tokens are preferred. If you have OAuth configured above, it will be used automatically. Otherwise, your Personal Access Token will be used as a fallback.
-                            </p>
-                          </div>
-                        )
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-
-                {/* Export Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Export Settings</CardTitle>
-                    <CardDescription>
-                      Configure default export formats and scaling
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="defaultFigmaExportFormat">Default Export Format</Label>
-                        <Controller
-                          name="defaultFigmaExportFormat"
-                          control={control}
-                          render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger id="defaultFigmaExportFormat">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="svg">SVG</SelectItem>
-                                <SelectItem value="png">PNG</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="figmaExportScale">PNG Export Scale</Label>
-                        <Controller
-                          name="figmaExportScale"
-                          control={control}
-                          render={({ field }) => (
-                            <Select value={field.value.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
-                              <SelectTrigger id="figmaExportScale">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1">1x</SelectItem>
-                                <SelectItem value="2">2x</SelectItem>
-                                <SelectItem value="3">3x</SelectItem>
-                                <SelectItem value="4">4x</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Test Connection */}
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Test Connection</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Verify your Figma connection is working properly
-                        </p>
-                      </div>
-                      <Controller
-                        name="mcpConnectionMethod"
-                        control={control}
-                        render={({ field }) => (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={async () => {
-                              const method = field.value
-                              if (!method) {
-                                alert('Please select a connection method first')
-                                return
-                              }
-
-                              const formData = control._formValues
-                              const result = await testMCPConnection(
-                                method,
-                                formData.mcpServerUrl,
-                                formData.mcpEndpoint
-                              )
-
-                              if (result.success) {
-                                alert(`✅ Connection successful!\n${result.message || 'Connection established'}`)
-                              } else {
-                                alert(`❌ Connection failed!\n${result.error || 'Unknown error'}`)
-                              }
-                            }}
-                          >
-                            🔍 Test Connection
-                          </Button>
-                        )}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Desktop MCP Settings */}
-                <DesktopMCPSettings />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="design-systems">
-              <DesignSystemsManager />
-            </TabsContent>
-
-            <TabsContent value="credentials">
-              <CredentialsManager />
-            </TabsContent>
-
-            <TabsContent value="web">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Web Scraping Configuration</CardTitle>
-                  <CardDescription>
-                    Configure default settings for web scraping and extraction
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="viewportWidth">Viewport Width</Label>
-                      <Controller
-                        name="defaultViewport.width"
-                        control={control}
-                        rules={{ required: 'Required', min: 320 }}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            id="viewportWidth"
-                            type="number"
-                            min="320"
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="viewportHeight">Viewport Height</Label>
-                      <Controller
-                        name="defaultViewport.height"
-                        control={control}
-                        rules={{ required: 'Required', min: 240 }}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            id="viewportHeight"
-                            type="number"
-                            min="240"
-                          />
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="userAgent">User Agent</Label>
-                    <Controller
-                      name="userAgent"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          id="userAgent"
-                          type="text"
-                          placeholder="Mozilla/5.0..."
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="enableJavaScript"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="enableJavaScript"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="enableJavaScript" className="font-normal cursor-pointer">
-                        Enable JavaScript
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="waitForNetworkIdle"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="waitForNetworkIdle"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="waitForNetworkIdle" className="font-normal cursor-pointer">
-                        Wait for network idle
-                      </Label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="visual">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Visual Comparison</CardTitle>
-                  <CardDescription>
-                    Configure visual diff and screenshot comparison settings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="pixelMatchThreshold">Pixel Match Threshold (0-1)</Label>
-                    <Controller
-                      name="pixelMatchThreshold"
-                      control={control}
-                      rules={{ required: 'Required', min: 0, max: 1 }}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          id="pixelMatchThreshold"
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                        />
-                      )}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Lower values = more strict matching
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="includeAntiAliasing"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="includeAntiAliasing"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="includeAntiAliasing" className="font-normal cursor-pointer">
-                        Include anti-aliasing in comparison
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="ignoreColors"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="ignoreColors"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="ignoreColors" className="font-normal cursor-pointer">
-                        Ignore colors (structure-only comparison)
-                      </Label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="notifications">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notifications</CardTitle>
-                  <CardDescription>
-                    Configure notification channels and preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="slackWebhook">Slack Webhook URL</Label>
-                    <Controller
-                      name="slackWebhook"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          id="slackWebhook"
-                          type="url"
-                          placeholder={SETTINGS_PLACEHOLDERS.webhookUrl}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="emailNotifications"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="emailNotifications"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="emailNotifications" className="font-normal cursor-pointer">
-                        Enable email notifications
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="notifyOnCompletion"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="notifyOnCompletion"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="notifyOnCompletion" className="font-normal cursor-pointer">
-                        Notify on comparison completion
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="notifyOnError"
-                        control={control}
-                        render={({ field }) => (
-                          <Checkbox
-                            id="notifyOnError"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Label htmlFor="notifyOnError" className="font-normal cursor-pointer">
-                        Notify on errors
-                      </Label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="security">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Security & Privacy</CardTitle>
-                  <CardDescription>
-                    Manage security settings and data privacy
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <Alert>
-                    <ExclamationTriangleIcon className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Security Notice:</strong> Sensitive data like API tokens are encrypted at rest. Never share your configuration files or tokens.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        // Clear all stored tokens/credentials
-                        if (confirm('This will clear all stored API tokens and credentials. Continue?')) {
-                          // Implementation would go here
-                        }
-                      }}
-                    >
-                      Clear All Stored Credentials
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        // Export settings (without sensitive data)
-                        const settings = {}
-                        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = 'comparison-tool-settings.json'
-                        a.click()
-                      }}
-                    >
-                      Export Settings (Safe)
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Save Button */}
-            <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-              <div className="flex items-center space-x-3">
-                {saveStatus === 'success' && (
-                  <div className="flex items-center space-x-2 text-green-600">
-                    <CheckCircleIcon className="w-5 h-5" />
-                    <span className="text-sm font-medium">Settings saved successfully</span>
-                  </div>
-                )}
-                {saveStatus === 'error' && (
-                  <div className="flex items-center space-x-2 text-red-600">
-                    <ExclamationTriangleIcon className="w-5 h-5" />
-                    <span className="text-sm font-medium">Failed to save settings</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex space-x-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => window.location.reload()}
-                >
-                  Reset
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!isDirty || isSaving}
-                  className="flex items-center space-x-2"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <span>Save Settings</span>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </Tabs>
-      </div>
+        <TabsContent value="desktop-mode">
+          <div className="space-y-4">
+            <ModeToggle />
+            <DesktopMCPSettings backendReachable={backendReachable} />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
-  )
-} 
+  );
+}

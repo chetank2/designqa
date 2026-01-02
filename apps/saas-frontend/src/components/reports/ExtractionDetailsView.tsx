@@ -36,7 +36,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Typography:</span>
-                <Badge variant="outline">{figma.typography?.fontFamilies?.length || 0}</Badge>
+                <Badge variant="outline">{((figma.typography as any)?.fontFamilies?.length || 0)}</Badge>
               </div>
               <div className="text-xs text-muted-foreground mt-2 truncate" title={figma.fileInfo?.name || 'Unknown'}>
                 {figma.fileInfo?.name || 'Unknown'}
@@ -134,11 +134,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
             <div className="mb-4">
               <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Typography</h4>
               <div className="space-y-3">
-                {(figma.typography?.fontFamilies?.length || 0) > 0 && (
+                {((figma.typography as any)?.fontFamilies?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Families:</span>
                     <div className="flex flex-wrap gap-1">
-                      {(figma.typography?.fontFamilies || []).map((font: any, index: number) => (
+                      {((figma.typography as any)?.fontFamilies || []).map((font: any, index: number) => (
                         <Badge key={index} variant="outline" className="text-xs bg-background/50">
                           {font}
                         </Badge>
@@ -147,11 +147,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                   </div>
                 )}
 
-                {(figma.typography?.fontSizes?.length || 0) > 0 && (
+                {((figma.typography as any)?.fontSizes?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Sizes:</span>
                     <div className="flex flex-wrap gap-1">
-                      {(figma.typography?.fontSizes || []).map((size: any, index: number) => (
+                      {((figma.typography as any)?.fontSizes || []).map((size: any, index: number) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {size}
                         </Badge>
@@ -160,11 +160,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                   </div>
                 )}
 
-                {(figma.typography?.fontWeights?.length || 0) > 0 && (
+                {((figma.typography as any)?.fontWeights?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Weights:</span>
                     <div className="flex flex-wrap gap-1">
-                      {(figma.typography?.fontWeights || []).map((weight: any, index: number) => (
+                      {((figma.typography as any)?.fontWeights || []).map((weight: any, index: number) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {weight}
                         </Badge>
@@ -270,7 +270,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Spacing ({web.spacing?.length || 0})</h4>
                 <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto custom-scrollbar">
-                  {(web.spacing || []).map((spacing, index) => (
+                  {(web.spacing || []).map((spacing: any, index: number) => (
                     <Badge key={index} variant="secondary" className="text-xs font-mono">
                       {typeof spacing === 'object' ?
                         `${spacing.value || spacing.name || 'Unknown'}${spacing.unit || ''}` :
@@ -287,7 +287,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div>
                 <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Border Radius ({web.borderRadius?.length || 0})</h4>
                 <div className="flex flex-wrap gap-1">
-                  {(web.borderRadius || []).map((radius, index) => (
+                  {(web.borderRadius || []).map((radius: any, index) => (
                     <Badge key={index} variant="secondary" className="text-xs font-mono">
                       {typeof radius === 'object' ?
                         `${radius.value || radius.name || 'Unknown'}${radius.unit || ''}` :

@@ -101,6 +101,9 @@ class Logger {
     // Ensure logs directory exists
     this.logDir = path.join(process.cwd(), 'logs');
     this.ensureLogDir();
+    
+    // Runtime file logging flag (can be enabled via API)
+    this.fileLoggingEnabled = false;
   }
 
   ensureLogDir() {
@@ -159,16 +162,40 @@ class Logger {
     }
   }
 
+  /**
+   * Enable file logging at runtime
+   */
+  enableFileLogging() {
+    this.fileLoggingEnabled = true;
+    this.ensureLogDir();
+    console.log(`📝 File logging enabled - logs will be written to: ${this.logDir}`);
+  }
+
+  /**
+   * Get log directory path
+   */
+  getLogDir() {
+    return this.logDir;
+  }
+
   log(level, message, meta = {}) {
     if (!this.shouldLog(level)) return;
 
     const { consoleMessage, fileMessage } = this.formatMessage(level, message, meta);
     
-    // Output to console
+    // Output to console with immediate flush for terminal visibility
     console.log(consoleMessage);
+    // Ensure immediate flush to terminal (especially important for real-time comparison logs)
+    if (process.stdout.isTTY && typeof process.stdout.flush === 'function') {
+      try {
+        process.stdout.flush();
+      } catch (e) {
+        // Ignore flush errors (not available in all environments)
+      }
+    }
     
-    // Write to file in production or if specifically enabled
-    if (process.env.NODE_ENV === 'production' || process.env.LOG_TO_FILE === 'true') {
+    // Write to file if enabled (runtime flag or env var or production)
+    if (this.fileLoggingEnabled || process.env.NODE_ENV === 'production' || process.env.LOG_TO_FILE === 'true') {
       this.writeToFile(fileMessage, level);
     }
   }

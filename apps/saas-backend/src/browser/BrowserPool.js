@@ -4,9 +4,29 @@
  */
 
 import puppeteer from 'puppeteer';
+import { mkdirSync } from 'fs';
+import os from 'os';
+import { join } from 'path';
 import { loadConfig } from '../config/index.js';
 import { getBrowserConfig, validateBrowserAvailability } from '../utils/browserDetection.js';
 import { getResourceManager } from '../utils/ResourceManager.js';
+
+const isDesktopMode = () =>
+  process.env.RUNNING_IN_ELECTRON === 'true' || process.env.DEPLOYMENT_MODE === 'desktop';
+
+const shouldPersistSessions = () => {
+  if (!isDesktopMode()) return false;
+  const flag = process.env.PERSIST_BROWSER_SESSIONS;
+  if (!flag) return true;
+  return !['0', 'false', 'no', 'off'].includes(String(flag).toLowerCase());
+};
+
+const sanitizeDirName = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || 'default';
 
 class BrowserPool {
   constructor() {
@@ -86,6 +106,34 @@ class BrowserPool {
       throw new Error('Browser pool is shutting down');
     }
 
+    // Desktop mode: persist cookies/localStorage on disk per-domain so auth/session survives across runs.
+    if (shouldPersistSessions()) {
+      const sessionKey = options.sessionKey || options.profileKey || (() => {
+        const url = options.profileUrl || options.url;
+        if (!url) return null;
+        try {
+          return new URL(url).hostname;
+        } catch {
+          return null;
+        }
+      })();
+
+      if (sessionKey && !options.userDataDir) {
+        const base =
+          process.env.BROWSER_PROFILE_BASE_DIR ||
+          process.env.DESIGNQA_USER_DATA_DIR ||
+          join(os.homedir(), '.designqa');
+
+        const dir = join(base, 'browser-profiles', sanitizeDirName(sessionKey));
+        try {
+          mkdirSync(dir, { recursive: true });
+          options.userDataDir = dir;
+        } catch (error) {
+          console.warn(`⚠️ Failed to create browser profile dir at ${dir}:`, error.message);
+        }
+      }
+    }
+
     const browserKey = this.getBrowserKey(options);
     
     // Return existing browser if available
@@ -119,6 +167,10 @@ class BrowserPool {
         headless: this.config.puppeteer.headless,
         timeout: this.config.puppeteer.timeout,
         protocolTimeout: this.config.puppeteer.protocolTimeout,
+        // Allow explicit overrides in local/desktop mode without changing code.
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        args: process.env.PUPPETEER_ARGS ? process.env.PUPPETEER_ARGS.split(',') : undefined,
+        pipe: process.env.PUPPETEER_PIPE ? process.env.PUPPETEER_PIPE === 'true' : undefined,
         ...options
       });
 
@@ -166,11 +218,19 @@ class BrowserPool {
         .filter(pageInfo => pageInfo.browser === browser);
       
       if (browserPages.length >= this.maxPagesPerBrowser) {
-        // Close oldest page
-        const oldestPage = browserPages
+        // Prefer closing an inactive page; never evict an active page as it can abort in-flight extractions.
+        const oldestInactivePage = browserPages
+          .filter(pageInfo => !pageInfo.isActive)
           .sort((a, b) => a.lastUsed - b.lastUsed)[0];
-        if (oldestPage) {
-          await this.closePage(oldestPage.pageId);
+
+        if (oldestInactivePage) {
+          await this.closePage(oldestInactivePage.pageId);
+        } else {
+          // All pages are active: wait briefly for a slot instead of killing an active page.
+          await this.waitForAvailableSlot(browser, this.maxPagesPerBrowser, {
+            timeoutMs: options.waitForSlotTimeoutMs ?? 30000,
+            pollIntervalMs: 250
+          });
         }
       }
 
@@ -220,6 +280,35 @@ class BrowserPool {
     });
   }
 
+  async waitForAvailableSlot(browser, maxPagesPerBrowser, { timeoutMs = 30000, pollIntervalMs = 250 } = {}) {
+    const startTime = Date.now();
+
+    // If we're already under limit (due to a concurrent close), return immediately.
+    const countPagesForBrowser = () =>
+      Array.from(this.pages.values()).filter(pageInfo => pageInfo.browser === browser).length;
+
+    while (Date.now() - startTime < timeoutMs) {
+      if (countPagesForBrowser() < maxPagesPerBrowser) return;
+
+      const inactivePages = Array.from(this.pages.values())
+        .filter(pageInfo => pageInfo.browser === browser)
+        .filter(pageInfo => !pageInfo.isActive)
+        .sort((a, b) => a.lastUsed - b.lastUsed);
+
+      if (inactivePages.length > 0) {
+        await this.closePage(inactivePages[0].pageId);
+        return;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    }
+
+    throw new Error(
+      `Browser pool is at capacity (${maxPagesPerBrowser} active pages). ` +
+        `Try again after current extractions finish, or increase BROWSER_POOL_MAX_PAGES / BROWSER_POOL_MAX_BROWSERS.`
+    );
+  }
+
   /**
    * Update page last used time
    */
@@ -227,6 +316,7 @@ class BrowserPool {
     const pageInfo = this.pages.get(pageId);
     if (pageInfo) {
       pageInfo.lastUsed = Date.now();
+      this.resourceManager.touch(pageId);
     }
   }
 
@@ -238,6 +328,7 @@ class BrowserPool {
     if (pageInfo) {
       pageInfo.isActive = true;
       pageInfo.lastUsed = Date.now();
+      this.resourceManager.touch(pageId);
     }
   }
 
@@ -249,6 +340,7 @@ class BrowserPool {
     if (pageInfo) {
       pageInfo.isActive = false;
       pageInfo.lastUsed = Date.now();
+      this.resourceManager.touch(pageId);
     }
   }
 
@@ -268,9 +360,9 @@ class BrowserPool {
     this.pages.delete(pageId);
 
     try {
-      if (!pageInfo.page.isClosed()) {
-        await pageInfo.page.close();
-      }
+      // Delegate actual teardown to ResourceManager so it can remove listeners and
+      // de-track the resource (prevents stale-tracker buildup and double-closes).
+      await this.resourceManager.cleanup(pageId);
     } catch (error) {
       console.warn(`Error closing page ${pageId}:`, error.message);
     }
@@ -313,7 +405,8 @@ class BrowserPool {
   getBrowserKey(options) {
     const keyOptions = {
       headless: options.headless || this.config?.puppeteer?.headless || 'new',
-      args: JSON.stringify(options.args || this.config?.puppeteer?.args || [])
+      args: JSON.stringify(options.args || this.config?.puppeteer?.args || []),
+      userDataDir: options.userDataDir || null
     };
     return JSON.stringify(keyOptions);
   }

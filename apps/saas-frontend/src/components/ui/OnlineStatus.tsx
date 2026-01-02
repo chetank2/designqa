@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { CircleIcon } from 'lucide-react';
+import { getApiBaseUrl } from '@/config/ports';
 
 interface OnlineStatusProps {
     className?: string;
@@ -18,7 +19,8 @@ export default function OnlineStatus({ className = '', onStatusChange }: OnlineS
     useEffect(() => {
         const checkApiHealth = async () => {
             try {
-                const response = await fetch('/api/health', {
+                const apiBaseUrl = getApiBaseUrl();
+                const response = await fetch(`${apiBaseUrl}/api/health`, {
                     method: 'GET',
                     headers: { 'Cache-Control': 'no-cache' },
                     signal: AbortSignal.timeout(5000)
@@ -61,13 +63,17 @@ export default function OnlineStatus({ className = '', onStatusChange }: OnlineS
  */
 export async function checkApiHealth(): Promise<boolean> {
     try {
-        const response = await fetch('/api/health', {
+        const apiBaseUrl = getApiBaseUrl();
+        console.log('[OnlineStatus] Checking API health at:', apiBaseUrl);
+        const response = await fetch(`${apiBaseUrl}/api/health`, {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' },
             signal: AbortSignal.timeout(5000)
         });
+        console.log('[OnlineStatus] Health check response:', response.status);
         return response.ok;
-    } catch {
+    } catch (error) {
+        console.warn('[OnlineStatus] Health check failed:', error);
         return false;
     }
 }

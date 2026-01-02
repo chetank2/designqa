@@ -14,6 +14,14 @@ import { existsSync } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Ensure immediate log output - unbuffer stdout/stderr for real-time terminal display
+if (process.stdout.isTTY) {
+  process.stdout.setEncoding('utf8');
+}
+if (process.stderr.isTTY) {
+  process.stderr.setEncoding('utf8');
+}
+
 // Try to load .env file from backend directory, then root
 const envPaths = [
   join(__dirname, '.env'),

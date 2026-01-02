@@ -3,7 +3,7 @@
  * Simplified, robust form with proper error handling and loading states
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Loader2, ExternalLink, AlertCircle, Palette } from 'lucide-react';
 import { ComparisonRequest, ComparisonResult } from '../../types';
 import { unifiedApiService } from '../../services/unified-api';
 import { parseFigmaUrl } from '../../utils/figmaParser';
+import { getApiBaseUrl } from '../../config/ports';
+
+interface DesignSystem {
+  id: string;
+  name: string;
+  slug: string;
+  isGlobal?: boolean;
+}
 
 interface UnifiedComparisonFormProps {
   onSuccess: (result: ComparisonResult) => void;
@@ -26,10 +34,35 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
   const [figmaUrl, setFigmaUrl] = useState('');
   const [webUrl, setWebUrl] = useState('');
   const [includeVisual, setIncludeVisual] = useState(false);
-  
+  const [designSystemId, setDesignSystemId] = useState<string | null>(null);
+
+  // Design systems state
+  const [designSystems, setDesignSystems] = useState<DesignSystem[]>([]);
+  const [loadingDesignSystems, setLoadingDesignSystems] = useState(true);
+
   // Validation state
   const [figmaUrlError, setFigmaUrlError] = useState('');
   const [webUrlError, setWebUrlError] = useState('');
+
+  // Load design systems on mount
+  useEffect(() => {
+    const loadDesignSystems = async () => {
+      try {
+        setLoadingDesignSystems(true);
+        const apiBaseUrl = getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/design-systems`);
+        if (response.ok) {
+          const result = await response.json();
+          setDesignSystems(result.data || []);
+        }
+      } catch (err) {
+        console.warn('Failed to load design systems:', err);
+      } finally {
+        setLoadingDesignSystems(false);
+      }
+    };
+    loadDesignSystems();
+  }, []);
 
   // Comparison mutation
   const comparisonMutation = useMutation({
@@ -50,7 +83,7 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
   // Form validation
   const validateForm = (): boolean => {
     let isValid = true;
-    
+
     // Reset errors
     setFigmaUrlError('');
     setWebUrlError('');
@@ -86,7 +119,7 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -105,7 +138,8 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
       figmaUrl: figmaUrl.trim(),
       webUrl: webUrl.trim(),
       nodeId,
-      includeVisual
+      includeVisual,
+      designSystemId
     };
 
     // Execute comparison
@@ -128,7 +162,7 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
             Compare Figma Design with Web Implementation
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Figma URL Input */}
@@ -163,6 +197,31 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
               {webUrlError && (
                 <p className="text-sm text-red-600">{webUrlError}</p>
               )}
+            </div>
+
+            {/* Design System Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="designSystem" className="flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                Design System (Optional)
+              </Label>
+              <select
+                id="designSystem"
+                value={designSystemId || ''}
+                onChange={(e) => setDesignSystemId(e.target.value || null)}
+                disabled={isLoading || loadingDesignSystems}
+                className="w-full h-10 px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">No design system (use defaults)</option>
+                {designSystems.map((ds) => (
+                  <option key={ds.id} value={ds.id}>
+                    {ds.name} {ds.isGlobal ? '(Global)' : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Select a design system to use its tokens for comparison thresholds
+              </p>
             </div>
 
             {/* Options */}
@@ -217,7 +276,7 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
                   This may take up to 2 minutes...
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-blue-600 h-2 rounded-full animate-pulse"
                     style={{ width: '60%' }}
                   ></div>
@@ -230,19 +289,3 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
     </motion.div>
   );
 }
-
-// Helper component for form field errors
-const FieldError: React.FC<{ error?: string }> = ({ error }) => {
-  if (!error) return null;
-  
-  return (
-    <motion.p
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      className="text-sm text-red-600 mt-1"
-    >
-      {error}
-    </motion.p>
-  );
-};
