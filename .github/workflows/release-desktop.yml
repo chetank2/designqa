@@ -51,6 +51,12 @@ jobs:
           cd packages/mcp-client && pnpm build
           cd ../compare-engine && pnpm build
 
+      - name: Install app dependencies
+        run: |
+          echo "📦 Installing Mac app dependencies..."
+          cd apps/desktop-mac
+          pnpm install --no-frozen-lockfile
+
       - name: Build mac app
         run: |
           echo "🍎 Building Mac desktop app..."
@@ -123,6 +129,12 @@ jobs:
           echo "📦 Building workspace packages..."
           cd packages/mcp-client && pnpm build
           cd ../compare-engine && pnpm build
+
+      - name: Install app dependencies
+        run: |
+          echo "📦 Installing Windows app dependencies..."
+          cd apps/desktop-win
+          pnpm install --no-frozen-lockfile
 
       - name: Build windows app
         run: |
