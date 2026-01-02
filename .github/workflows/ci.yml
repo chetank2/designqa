@@ -26,7 +26,9 @@ jobs:
         cache: 'pnpm'
         
     - name: Enable Corepack
-      run: corepack enable
+      run: |
+        corepack enable
+        corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
@@ -64,7 +66,9 @@ jobs:
         cache: 'pnpm'
         
     - name: Enable Corepack
-      run: corepack enable
+      run: |
+        corepack enable
+        corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
@@ -115,7 +119,12 @@ jobs:
         cache: 'pnpm'
         
     - name: Enable Corepack
-      run: corepack enable
+      run: |
+        corepack enable
+        corepack prepare pnpm@latest --activate
+        
+    - name: Verify pnpm
+      run: pnpm --version
       
     - name: Run security audit
       run: |
@@ -153,7 +162,9 @@ jobs:
         cache: 'pnpm'
         
     - name: Enable Corepack
-      run: corepack enable
+      run: |
+        corepack enable
+        corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
@@ -184,7 +195,9 @@ jobs:
         cache: 'pnpm'
         
     - name: Enable Corepack
-      run: corepack enable
+      run: |
+        corepack enable
+        corepack prepare pnpm@latest --activate
         
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
