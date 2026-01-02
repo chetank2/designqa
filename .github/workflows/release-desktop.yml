@@ -1,0 +1,96 @@
+name: Build Desktop Apps
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build workspace packages
+        run: |
+          echo "📦 Building workspace packages..."
+          cd packages/mcp-client && pnpm build
+          cd ../compare-engine && pnpm build
+
+      - name: Build mac app
+        run: |
+          echo "🍎 Building Mac desktop app..."
+          cd apps/desktop-mac
+          npm run build
+          echo "📦 Packaging Mac app..."
+          npm run package
+
+      - name: Upload mac artifacts to release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            apps/desktop-mac/build/*.dmg
+            apps/desktop-mac/build/*.zip
+
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build workspace packages
+        run: |
+          echo "📦 Building workspace packages..."
+          cd packages/mcp-client && pnpm build
+          cd ../compare-engine && pnpm build
+
+      - name: Build windows app
+        run: |
+          echo "🪟 Building Windows desktop app..."
+          cd apps/desktop-win
+          npm run build
+          echo "📦 Packaging Windows app..."
+          npm run package
+
+      - name: Upload windows artifacts to release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            apps/desktop-win/build/*.exe
+            apps/desktop-win/build/*.zip
