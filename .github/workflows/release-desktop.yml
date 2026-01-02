@@ -63,7 +63,18 @@ jobs:
         run: |
           echo "📋 Listing build artifacts..."
           ls -lh apps/desktop-mac/build/ || echo "Build directory not found"
-          find apps/desktop-mac/build -name "*.dmg" -o -name "*.zip" || echo "No DMG/ZIP files found"
+          find apps/desktop-mac/build -type f \( -name "*.dmg" -o -name "*.zip" \) || echo "No DMG/ZIP files found"
+
+      - name: Verify DMG files exist
+        run: |
+          echo "🔍 Verifying DMG files..."
+          DMG_COUNT=$(find apps/desktop-mac/build -type f -name "*.dmg" | wc -l | tr -d ' ')
+          if [ "$DMG_COUNT" -eq "0" ]; then
+            echo "❌ Error: No DMG files found!"
+            exit 1
+          fi
+          echo "✅ Found $DMG_COUNT DMG file(s):"
+          find apps/desktop-mac/build -type f -name "*.dmg" -exec ls -lh {} \;
 
       - name: Upload mac artifacts to release
         uses: softprops/action-gh-release@v2
@@ -73,8 +84,9 @@ jobs:
           tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
             apps/desktop-mac/build/**/*.dmg
-            apps/desktop-mac/build/**/*.zip
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
 
   build-win:
     runs-on: windows-latest
@@ -126,10 +138,22 @@ jobs:
           echo "📋 Listing build artifacts..."
           if [ -d "apps/desktop-win/build" ]; then
             ls -lh apps/desktop-win/build/ || echo "Build directory exists but listing failed"
-            find apps/desktop-win/build -name "*.exe" -o -name "*.zip" || echo "No EXE/ZIP files found"
+            find apps/desktop-win/build -type f \( -name "*.exe" -o -name "*.zip" \) || echo "No EXE/ZIP files found"
           else
             echo "Build directory not found"
           fi
+
+      - name: Verify EXE files exist
+        shell: bash
+        run: |
+          echo "🔍 Verifying EXE files..."
+          EXE_COUNT=$(find apps/desktop-win/build -type f -name "*.exe" 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$EXE_COUNT" -eq "0" ]; then
+            echo "❌ Error: No EXE files found!"
+            exit 1
+          fi
+          echo "✅ Found $EXE_COUNT EXE file(s):"
+          find apps/desktop-win/build -type f -name "*.exe" -exec ls -lh {} \;
 
       - name: Upload windows artifacts to release
         uses: softprops/action-gh-release@v2
@@ -139,5 +163,37 @@ jobs:
           tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
             apps/desktop-win/build/**/*.exe
-            apps/desktop-win/build/**/*.zip
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
+
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [build-mac, build-win]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+
+      - name: Display Release Summary
+        run: |
+          TAG_NAME="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          echo "## ✅ Release Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`$TAG_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Uploaded Assets:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS DMG files (Apple Silicon & Intel)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Windows EXE installer" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL:** https://github.com/${{ github.repository }}/releases/tag/$TAG_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Direct Download Links:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Mac (Apple Silicon): \`https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/DesignQA-*-arm64.dmg\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Mac (Intel): \`https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/DesignQA-*.dmg\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: \`https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/DesignQA*.exe\`" >> $GITHUB_STEP_SUMMARY
