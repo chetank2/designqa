@@ -63,6 +63,10 @@ async function loadDesktopEnv() {
   // Try to load dotenv - it should be available in node_modules
   try {
     const dotenvModule = await loadDotenvModule();
+    if (!dotenvModule) {
+      console.warn('⚠️ dotenv module not available');
+      return;
+    }
     const envPaths = [
       join(__dirname, '../../../.env'),
       join(__dirname, '../../../../.env')

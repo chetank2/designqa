@@ -66,6 +66,13 @@ function getCloudAppUrl(): string {
   return DEFAULT_CLOUD_APP_URL;
 }
 
+async function showDialog(options: Electron.MessageBoxOptions): Promise<Electron.MessageBoxReturnValue> {
+  if (mainWindow) {
+    return dialog.showMessageBox(mainWindow, options);
+  }
+  return dialog.showMessageBox(options);
+}
+
 function getUpdateRepo(): string | null {
   const repo = process.env.DESIGNQA_GITHUB_REPO || process.env.GITHUB_REPO;
   if (!repo) {
@@ -133,7 +140,7 @@ async function checkForUpdates(): Promise<void> {
     }
 
     const releaseUrl = data?.html_url || `https://github.com/${repo}/releases/latest`;
-    const dialogResult = await dialog.showMessageBox(mainWindow ?? undefined, {
+    const dialogResult = await showDialog({
       type: 'info',
       buttons: ['Download Update', 'Later'],
       defaultId: 0,

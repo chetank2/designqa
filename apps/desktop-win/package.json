@@ -40,6 +40,7 @@
     "appId": "com.designqa.desktop",
     "productName": "DesignQA",
     "asar": true,
+    "npmRebuild": false,
     "win": {
       "target": [
         {

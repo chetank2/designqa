@@ -167,8 +167,22 @@ function saveMode(mode: 'cloud' | 'local'): void {
   }
 }
 
+function showDialogSync(options: Electron.MessageBoxSyncOptions): number {
+  if (mainWindow) {
+    return dialog.showMessageBoxSync(mainWindow, options);
+  }
+  return dialog.showMessageBoxSync(options);
+}
+
+async function showDialog(options: Electron.MessageBoxOptions): Promise<Electron.MessageBoxReturnValue> {
+  if (mainWindow) {
+    return dialog.showMessageBox(mainWindow, options);
+  }
+  return dialog.showMessageBox(options);
+}
+
 function promptForMode(): 'cloud' | 'local' {
-  const response = dialog.showMessageBoxSync(mainWindow ?? undefined, {
+  const response = showDialogSync({
     type: 'question',
     buttons: ['Local Mode (Recommended)', 'Cloud Mode'],
     defaultId: 0,
@@ -189,7 +203,7 @@ function resolveStartupMode(): 'cloud' | 'local' {
   if (shouldPrompt) {
     const chosenMode = promptForMode();
     if (chosenMode === 'cloud') {
-      dialog.showMessageBoxSync(mainWindow ?? undefined, {
+      showDialogSync({
         type: 'info',
         buttons: ['OK'],
         defaultId: 0,
@@ -275,7 +289,7 @@ async function checkForUpdates(): Promise<void> {
     }
 
     const releaseUrl = data?.html_url || `https://github.com/${repo}/releases/latest`;
-    const dialogResult = await dialog.showMessageBox(mainWindow ?? undefined, {
+    const dialogResult = await showDialog({
       type: 'info',
       buttons: ['Download Update', 'Later'],
       defaultId: 0,
