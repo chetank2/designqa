@@ -138,6 +138,6 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
-            apps/desktop-win/build/*.exe
-            apps/desktop-win/build/*.zip
+            apps/desktop-win/build/**/*.exe
+            apps/desktop-win/build/**/*.zip
           fail_on_unmatched_files: false
