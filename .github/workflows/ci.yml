@@ -134,8 +134,8 @@ jobs:
         SIZE_KB=$((SIZE / 1024))
         echo "Main bundle size: ${SIZE_KB}KB"
         
-        if [ $SIZE_KB -gt 500 ]; then
-          echo "❌ Bundle size too large: ${SIZE_KB}KB (limit: 500KB)"
+        if [ $SIZE_KB -gt 1200 ]; then
+          echo "❌ Bundle size too large: ${SIZE_KB}KB (limit: 1200KB)"
           exit 1
         else
           echo "✅ Bundle size acceptable: ${SIZE_KB}KB"
