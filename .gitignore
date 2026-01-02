@@ -7,6 +7,10 @@ yarn-error.log*
 # Production builds
 /build
 /dist
+**/build/
+**/dist/
+apps/*/build/
+apps/*/dist/
 
 # Environment variables and secrets
 .env
@@ -39,10 +43,13 @@ output/tests/
 
 # Logs
 *.log
+**/*.log
 logs/
+**/logs/
 server.log
 startup.log
 current-startup.log
+.cursor/debug.log
 
 # Runtime data
 pids
@@ -127,6 +134,7 @@ temp/
 
 # OS generated files
 .DS_Store
+**/.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
@@ -140,3 +148,21 @@ Thumbs.db
 netlify-deploy/
 netlify-deploy.zip
 share/
+.designqa.env
+.tmp-output/
+**/.env.backup
+**/.env.bak
+
+# Desktop app build artifacts
+apps/desktop-mac/saas-backend/
+apps/desktop-win/saas-backend/
+apps/desktop-mac/build/
+apps/desktop-win/build/
+
+# npm cache
+**/.npm-cache/
+**/.npm/
+
+# Electron build artifacts
+**/dist/
+**/out/
