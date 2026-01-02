@@ -120,11 +120,20 @@ jobs:
           echo "📦 Packaging Windows app..."
           pnpm run package
 
+      - name: List build artifacts
+        run: |
+          echo "📋 Listing build artifacts..."
+          ls -lh apps/desktop-win/build/ || echo "Build directory not found"
+          dir apps/desktop-win/build\*.exe 2>nul || echo "No EXE files found"
+          dir apps/desktop-win/build\*.zip 2>nul || echo "No ZIP files found"
+
       - name: Upload windows artifacts to release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
             apps/desktop-win/build/*.exe
             apps/desktop-win/build/*.zip
+          fail_on_unmatched_files: false
