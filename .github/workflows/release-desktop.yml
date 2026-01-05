@@ -49,15 +49,15 @@ jobs:
         run: |
           echo "📦 Installing Mac app dependencies..."
           cd apps/desktop-mac
-          pnpm install --no-frozen-lockfile
+          CI=true pnpm install --no-frozen-lockfile
 
       - name: Build mac app
         run: |
           echo "🍎 Building Mac desktop app..."
           cd apps/desktop-mac
-          pnpm run build
+          CI=true pnpm run build
           echo "📦 Packaging Mac app..."
-          pnpm run package
+          CI=true pnpm run package
 
       - name: List build artifacts
         run: |
@@ -122,15 +122,15 @@ jobs:
         run: |
           echo "📦 Installing Windows app dependencies..."
           cd apps/desktop-win
-          pnpm install --no-frozen-lockfile
+          CI=true pnpm install --no-frozen-lockfile
 
       - name: Build windows app
         run: |
           echo "🪟 Building Windows desktop app..."
           cd apps/desktop-win
-          pnpm run build
+          CI=true pnpm run build
           echo "📦 Packaging Windows app..."
-          pnpm run package
+          CI=true pnpm run package
 
       - name: List build artifacts
         shell: bash
