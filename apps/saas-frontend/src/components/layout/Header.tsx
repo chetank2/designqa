@@ -4,7 +4,7 @@ import MCPStatus from '../ui/MCPStatus'
 import { ThemeToggle } from '../ui/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useAppMode } from '../../hooks/useAppMode'
+import { useAppMode } from '../../contexts/ModeContext'
 import { ModeBadge } from '../ui/ModeBadge'
 
 interface HeaderProps {

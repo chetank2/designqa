@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { getApiBaseUrl } from '../../config/ports';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppMode } from '../../contexts/ModeContext';
 
 interface DesktopMCPCapabilities {
   desktopMCPAvailable: boolean;
@@ -24,6 +25,7 @@ interface DesktopMCPSettingsProps {
 
 export default function DesktopMCPSettings({ backendReachable }: DesktopMCPSettingsProps) {
   const { user } = useAuth();
+  const { isElectron } = useAppMode();
   const [capabilities, setCapabilities] = useState<DesktopMCPCapabilities | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -45,14 +47,14 @@ export default function DesktopMCPSettings({ backendReachable }: DesktopMCPSetti
       return;
     }
 
-    if (!user?.id) {
+    if (!user?.id && !isElectron) {
       setLoading(false);
       return;
     }
 
     loadCapabilities();
     loadPreference();
-  }, [user, backendState]);
+  }, [user, backendState, isElectron]);
 
   const loadCapabilities = async () => {
     try {
@@ -95,6 +97,10 @@ export default function DesktopMCPSettings({ backendReachable }: DesktopMCPSetti
   };
 
   const loadPreference = () => {
+    if (isElectron) {
+      setEnabled(true);
+      return;
+    }
     const saved = localStorage.getItem('desktopMCPEnabled');
     if (saved === 'true') {
       setEnabled(true);
@@ -102,6 +108,9 @@ export default function DesktopMCPSettings({ backendReachable }: DesktopMCPSetti
   };
 
   const handleToggle = async (checked: boolean) => {
+    if (isElectron) {
+      return;
+    }
     setEnabled(checked);
     localStorage.setItem('desktopMCPEnabled', checked.toString());
 
@@ -172,10 +181,20 @@ export default function DesktopMCPSettings({ backendReachable }: DesktopMCPSetti
             id="desktop-mcp-toggle"
             checked={enabled}
             onCheckedChange={handleToggle}
+            disabled={isElectron}
           />
         </div>
 
-        {enabled && (
+        {isElectron && (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              Desktop MCP is always enabled in the desktop app.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {enabled && !isElectron && (
           <Alert>
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
