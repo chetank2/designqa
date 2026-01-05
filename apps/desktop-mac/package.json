@@ -18,7 +18,7 @@
     "resolve:deps": "node scripts/resolve-deps.js",
     "build:main": "tsc --project tsconfig.main.json",
     "build:renderer:old": "vite build",
-    "build:workspace-packages": "cd ../../packages/mcp-client && npm run build && cd ../compare-engine && npm run build",
+    "build:workspace-packages": "cd ../../packages/mcp-client && pnpm run build && cd ../compare-engine && pnpm run build",
     "verify:workspace-packages": "node scripts/verify-build.js",
     "check:ts-syntax": "node scripts/check-ts-syntax.js",
     "copy:preload": "node scripts/copy-preload.mjs",
