@@ -12,7 +12,7 @@
     "build": "npm run build:workspace-packages && npm run verify:workspace-packages && npm run build:frontend && npm run copy:backend && npm run install:backend-deps && npm run resolve:symlinks && npm run preflight && npm run copy:preload && npm run install:deps && npm run resolve:deps && npm run build:main && npm run copy:renderer && npm run check:ts-syntax",
     "build:frontend": "cd ../saas-frontend && pnpm build:electron",
     "copy:renderer": "node scripts/copy-frontend.mjs",
-    "install:deps": "pnpm install --filter @designqa/desktop-mac --no-frozen-lockfile",
+    "install:deps": "CI=true pnpm install --filter @designqa/desktop-mac --no-frozen-lockfile",
     "install:backend-deps": "node scripts/install-backend-deps.js",
     "resolve:symlinks": "node scripts/resolve-symlinks.mjs",
     "resolve:deps": "node scripts/resolve-deps.js",

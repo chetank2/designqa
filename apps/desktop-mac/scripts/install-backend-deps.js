@@ -11,7 +11,9 @@ const targetBackendDir = join(desktopMacDir, 'saas-backend');
 
 function run(cmd, args, cwd) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: 'inherit', cwd });
+    // Set CI=true to prevent pnpm from asking for TTY confirmation
+    const env = { ...process.env, CI: 'true' };
+    const child = spawn(cmd, args, { stdio: 'inherit', cwd, env });
     child.on('close', (code) => {
       if (code === 0) {
         resolve();
