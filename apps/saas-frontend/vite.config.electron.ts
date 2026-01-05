@@ -21,7 +21,7 @@ function printConfig(config: any) {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Use root path for SaaS web deployment
+  base: './', // Use relative paths for Electron file:// protocol
   esbuild: {
     drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [] // Keep console logs in dev
   },
