@@ -15,7 +15,7 @@ let mcpPort: number | null = null;
  */
 export async function initializeMCPBridge(): Promise<void> {
   try {
-    console.log('🔍 Checking for Desktop MCP (Windows)...');
+    // Removed: console.log('🔍 Checking for Desktop MCP (Windows)...');
 
     const figmaRunning = await isFigmaRunning();
     if (!figmaRunning) {
@@ -30,7 +30,7 @@ export async function initializeMCPBridge(): Promise<void> {
     }
 
     mcpPort = discovery.port;
-    console.log(`✅ Desktop MCP found on port ${mcpPort}`);
+    // Removed: console.log(`✅ Desktop MCP found on port ${mcpPort}`);
 
     // Create DesktopMCPClient but don't connect yet (lazy connection)
     desktopMCPClient = new DesktopMCPClient({

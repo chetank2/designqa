@@ -41,9 +41,9 @@ export class NotificationService {
 
         // Register default console channel
         this.registerChannel(NotificationChannel.CONSOLE, async (notification) => {
-            console.log(`📢 [${notification.event}]`, notification.message);
+            // Removed: console.log(`📢 [${notification.event}]`, notification.message);
             if (notification.data) {
-                console.log('   Data:', JSON.stringify(notification.data, null, 2));
+                // Removed: console.log('   Data:', JSON.stringify(notification.data, null, 2));
             }
         });
     }
@@ -60,7 +60,7 @@ export class NotificationService {
             enabled: true,
             registeredAt: new Date().toISOString()
         });
-        console.log(`📡 Registered notification channel: ${channelId}`);
+        // Removed: console.log(`📡 Registered notification channel: ${channelId}`);
     }
 
     /**
@@ -143,7 +143,7 @@ export class NotificationService {
             this.subscriptions.get(event).add(channelId);
         });
 
-        console.log(`📬 Subscribed ${channelId} to: ${eventList.join(', ')}`);
+        // Removed: console.log(`📬 Subscribed ${channelId} to: ${eventList.join(', ')}`);
     }
 
     /**

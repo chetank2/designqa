@@ -40,7 +40,7 @@ class DesignSystemRegistry {
         };
 
         this.systems.set(id, system);
-        console.log(`📐 Registered design system: ${config.name} (${id})`);
+        // Removed: console.log(`📐 Registered design system: ${config.name} (${id})`);
 
         return system;
     }

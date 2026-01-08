@@ -7,6 +7,7 @@ import ComparisonSettings from '../ui/ComparisonSettings';
 import ProgressIndicator from '../ui/ProgressIndicator';
 import { uploadScreenshots, startScreenshotComparison } from '../../services/api';
 import { ComparisonSettings as IComparisonSettings, ScreenshotComparisonResult } from '../../types';
+import { ProgressStage } from '@designqa/shared-types';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,7 +84,7 @@ export default function ScreenshotComparisonForm({
       return await startScreenshotComparison(uploadResult.uploadId, settings);
     },
     onSuccess: (result) => {
-      console.log('Screenshot comparison completed:', result);
+      // Removed: console.log('Screenshot comparison completed:', result);
       onSuccess?.(result);
     },
     onError: (error) => {
@@ -102,32 +103,32 @@ export default function ScreenshotComparisonForm({
     }
 
     // Critical debugging - check File object integrity
-    console.log('🔍 File state check:', {
-      figmaScreenshot: {
-        name: figmaScreenshot?.name,
-        type: figmaScreenshot?.type,
-        size: figmaScreenshot?.size,
-        isFile: figmaScreenshot instanceof File,
-        isBlob: figmaScreenshot instanceof Blob,
-        constructor: figmaScreenshot?.constructor?.name,
-        toString: typeof figmaScreenshot?.toString,
-        hasPath: 'path' in (figmaScreenshot || {}),
-        hasRelativePath: 'relativePath' in (figmaScreenshot || {}),
-        actualValue: figmaScreenshot
-      },
-      developedScreenshot: {
-        name: developedScreenshot?.name,
-        type: developedScreenshot?.type,
-        size: developedScreenshot?.size,
-        isFile: developedScreenshot instanceof File,
-        isBlob: developedScreenshot instanceof Blob,
-        constructor: developedScreenshot?.constructor?.name,
-        toString: typeof developedScreenshot?.toString,
-        hasPath: 'path' in (developedScreenshot || {}),
-        hasRelativePath: 'relativePath' in (developedScreenshot || {}),
-        actualValue: developedScreenshot
-      }
-    });
+    // console.log('🔍 File state check:', {
+    //   figmaScreenshot: {
+    //     name: figmaScreenshot?.name,
+    //     type: figmaScreenshot?.type,
+    //     size: figmaScreenshot?.size,
+    //     isFile: figmaScreenshot instanceof File,
+    //     isBlob: figmaScreenshot instanceof Blob,
+    //     constructor: figmaScreenshot?.constructor?.name,
+    //     toString: typeof figmaScreenshot?.toString,
+    //     hasPath: 'path' in (figmaScreenshot || {}),
+    //     hasRelativePath: 'relativePath' in (figmaScreenshot || {}),
+    //     actualValue: figmaScreenshot
+    //   },
+    //   developedScreenshot: {
+    //     name: developedScreenshot?.name,
+    //     type: developedScreenshot?.type,
+    //     size: developedScreenshot?.size,
+    //     isFile: developedScreenshot instanceof File,
+    //     isBlob: developedScreenshot instanceof Blob,
+    //     constructor: developedScreenshot?.constructor?.name,
+    //     toString: typeof developedScreenshot?.toString,
+    //     hasPath: 'path' in (developedScreenshot || {}),
+    //     hasRelativePath: 'relativePath' in (developedScreenshot || {}),
+    //     actualValue: developedScreenshot
+    //   }
+    // });
 
     // Only proceed if we have real File objects
     if (!(figmaScreenshot instanceof File) || !(developedScreenshot instanceof File)) {
@@ -142,12 +143,12 @@ export default function ScreenshotComparisonForm({
     formData.append('metadata', JSON.stringify(metadata));
 
     // Debug FormData contents
-    console.log('📝 FormData debug:');
+    // Removed: console.log('📝 FormData debug:');
     for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
-        console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+        // Removed: console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
       } else {
-        console.log(`  ${key}:`, value);
+        // Removed: console.log(`  ${key}:`, value);
       }
     }
 
@@ -279,12 +280,12 @@ export default function ScreenshotComparisonForm({
             <CardContent>
               <ProgressIndicator
               stages={[
-                { id: 'upload', name: 'Uploading Screenshots', status: 'in_progress' },
-                { id: 'preprocessing', name: 'Preprocessing Images', status: 'pending' },
-                { id: 'comparison', name: 'Performing Comparison', status: 'pending' },
-                { id: 'analysis', name: 'Analyzing Discrepancies', status: 'pending' },
-                { id: 'report', name: 'Generating Report', status: 'pending' }
-              ]}
+                { id: 'upload', name: 'Uploading Screenshots', status: 'processing', stage: 'upload', progress: 50 },
+                { id: 'preprocessing', name: 'Preprocessing Images', status: 'pending', stage: 'preprocessing', progress: 0 },
+                { id: 'comparison', name: 'Performing Comparison', status: 'pending', stage: 'comparison', progress: 0 },
+                { id: 'analysis', name: 'Analyzing Discrepancies', status: 'pending', stage: 'analysis', progress: 0 },
+                { id: 'report', name: 'Generating Report', status: 'pending', stage: 'report', progress: 0 }
+              ] as ProgressStage[]}
               currentStage="upload"
             />
             </CardContent>

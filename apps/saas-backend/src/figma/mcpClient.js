@@ -22,7 +22,7 @@ class FigmaMCPClient {
    */
   async connect() {
     try {
-      console.log('🔄 Connecting using working pattern...');
+      // Removed: console.log('🔄 Connecting using working pattern...');
       
       // Step 1: Initialize and get session ID
       const initResponse = await fetch(this.baseUrl, {
@@ -59,7 +59,7 @@ class FigmaMCPClient {
         throw new Error('No session ID received from server');
       }
 
-      console.log('🔑 Got session ID:', this.sessionId);
+      // Removed: console.log('🔑 Got session ID:', this.sessionId);
 
       // Consume the initialize response
       await initResponse.text();
@@ -87,7 +87,7 @@ class FigmaMCPClient {
           console.log('⚠️ Initialized notification failed, but continuing...');
         }
       } catch (notifyError) {
-        console.log('⚠️ Notification failed, but continuing...', notifyError.message);
+        // Removed: console.log('⚠️ Notification failed, but continuing...', notifyError.message);
       }
 
       this.initialized = true;
@@ -96,7 +96,7 @@ class FigmaMCPClient {
       // Step 3: List available tools
       try {
         const tools = await this.listTools();
-        console.log('📋 Available MCP tools:', tools?.tools?.map(t => t.name) || []);
+        // Removed: console.log('📋 Available MCP tools:', tools?.tools?.map(t => t.name) || []);
       } catch (toolsError) {
         console.warn('⚠️ Could not list tools:', toolsError.message);
       }
@@ -119,7 +119,7 @@ class FigmaMCPClient {
     }
 
     try {
-      console.log(`🔧 Sending request: ${request.method}`);
+      // Removed: console.log(`🔧 Sending request: ${request.method}`);
       
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -144,7 +144,7 @@ class FigmaMCPClient {
         throw new Error(`MCP Error: ${result.error.message}`);
       }
 
-      console.log(`✅ Request ${request.method} successful`);
+      // Removed: console.log(`✅ Request ${request.method} successful`);
       return result.result;
 
     } catch (error) {
@@ -158,7 +158,7 @@ class FigmaMCPClient {
    */
   async sendMCPNotification(notification) {
     try {
-      console.log(`🔔 Sending MCP notification: ${notification.method}`);
+      // Removed: console.log(`🔔 Sending MCP notification: ${notification.method}`);
       
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -230,7 +230,7 @@ class FigmaMCPClient {
     }
 
     try {
-      console.log(`🔧 Calling MCP tool: ${toolName}`, args);
+      // Removed: console.log(`🔧 Calling MCP tool: ${toolName}`, args);
       
       const result = await this.sendRequest({
         jsonrpc: "2.0",
@@ -242,7 +242,7 @@ class FigmaMCPClient {
         }
       });
       
-      console.log(`✅ Tool ${toolName} completed successfully`);
+      // Removed: console.log(`✅ Tool ${toolName} completed successfully`);
       return result;
       
     } catch (error) {
@@ -256,7 +256,7 @@ class FigmaMCPClient {
    */
   async getCode(nodeId = null) {
     try {
-      console.log('📝 Getting code from current Figma selection...');
+      // Removed: console.log('📝 Getting code from current Figma selection...');
       
       // The official server works with current selection, not specific node IDs
       const result = await this.callTool('get_code', nodeId ? { node_id: nodeId } : {});
@@ -272,7 +272,7 @@ class FigmaMCPClient {
    */
   async getMetadata(nodeId = null) {
     try {
-      console.log('📊 Getting metadata from current Figma selection...');
+      // Removed: console.log('📊 Getting metadata from current Figma selection...');
       
       const result = await this.callTool('get_metadata', nodeId ? { node_id: nodeId } : {});
       return result;
@@ -287,7 +287,7 @@ class FigmaMCPClient {
    */
   async getVariableDefs(nodeId = null) {
     try {
-      console.log('🎨 Getting variable definitions from current Figma selection...');
+      // Removed: console.log('🎨 Getting variable definitions from current Figma selection...');
       
       const result = await this.callTool('get_variable_defs', nodeId ? { node_id: nodeId } : {});
       return result;
@@ -302,7 +302,7 @@ class FigmaMCPClient {
    */
   async getCodeConnectMap(nodeId = null) {
     try {
-      console.log('🔗 Getting Code Connect map from current Figma selection...');
+      // Removed: console.log('🔗 Getting Code Connect map from current Figma selection...');
       
       const result = await this.callTool('get_code_connect_map', nodeId ? { node_id: nodeId } : {});
       return result;
@@ -317,7 +317,7 @@ class FigmaMCPClient {
    */
   async getImage(nodeId = null, options = {}) {
     try {
-      console.log('🖼️ Getting image from current Figma selection...');
+      // Removed: console.log('🖼️ Getting image from current Figma selection...');
       
       const args = nodeId ? { node_id: nodeId, ...options } : options;
       const result = await this.callTool('get_image', args);
@@ -333,7 +333,7 @@ class FigmaMCPClient {
    */
   async createDesignSystemRules(nodeId = null) {
     try {
-      console.log('📐 Creating design system rules from current Figma selection...');
+      // Removed: console.log('📐 Creating design system rules from current Figma selection...');
       
       const result = await this.callTool('create_design_system_rules', nodeId ? { node_id: nodeId } : {});
       return result;
@@ -360,8 +360,8 @@ class FigmaMCPClient {
         throw new Error('Invalid Figma URL: Could not extract file ID');
       }
 
-      console.log(`🎯 Extracting Figma data using MCP server for file: ${fileId}${nodeId ? `, node: ${nodeId}` : ''}`);
-      console.log('📋 Note: Make sure you have the target frame/component selected in Figma Desktop');
+      // Removed: console.log(`🎯 Extracting Figma data using MCP server for file: ${fileId}${nodeId ? `, node: ${nodeId}` : ''}`);
+      // Removed: console.log('📋 Note: Make sure you have the target frame/component selected in Figma Desktop');
 
       // Connect to MCP server
       if (!this.initialized) {
@@ -399,7 +399,7 @@ class FigmaMCPClient {
         variables
       };
 
-      console.log(`✅ Successfully extracted raw Figma data via MCP for processing`);
+      // Removed: console.log(`✅ Successfully extracted raw Figma data via MCP for processing`);
       return extractedData;
 
     } catch (error) {
@@ -415,14 +415,14 @@ class FigmaMCPClient {
    */
   async fallbackToFigmaAPI(figmaUrl, mcpError) {
     try {
-      console.log('🔄 MCP failed, attempting Figma API fallback...');
+      // Removed: console.log('🔄 MCP failed, attempting Figma API fallback...');
       
       const fileId = this.parseFileId(figmaUrl);
       const nodeId = this.parseNodeId(figmaUrl);
       
       // Try to use Framelink MCP if available
       if (typeof globalThis.mcp_Framelink_Figma_MCP_get_figma_data === 'function') {
-        console.log('🔄 Using Framelink MCP as fallback...');
+        // Removed: console.log('🔄 Using Framelink MCP as fallback...');
         
         const figmaData = await globalThis.mcp_Framelink_Figma_MCP_get_figma_data({
           fileKey: fileId,

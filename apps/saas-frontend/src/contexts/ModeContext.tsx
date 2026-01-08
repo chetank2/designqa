@@ -13,7 +13,9 @@ interface ModeContextType {
 const ModeContext = createContext<ModeContextType | undefined>(undefined)
 
 export function ModeProvider({ children }: { children: ReactNode }) {
-  const isElectron = typeof window !== 'undefined' && (window as any).electron
+  const isElectron =
+    typeof window !== 'undefined' &&
+    (typeof (window as any).electronAPI !== 'undefined' || typeof (window as any).electron !== 'undefined')
   const initialMode: AppMode = isElectron || import.meta.env.VITE_APP_MODE === 'desktop' ? 'desktop' : 'saas'
   const [mode, setModeState] = useState<AppMode>(initialMode)
 

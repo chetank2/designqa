@@ -67,7 +67,7 @@ export default function UnifiedComparisonForm({ onSuccess, onError }: UnifiedCom
   // Comparison mutation
   const comparisonMutation = useMutation({
     mutationFn: async (request: ComparisonRequest) => {
-      console.log('🚀 Starting comparison request:', request);
+      // Removed: console.log('🚀 Starting comparison request:', request);
       return await unifiedApiService.compareUrls(request);
     },
     onSuccess: (result) => {

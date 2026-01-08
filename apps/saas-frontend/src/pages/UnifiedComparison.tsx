@@ -20,7 +20,7 @@ export default function UnifiedComparison() {
   const [error, setError] = useState<Error | null>(null);
 
   const handleComparisonSuccess = (result: ComparisonResult) => {
-    console.log('🎉 Comparison completed successfully:', result);
+    // Removed: console.log('🎉 Comparison completed successfully:', result);
     setComparisonResult(result);
     setError(null);
     setViewState('results');

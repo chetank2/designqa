@@ -31,7 +31,7 @@ export class ScreenshotComparisonService {
     const resultDir = path.join(this.comparisonsDir, comparisonId);
     
     try {
-      console.log(`📸 Starting screenshot comparison: ${comparisonId}`);
+      // Removed: console.log(`📸 Starting screenshot comparison: ${comparisonId}`);
       
       // Create result directory
       await fsPromises.mkdir(resultDir, { recursive: true });
@@ -53,7 +53,7 @@ export class ScreenshotComparisonService {
       );
 
       // Perform pixel-level comparison
-      console.log('🔍 Performing pixel-level comparison...');
+      // Removed: console.log('🔍 Performing pixel-level comparison...');
       const pixelComparison = await this.performPixelComparison(
         processedImages.figmaProcessed,
         processedImages.developedProcessed,
@@ -62,7 +62,7 @@ export class ScreenshotComparisonService {
       );
 
       // Extract color palettes from both images
-      console.log('🎨 Extracting color palettes...');
+      // Removed: console.log('🎨 Extracting color palettes...');
       const figmaColors = await this.discrepancyAnalyzer.extractDominantColors(
         processedImages.figmaProcessed,
         'figma'
@@ -73,7 +73,7 @@ export class ScreenshotComparisonService {
       );
 
       // Analyze design discrepancies
-      console.log('🎨 Analyzing design discrepancies...');
+      // Removed: console.log('🎨 Analyzing design discrepancies...');
       const discrepancies = await this.discrepancyAnalyzer.analyzeScreenshots(
         processedImages.figmaProcessed,
         processedImages.developedProcessed,
@@ -81,7 +81,7 @@ export class ScreenshotComparisonService {
       );
 
       // Generate side-by-side comparison
-      console.log('📋 Generating side-by-side comparison...');
+      // Removed: console.log('📋 Generating side-by-side comparison...');
       const sideBySidePath = await this.generateSideBySideComparison(
         processedImages.figmaProcessed,
         processedImages.developedProcessed,
@@ -97,7 +97,7 @@ export class ScreenshotComparisonService {
       );
 
       // Perform enhanced AI analysis
-      console.log('🧠 Performing enhanced AI analysis...');
+      // Removed: console.log('🧠 Performing enhanced AI analysis...');
       const enhancedAnalysis = await this.performEnhancedAnalysis(
         pixelComparison,
         discrepancies,
@@ -106,7 +106,7 @@ export class ScreenshotComparisonService {
       );
 
       // Generate detailed report
-      console.log('📄 Generating detailed report...');
+      // Removed: console.log('📄 Generating detailed report...');
       const reportPath = await this.generateDetailedReport({
         comparisonId,
         uploadId,
@@ -153,7 +153,7 @@ export class ScreenshotComparisonService {
         JSON.stringify(result, null, 2)
       );
 
-      console.log(`✅ Screenshot comparison completed in ${processingTime}ms`);
+      // Removed: console.log(`✅ Screenshot comparison completed in ${processingTime}ms`);
       return result;
 
     } catch (error) {
@@ -210,7 +210,7 @@ export class ScreenshotComparisonService {
       const targetWidth = Math.max(figmaMetadata.width, developedMetadata.width);
       const targetHeight = Math.max(figmaMetadata.height, developedMetadata.height);
 
-      console.log(`Resizing images to ${targetWidth}x${targetHeight}`);
+      // Removed: console.log(`Resizing images to ${targetWidth}x${targetHeight}`);
 
       // Process Figma image
       const figmaProcessedPath = path.join(outputDir, 'figma-processed.png');

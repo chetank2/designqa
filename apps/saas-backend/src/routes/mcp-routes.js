@@ -26,7 +26,7 @@ router.get('/status', async (req, res) => {
       let bridgeClient = null;
       if (process.__designqa_mcp_bridge_client) {
         bridgeClient = process.__designqa_mcp_bridge_client;
-        console.log('[MCP Status] Found bridge client via process global');
+        // Removed: console.log('[MCP Status] Found bridge client via process global');
       }
       
       // If no bridge client, try to get MCP client (which will use bridge if available)

@@ -55,7 +55,7 @@ export default function SingleSourcePage() {
       
       // Remove identified keys
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log('Cleared localStorage cache keys:', keysToRemove);
+      // Removed: console.log('Cleared localStorage cache keys:', keysToRemove);
     } catch (err) {
       console.error('Error clearing localStorage:', err);
     }
@@ -68,15 +68,15 @@ export default function SingleSourcePage() {
   }, []);
   
   const handleFigmaSuccess = (data: FigmaOnlyResponse['data']) => {
-    console.log('Figma data received:', {
-      componentCount: data.components?.length || data.metadata?.totalComponents || 0,
-      colorCount: data.metadata?.colorCount || data.colors?.length || 0,
-      typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
-      actualColorsLength: data.colors?.length || 0,
-      hasColors: !!(data.colors && data.colors.length > 0),
-      hasTypography: !!(data.typography && data.typography.length > 0),
-      hasComponents: !!(data.components && data.components.length > 0)
-    });
+    // console.log('Figma data received:', {
+    //   componentCount: data.components?.length || data.metadata?.totalComponents || 0,
+    //   colorCount: data.metadata?.colorCount || data.colors?.length || 0,
+    //   typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
+    //   actualColorsLength: data.colors?.length || 0,
+    //   hasColors: !!(data.colors && data.colors.length > 0),
+    //   hasTypography: !!(data.typography && data.typography.length > 0),
+    //   hasComponents: !!(data.components && data.components.length > 0)
+    // });
     
     // Validate data before setting
     if (!data || typeof data !== 'object') {

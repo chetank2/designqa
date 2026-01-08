@@ -16,7 +16,7 @@ router.post('/test-connection', async (req, res) => {
   try {
     const { method, serverUrl, endpoint, environment } = req.body;
     
-    console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint });
+    // Removed: console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint });
     
     switch (method) {
       case 'direct_api':

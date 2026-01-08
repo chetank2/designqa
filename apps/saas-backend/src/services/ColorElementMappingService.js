@@ -357,7 +357,7 @@ export class ColorElementMappingService {
    */
   reset() {
     this.clear();
-    console.log('🔄 ColorElementMappingService reset - all data cleared (Array-based)');
+    // Removed: console.log('🔄 ColorElementMappingService reset - all data cleared (Array-based)');
   }
 
   /**

@@ -64,13 +64,13 @@ export default function OnlineStatus({ className = '', onStatusChange }: OnlineS
 export async function checkApiHealth(): Promise<boolean> {
     try {
         const apiBaseUrl = getApiBaseUrl();
-        console.log('[OnlineStatus] Checking API health at:', apiBaseUrl);
+        // Removed: console.log('[OnlineStatus] Checking API health at:', apiBaseUrl);
         const response = await fetch(`${apiBaseUrl}/api/health`, {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' },
             signal: AbortSignal.timeout(5000)
         });
-        console.log('[OnlineStatus] Health check response:', response.status);
+        // Removed: console.log('[OnlineStatus] Health check response:', response.status);
         return response.ok;
     } catch (error) {
         console.warn('[OnlineStatus] Health check failed:', error);

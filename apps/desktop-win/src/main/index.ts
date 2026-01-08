@@ -104,7 +104,6 @@ function compareVersions(a: string, b: string): number {
 async function checkForUpdates(): Promise<void> {
   const repo = getUpdateRepo();
   if (!repo) {
-    console.log('ℹ️ Update check skipped (DESIGNQA_GITHUB_REPO not set).');
     return;
   }
 
@@ -135,7 +134,6 @@ async function checkForUpdates(): Promise<void> {
 
     const latestVersion = normalizeVersion(latestTag);
     if (compareVersions(latestVersion, currentVersion) <= 0) {
-      console.log(`✅ App is up to date (v${currentVersion}).`);
       return;
     }
 
@@ -195,7 +193,6 @@ function createWindow() {
     // Fallback to cloud URL if local renderer not found
     console.warn('⚠️ Local renderer not found, falling back to cloud URL');
     const cloudUrl = getCloudAppUrl();
-    console.log('☁️ Loading from cloud:', cloudUrl);
     mainWindow.loadURL(cloudUrl);
   }
 
@@ -216,17 +213,38 @@ function setupIpcHandlers() {
         return { success: true, port: status.port, alreadyRunning: true };
       }
 
+      console.log('🚀 Starting embedded server...');
       const result = await startEmbeddedServer();
       serverPort = result.port;
       isServerRunning = true;
+      console.log(`✅ Embedded server started on port ${serverPort}`);
       
       // Initialize MCP bridge when server starts
       await initializeMCPBridge();
+      console.log('✅ MCP bridge initialized');
+      
+      // Verify server is actually listening
+      const status = getServerStatus();
+      if (!status.running) {
+        throw new Error('Server startup returned success but getServerStatus() shows not running');
+      }
       
       return { success: true, port: result.port };
     } catch (error: any) {
-      console.error('Failed to start local server:', error);
-      return { success: false, error: error.message || 'Failed to start server' };
+      console.error('═'.repeat(80));
+      console.error('❌ IPC: mode:start-local-server FAILED');
+      console.error('═'.repeat(80));
+      console.error('Error:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+      console.error('═'.repeat(80));
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : String(error),
+        details: error instanceof Error && error.stack ? error.stack : undefined
+      };
     }
   });
 
@@ -309,6 +327,24 @@ function setupIpcHandlers() {
       return { success: false, error: error.message || 'Failed to check API key' };
     }
   });
+
+  // App version handler
+  ipcMain.handle('app:version', async () => {
+    try {
+      return {
+        success: true,
+        version: app.getVersion(),
+        name: app.getName(),
+        isDevMode: process.env.NODE_ENV === 'development'
+      };
+    } catch (error: any) {
+      console.error('Failed to get app version:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get app version'
+      };
+    }
+  });
 }
 
 /**
@@ -316,7 +352,6 @@ function setupIpcHandlers() {
  */
 async function initialize() {
   try {
-    console.log('🚀 Starting DesignQA Desktop App (Windows)...');
 
     // Setup IPC handlers first
     setupIpcHandlers();
@@ -328,37 +363,42 @@ async function initialize() {
       const savedApiKey = getFigmaApiKey();
       if (savedApiKey) {
         process.env.FIGMA_API_KEY = savedApiKey;
-        console.log('🔑 Loaded Figma API key from storage');
       }
 
-      // Auto-detect cloud backend availability
-      console.log('🔍 Checking cloud backend availability...');
-      // Increased timeout to 8s to handle Render.com cold starts
-      const cloudAvailable = await checkCloudBackend('https://designqa.onrender.com/api/health', 8000);
-      
-      if (cloudAvailable) {
-        console.log('☁️ Cloud backend is available - starting in Cloud Mode');
-        saveMode('cloud');
-        isServerRunning = false;
-      } else {
-        console.log('⚠️ Cloud backend not reachable - starting in Local Mode');
-        try {
-          const result = await startEmbeddedServer();
-          serverPort = result.port;
-          isServerRunning = true;
-          console.log(`✅ Embedded server started on port ${serverPort}`);
+      // Always start embedded server (required for desktop app to function)
+      // Cloud check only determines data storage preference, not server startup
+      console.log('🚀 Starting embedded server...');
+      try {
+        const result = await startEmbeddedServer();
+        serverPort = result.port;
+        isServerRunning = true;
 
-          // Initialize MCP bridge for Desktop Figma MCP
-          await initializeMCPBridge();
-          console.log('✅ MCP bridge initialized');
-          
+        // Initialize MCP bridge for Desktop Figma MCP
+        await initializeMCPBridge();
+        console.log('✅ MCP bridge initialized');
+
+        // Check cloud availability for mode preference (non-blocking)
+        checkCloudBackend('https://designqa.onrender.com/api/health', 5000).then((cloudAvailable) => {
+          if (cloudAvailable) {
+            saveMode('cloud');
+          } else {
+            saveMode('local');
+          }
+        }).catch(() => {
           saveMode('local');
-        } catch (error) {
-          console.error('❌ Failed to start embedded server:', error);
-          console.log('⚠️ Falling back to Cloud Mode without server');
-          saveMode('cloud');
-          // Don't quit - let user try cloud mode
+        });
+      } catch (error) {
+        console.error('═'.repeat(80));
+        console.error('❌ FATAL: Failed to start embedded server');
+        console.error('═'.repeat(80));
+        console.error('Error:', error);
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
         }
+        console.error('═'.repeat(80));
+        // Server is required - show error and quit
+        app.quit();
       }
 
       createWindow();
@@ -377,7 +417,6 @@ async function initialize() {
     });
 
     app.on('before-quit', async () => {
-      console.log('🛑 Shutting down...');
       if (isServerRunning) {
         try {
           await stopEmbeddedServer();

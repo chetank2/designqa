@@ -58,7 +58,7 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="min-w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden p-0 bg-transparent shadow-none">
             <img
-              src="/logo.svg"
+              src="./logo.svg"
               alt="Design QA"
               className="w-full h-full object-contain"
             />
@@ -103,12 +103,6 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
               key={item.name} 
               to={item.href}
               onClick={(e) => {
-                // #region agent log
-                const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
-                const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
-                const targetHref = item.href;
-                fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.tsx:102', message: 'Link click', data: { origin, currentHref: href, targetHref, linkText: item.name }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-                // #endregion
               }}
             >
               <div className={cn(

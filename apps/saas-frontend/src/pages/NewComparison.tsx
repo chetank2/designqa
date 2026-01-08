@@ -26,7 +26,7 @@ export default function NewComparison() {
   }
 
   const handleComparisonComplete = (result: any) => {
-    console.log('Extraction completed:', result)
+    // console.log('Extraction completed:', result)
     setResult(result)
     setShowProgress(false)
     setActiveComparison(null)

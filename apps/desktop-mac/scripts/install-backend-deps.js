@@ -29,8 +29,10 @@ async function installBackendDeps() {
     throw new Error(`Backend directory not found: ${targetBackendDir}`);
   }
 
-  console.log('📦 Installing backend dependencies...');
-  await run('pnpm', ['install', '--prod', '--no-frozen-lockfile'], targetBackendDir);
+  console.log('📦 Installing backend dependencies (using npm for production bundling)...');
+  // Use npm instead of pnpm to avoid workspace hoisting/symlink issues in the Electron package.
+  // This ensures a clean, physical node_modules directory is created within the backend folder.
+  await run('npm', ['install', '--omit=dev', '--ignore-scripts'], targetBackendDir);
   console.log('✅ Backend dependencies installed');
 }
 

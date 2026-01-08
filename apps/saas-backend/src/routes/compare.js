@@ -14,7 +14,7 @@ export class CompareAPI {
 
   async handleCompareRequest(req, res) {
     const startTime = Date.now();
-    console.log('🚀 Compare API: Request received');
+    // Removed: console.log('🚀 Compare API: Request received');
 
     try {
       // Step 1: Validate request
@@ -32,7 +32,7 @@ export class CompareAPI {
 
 
       // Step 2: Extract Figma Data
-      console.log('🎨 Starting Figma extraction...');
+      // Removed: console.log('🎨 Starting Figma extraction...');
       let figmaData;
       try {
         figmaData = await this.extractFigmaData(figmaUrl, nodeId);
@@ -44,11 +44,11 @@ export class CompareAPI {
         console.log('❌ Figma extraction failed:', error.message);
         // Use mock data for testing
         figmaData = this.createMockFigmaData(figmaUrl);
-        console.log('🧪 Using mock Figma data for testing');
+        // Removed: console.log('🧪 Using mock Figma data for testing');
       }
 
       // Step 3: Extract Web Data
-      console.log('🌐 Starting web extraction...');
+      // Removed: console.log('🌐 Starting web extraction...');
       let webData;
       try {
         webData = await this.extractWebData(webUrl, authentication);
@@ -60,11 +60,11 @@ export class CompareAPI {
         console.log('❌ Web extraction failed:', error.message);
         // Use mock data for testing
         webData = this.createMockWebData(webUrl);
-        console.log('🧪 Using mock web data for testing');
+        // Removed: console.log('🧪 Using mock web data for testing');
       }
 
       // Step 4: Perform Comparison
-      console.log('⚖️ Starting comparison analysis...');
+      // Removed: console.log('⚖️ Starting comparison analysis...');
       const comparisonResult = await this.performComparison(figmaData, webData, req.body);
       console.log('✅ Comparison completed:', {
         similarity: comparisonResult.summary?.overallSimilarity,
@@ -75,11 +75,11 @@ export class CompareAPI {
       const processingTime = ((Date.now() - startTime) / 1000).toFixed(2);
       const response = createComparisonResponse(comparisonResult, processingTime);
 
-      console.log('📤 Sending response:', {
-        success: response.success,
-        similarity: response.data.comparison.overallSimilarity,
-        processingTime: response.processingTime
-      });
+      // console.log('📤 Sending response:', {
+      //   success: response.success,
+      //   similarity: response.data.comparison.overallSimilarity,
+      //   processingTime: response.processingTime
+      // });
 
       return this.sendResponse(res, 200, response);
 

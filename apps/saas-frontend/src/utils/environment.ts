@@ -62,14 +62,14 @@ export const FEATURES = {
 export function logEnvironmentInfo() {
   if (isDevelopment || (typeof window !== 'undefined' && window.location.search.includes('debug'))) {
     console.group('🔧 Environment Configuration')
-    console.log('NODE_ENV:', ENV.NODE_ENV)
-    console.log('Is Production:', isProduction)
-    console.log('API Base URL:', getApiBaseUrl())
-    console.log('WebSocket URL:', getWebSocketUrl())
-    console.log('Server Port:', getServerPort())
-    console.log('Current Origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A')
-    console.log('Current Port:', typeof window !== 'undefined' ? window.location.port : 'N/A')
-    console.log('Features:', FEATURES)
+    // console.log('NODE_ENV:', ENV.NODE_ENV)
+    // console.log('Is Production:', isProduction)
+    // console.log('API Base URL:', getApiBaseUrl())
+    // console.log('WebSocket URL:', getWebSocketUrl())
+    // console.log('Server Port:', getServerPort())
+    // console.log('Current Origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A')
+    // console.log('Current Port:', typeof window !== 'undefined' ? window.location.port : 'N/A')
+    // console.log('Features:', FEATURES)
     console.groupEnd()
   }
 }

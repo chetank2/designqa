@@ -125,11 +125,11 @@ router.get('/figma/status', async (req, res) => {
     try {
         const userId = req.user?.id;
         if (!userId) {
-            console.log('Figma status: No user ID in request');
+            // Removed: console.log('Figma status: No user ID in request');
             return res.json({ success: false, connected: false, hasCredentials: false });
         }
 
-        console.log(`Figma status: Checking credentials for user ${userId}`);
+        // Removed: console.log(`Figma status: Checking credentials for user ${userId}`);
         
         const authService = getAuthService();
         
@@ -161,7 +161,7 @@ router.get('/figma/status', async (req, res) => {
         const hasCredentials = creds !== null && creds !== undefined && !!creds.clientId;
         const connected = hasCredentials && creds.hasTokens === true;
 
-        console.log(`Figma status result: hasCredentials=${hasCredentials}, connected=${connected}`);
+        // Removed: console.log(`Figma status result: hasCredentials=${hasCredentials}, connected=${connected}`);
 
         res.json({
             success: true,

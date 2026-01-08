@@ -25,14 +25,14 @@ export class LLMIntegrator {
       const llmConfig = config.nextVersion?.llm;
       
       if (!llmConfig?.enabled || !llmConfig?.apiKey) {
-        console.log('ℹ️ LLM integration disabled or no API key provided, using fallback');
+        // Removed: console.log('ℹ️ LLM integration disabled or no API key provided, using fallback');
         return this.generateFallbackSummary(comparisonData);
       }
 
       // Create cache key for deduplication
       const cacheKey = this.createCacheKey(comparisonData);
       if (this.cache.has(cacheKey)) {
-        console.log('📋 Using cached LLM analysis');
+        // Removed: console.log('📋 Using cached LLM analysis');
         return this.cache.get(cacheKey);
       }
 
@@ -62,7 +62,7 @@ export class LLMIntegrator {
   async callLLMAPI(prompt, llmConfig, maxRetries = 3) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🤖 Calling ${llmConfig.provider} API (attempt ${attempt}/${maxRetries})...`);
+        // Removed: console.log(`🤖 Calling ${llmConfig.provider} API (attempt ${attempt}/${maxRetries})...`);
         
         const response = await axios.post(llmConfig.apiUrl, {
           model: llmConfig.model,
@@ -96,7 +96,7 @@ export class LLMIntegrator {
         return summary.trim();
         
       } catch (error) {
-        console.log(`⚠️ LLM API attempt ${attempt} failed:`, error.message);
+        // Removed: console.log(`⚠️ LLM API attempt ${attempt} failed:`, error.message);
         
         if (attempt === maxRetries) {
           throw error;

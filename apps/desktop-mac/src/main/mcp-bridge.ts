@@ -47,11 +47,11 @@ export async function initializeMCPBridge(): Promise<void> {
     mcpPort = Number.isFinite(port) ? port : 3845;
 
     // Verify MCP server is reachable
-    console.log(`🔍 Verifying Desktop MCP server at http://127.0.0.1:${mcpPort}/mcp...`);
+    // Removed: console.log(`🔍 Verifying Desktop MCP server at http://127.0.0.1:${mcpPort}/mcp...`);
     mcpServerReachable = await verifyMCPServer(mcpPort);
 
     if (mcpServerReachable) {
-      console.log(`✅ Desktop MCP server verified at port ${mcpPort}`);
+      // Removed: console.log(`✅ Desktop MCP server verified at port ${mcpPort}`);
     } else {
       console.warn(`⚠️ Desktop MCP server not reachable at port ${mcpPort} - ensure Figma Desktop is running with MCP enabled`);
     }
@@ -69,7 +69,7 @@ export async function initializeMCPBridge(): Promise<void> {
       (process as any).__designqa_mcp_bridge_client = bridgeStatus;
     }
 
-    console.log(`🔌 Desktop MCP bridge ready (backend will connect) at ${bridgeStatus.url}`);
+    // Removed: console.log(`🔌 Desktop MCP bridge ready (backend will connect) at ${bridgeStatus.url}`);
   } catch (error) {
     console.error('❌ Failed to initialize MCP bridge:', error);
     mcpServerReachable = false;

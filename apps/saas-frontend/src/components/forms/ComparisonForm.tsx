@@ -65,7 +65,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null)
   const [savedCredentials, setSavedCredentials] = useState<Array<{ id: string; name: string; url: string }>>([])
-  const [selectedCredentialId, setSelectedCredentialId] = useState<string>('')
+  const [selectedCredentialId, setSelectedCredentialId] = useState<string>('__none__')
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -95,46 +95,28 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
 
   // Also reload credentials when auth type changes to credentials
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:95', message: 'authType useEffect triggered', data: { authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'C' }) }).catch(() => { });
-    // #endregion
     if (authType === 'credentials') {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:97', message: 'Reloading credentials due to authType change', data: { authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'C' }) }).catch(() => { });
-      // #endregion
       loadCredentials()
     }
   }, [authType])
 
   // Track savedCredentials and authType changes
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:106', message: 'State update', data: { savedCredentialsCount: savedCredentials.length, selectedCredentialId, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'F' }) }).catch(() => { });
-    console.log('[DEBUG] State update - credentials:', savedCredentials.length, 'selected:', selectedCredentialId, 'authType:', authType)
-    // #endregion
   }, [savedCredentials, selectedCredentialId, authType])
 
   const loadCredentials = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:107', message: 'loadCredentials called', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'F' }) }).catch(() => { });
-    console.log('[DEBUG] loadCredentials called')
-    // #endregion
     try {
       const apiBaseUrl = getApiBaseUrl()
       const response = await fetch(`${apiBaseUrl}/api/credentials`)
 
       if (response.ok) {
         const result = await response.json()
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:114', message: 'Credentials loaded from API', data: { credentialsCount: result.data?.length || 0, credentials: result.data?.map((c: any) => ({ id: c.id, name: c.name, url: c.url })) || [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'F' }) }).catch(() => { });
-        console.log('[DEBUG] Credentials loaded:', result.data?.length || 0, 'credentials', 'response:', result)
-        // #endregion
         const credentials = result.data || result.credentials || []
-        console.log('[DEBUG] Setting savedCredentials to:', credentials.length, 'items')
+        // console.log('[DEBUG] Setting savedCredentials to:', credentials.length, 'items')
         setSavedCredentials(credentials)
       } else {
         const errorText = await response.text().catch(() => 'Unknown error')
-        console.log('[DEBUG] Failed to load credentials - response not ok:', response.status, errorText)
+        // console.log('[DEBUG] Failed to load credentials - response not ok:', response.status, errorText)
         setSavedCredentials([])
       }
     } catch (error) {
@@ -144,17 +126,10 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   }
 
   const handleCredentialSelect = async (credentialId: string) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:116', message: 'handleCredentialSelect entry', data: { credentialId, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'A' }) }).catch(() => { });
-    console.log('[DEBUG] handleCredentialSelect:', credentialId, 'current authType:', authType)
-    // #endregion
     const resolvedCredentialId = credentialId === emptyCredentialValue ? '' : credentialId
     setSelectedCredentialId(resolvedCredentialId)
 
     if (!resolvedCredentialId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:121', message: 'None selected - clearing auth fields', data: { authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       // Clear form if "None" selected
       if (authType === 'credentials') {
         setAuthType('none')
@@ -167,38 +142,23 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
 
     try {
       const apiBaseUrl = getApiBaseUrl()
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:130', message: 'Fetching credential decrypt', data: { resolvedCredentialId, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-      // #endregion
       const response = await fetch(`${apiBaseUrl}/api/credentials/${resolvedCredentialId}/decrypt`)
 
       if (response.ok) {
         const result = await response.json()
         const credential = result.data
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:137', message: 'Credential loaded from API', data: { credentialUrl: credential.url, hasUsername: !!credential.username, hasPassword: !!credential.password, hasLoginUrl: !!credential.loginUrl, authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'D' }) }).catch(() => { });
-        console.log('[DEBUG] Credential loaded:', { url: credential.url, username: credential.username, password: credential.password ? '***' : '', authType })
-        // #endregion
-
         // Auto-fill Web URL
         if (credential.url) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:139', message: 'Setting webUrl', data: { url: credential.url }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'D' }) }).catch(() => { });
-          console.log('[DEBUG] Setting webUrl to:', credential.url)
-          // #endregion
           setValue('webUrl', credential.url)
         } else {
-          console.log('[DEBUG] Credential has no URL!')
+          // console.log('[DEBUG] Credential has no URL!')
         }
 
         // Only set authType to credentials if username/password exist (not empty strings)
         const hasAuth = (credential.username && credential.username.trim()) || (credential.password && credential.password.trim())
-        console.log('[DEBUG] hasAuth check:', hasAuth, 'username:', credential.username, 'password:', credential.password ? 'exists' : 'empty')
+        // console.log('[DEBUG] hasAuth check:', hasAuth, 'username:', credential.username, 'password:', credential.password ? 'exists' : 'empty')
         if (hasAuth) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:145', message: 'Credential has auth - setting authType', data: { currentAuthType: authType, willSetToCredentials: authType !== 'credentials' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-          // #endregion
           if (authType !== 'credentials') {
             setAuthType('credentials')
           }
@@ -214,19 +174,11 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             description: `Loaded credentials for ${credential.name || credential.id || 'selected credential'}. URL and authentication fields filled.`
           })
         } else {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:159', message: 'Credential has no auth - clearing fields', data: { currentAuthType: authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'A' }) }).catch(() => { });
-          console.log('[DEBUG] Credential has no auth, current authType:', authType)
-          // #endregion
           // No auth needed, reset authType to 'none' if it was 'credentials'
           if (authType === 'credentials') {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:186', message: 'Resetting authType from credentials to none', data: { previousAuthType: authType }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'A' }) }).catch(() => { });
-            console.log('[DEBUG] Resetting authType from credentials to none')
-            // #endregion
             setAuthType('none')
           } else {
-            console.log('[DEBUG] authType is already:', authType, '- no reset needed')
+            // console.log('[DEBUG] authType is already:', authType, '- no reset needed')
           }
           setValue('authentication.username', '')
           setValue('authentication.password', '')
@@ -242,9 +194,6 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         throw new Error(errorData.error || 'Failed to load credential')
       }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ComparisonForm.tsx:172', message: 'Error loading credential', data: { error: error instanceof Error ? error.message : 'Unknown' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-      // #endregion
       toast({
         title: 'Failed to load credential',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -354,7 +303,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           includeVisual: data.includeVisual,
           nodeId: nodeId, // Use extracted nodeId
           extractionMode: data.extractionMode, // Add extraction mode
-          authentication: authType === 'none' ? null : {
+          authentication: authType === 'none' ? undefined : {
             type: authType,
             loginUrl: data.authentication?.loginUrl,
             username: data.authentication?.username,
@@ -369,7 +318,6 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           }
         };
 
-        console.log('🚀 Sending comparison request:', payload);
 
         // Update progress: validation complete
         setProgressStages(prev => prev.map(stage =>
@@ -404,7 +352,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       }
     },
     onSuccess: (result) => {
-      console.log('🔥 COMPARISON FORM onSuccess CALLED!');
+      // Removed: console.log('🔥 COMPARISON FORM onSuccess CALLED!');
       console.log('✅ Comparison mutation successful:', result);
       queryClient.invalidateQueries({ queryKey: ['reports'] });
 
@@ -445,10 +393,10 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       }
 
       // Debug the result structure before passing to parent
-      console.log('🔍 ComparisonForm: Raw result structure:', JSON.stringify(result, null, 2));
-      console.log('🔍 ComparisonForm: result.data exists?', !!result.data);
-      console.log('🔍 ComparisonForm: result.extractionDetails exists?', !!result.extractionDetails);
-      console.log('🔍 ComparisonForm: result.data?.extractionDetails exists?', !!result.data?.extractionDetails);
+      // Removed: console.log('🔍 ComparisonForm: Raw result structure:', JSON.stringify(result, null, 2));
+      // Removed: console.log('🔍 ComparisonForm: result.data exists?', !!result.data);
+      // Removed: console.log('🔍 ComparisonForm: result.extractionDetails exists?', !!result.extractionDetails);
+      // Removed: console.log('🔍 ComparisonForm: result.data?.extractionDetails exists?', !!result.data?.extractionDetails);
 
       onSuccess?.(result);
       setLastErrorMessage(null)
@@ -488,8 +436,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
 
       if (window.Notification && Notification.permission === 'granted') {
         new Notification('Comparison Failed', {
-          body: errorMessage,
-          icon: '/error-icon.png'
+          body: errorMessage
         });
       }
     },
@@ -614,7 +561,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                 control={control}
                 render={({ field }) => (
                   <DesignSystemSelect
-                    value={field.value || ''}
+                    value={field.value}
                     onChange={field.onChange}
                     disabled={comparisonMutation.isPending}
                   />
@@ -759,7 +706,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                 <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
                   <Label>Use Saved Credential</Label>
                   <Select
-                    value={selectedCredentialId || undefined}
+                    value={selectedCredentialId}
                     onValueChange={handleCredentialSelect}
                     disabled={false}
                   >

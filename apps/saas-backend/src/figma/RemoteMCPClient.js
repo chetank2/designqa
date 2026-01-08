@@ -34,7 +34,7 @@ export class RemoteMCPClient {
    */
   async connect() {
     try {
-      console.log('🔄 Connecting to remote Figma MCP...');
+      // Removed: console.log('🔄 Connecting to remote Figma MCP...');
 
       const token = await this.getToken();
 
@@ -84,7 +84,7 @@ export class RemoteMCPClient {
         this.sessionId = `remote_${Date.now()}`;
       }
 
-      console.log('🔑 Remote MCP session established');
+      // Removed: console.log('🔑 Remote MCP session established');
 
       // Consume the initialize response
       await initResponse.text();
@@ -119,12 +119,12 @@ export class RemoteMCPClient {
       }
 
       this.initialized = true;
-      console.log('✅ Remote MCP client connected successfully');
+      // Removed: console.log('✅ Remote MCP client connected successfully');
 
       // Step 3: List available tools
       try {
         const tools = await this.listTools();
-        console.log('📋 Available remote MCP tools:', tools?.tools?.map(t => t.name) || []);
+        // Removed: console.log('📋 Available remote MCP tools:', tools?.tools?.map(t => t.name) || []);
       } catch (toolsError) {
         console.warn('⚠️ Could not list tools:', toolsError.message);
       }
@@ -151,7 +151,7 @@ export class RemoteMCPClient {
     }
 
     try {
-      console.log(`🔧 Sending remote request: ${request.method}`);
+      // Removed: console.log(`🔧 Sending remote request: ${request.method}`);
 
       const token = await this.getToken();
 
@@ -183,7 +183,7 @@ export class RemoteMCPClient {
         
         // Handle 401 Unauthorized - try token refresh if provider available
         if (response.status === 401 && this.tokenProvider && retryCount === 0) {
-          console.log('🔄 Received 401, attempting token refresh...');
+          // Removed: console.log('🔄 Received 401, attempting token refresh...');
           
           try {
             // Get fresh token from provider (will trigger refresh if needed)
@@ -214,7 +214,7 @@ export class RemoteMCPClient {
         throw new Error(`MCP Error: ${result.error.message}`);
       }
 
-      console.log(`✅ Remote request ${request.method} successful`);
+      // Removed: console.log(`✅ Remote request ${request.method} successful`);
       return result.result;
 
     } catch (error) {
@@ -330,6 +330,6 @@ export class RemoteMCPClient {
   async disconnect() {
     this.initialized = false;
     this.sessionId = null;
-    console.log('🔌 Remote MCP client disconnected');
+    // Removed: console.log('🔌 Remote MCP client disconnected');
   }
 }

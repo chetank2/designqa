@@ -77,9 +77,9 @@ function getBackendServerPath(): { path: string; isAbsolute: boolean; packageJso
     const { serverPath, packageJson, nodeModules } = resolveCandidate(candidate.root);
     if (!existsSync(serverPath)) continue;
     if (existsSync(nodeModules) && existsSync(packageJson)) {
-      console.log(`✅ Found backend at (${candidate.label}):`, serverPath);
-      console.log(`✅ Found backend package.json at (${candidate.label}):`, packageJson);
-      console.log(`✅ Found backend node_modules at (${candidate.label}):`, nodeModules);
+      // Removed: console.log(`✅ Found backend at (${candidate.label}):`, serverPath);
+      // Removed: console.log(`✅ Found backend package.json at (${candidate.label}):`, packageJson);
+      // Removed: console.log(`✅ Found backend node_modules at (${candidate.label}):`, nodeModules);
       return { path: serverPath, isAbsolute: true, packageJsonPath: packageJson };
     }
   }
@@ -89,8 +89,8 @@ function getBackendServerPath(): { path: string; isAbsolute: boolean; packageJso
     const { serverPath, packageJson } = resolveCandidate(candidate.root);
     if (!existsSync(serverPath)) continue;
     if (existsSync(packageJson)) {
-      console.log(`✅ Found backend at (${candidate.label}):`, serverPath);
-      console.log(`✅ Found backend package.json at (${candidate.label}):`, packageJson);
+      // Removed: console.log(`✅ Found backend at (${candidate.label}):`, serverPath);
+      // Removed: console.log(`✅ Found backend package.json at (${candidate.label}):`, packageJson);
       return { path: serverPath, isAbsolute: true, packageJsonPath: packageJson };
     }
   }
@@ -148,15 +148,15 @@ async function loadDesktopEnv() {
     for (const envPath of envPaths) {
       if (existsSync(envPath)) {
         dotenvModule.config({ path: envPath });
-        console.log(`📄 Loaded environment from: ${envPath}`);
+        // Removed: console.log(`📄 Loaded environment from: ${envPath}`);
         loaded = true;
         break;
       }
     }
     
     if (!loaded) {
-      console.log('ℹ️ No .env file found. Using system environment variables or defaults.');
-      console.log(`💡 To set custom env vars, create: ${join(homePath, '.designqa.env')}`);
+      // Removed: console.log('ℹ️ No .env file found. Using system environment variables or defaults.');
+      // Removed: console.log(`💡 To set custom env vars, create: ${join(homePath, '.designqa.env')}`);
     }
   } catch (error) {
     console.warn('⚠️ Could not load dotenv:', error);
@@ -164,18 +164,18 @@ async function loadDesktopEnv() {
   }
 
   // Set desktop-specific defaults
-  console.log('🖥️ Setting DEPLOYMENT_MODE=desktop');
+  // Removed: console.log('🖥️ Setting DEPLOYMENT_MODE=desktop');
   process.env.DEPLOYMENT_MODE = 'desktop';
 
   // Mark that we are running inside Electron so backend enables desktop-specific code paths
-  console.log('🖥️ Setting RUNNING_IN_ELECTRON=true');
+  // Removed: console.log('🖥️ Setting RUNNING_IN_ELECTRON=true');
   process.env.RUNNING_IN_ELECTRON = 'true';
 
   // Force the embedded backend to always bind to the desktop port.
   process.env.PORT = '3847';
   
   // Also set FIGMA_CONNECTION_MODE to desktop to ensure MCP config uses desktop path
-  console.log('🖥️ Setting FIGMA_CONNECTION_MODE=desktop');
+  // Removed: console.log('🖥️ Setting FIGMA_CONNECTION_MODE=desktop');
   process.env.FIGMA_CONNECTION_MODE = 'desktop';
 
   // Desktop MCP defaults (Figma Desktop uses 3845)
@@ -195,16 +195,16 @@ async function loadDesktopEnv() {
   }
   
   process.env.DATABASE_URL = process.env.DATABASE_URL || join(__dirname, '../../../data/app.db');
-  console.log('💾 Database path:', process.env.DATABASE_URL);
+  // Removed: console.log('💾 Database path:', process.env.DATABASE_URL);
   
   // Disable Supabase for desktop mode unless explicitly configured
   if (!process.env.SUPABASE_URL) {
-    console.log('☁️ Supabase disabled for desktop mode');
+    // Removed: console.log('☁️ Supabase disabled for desktop mode');
     delete process.env.SUPABASE_URL;
     delete process.env.SUPABASE_ANON_KEY;
     delete process.env.SUPABASE_SERVICE_KEY;
   } else {
-    console.log('☁️ Supabase explicitly configured, keeping enabled');
+    // Removed: console.log('☁️ Supabase explicitly configured, keeping enabled');
   }
 }
 
@@ -235,21 +235,21 @@ export async function startEmbeddedServer(): Promise<{ port: number; server: Ser
   const originalCwd = process.cwd();
   if (existsSync(backendBasePath)) {
     process.chdir(backendBasePath);
-    console.log(`📁 Changed working directory to backend: ${backendBasePath}`);
-    console.log(`📁 process.cwd() is now: ${process.cwd()}`);
+    // Removed: console.log(`📁 Changed working directory to backend: ${backendBasePath}`);
+    // Removed: console.log(`📁 process.cwd() is now: ${process.cwd()}`);
   } else {
     console.warn(`⚠️ Backend base path not found: ${backendBasePath}`);
   }
   
   console.log('📦 Checking backend dependencies...');
-  console.log('📦 Backend node_modules path:', backendNodeModules);
+  // Removed: console.log('📦 Backend node_modules path:', backendNodeModules);
   console.log('📦 Backend node_modules exists:', existsSync(backendNodeModules));
   
   if (existsSync(backendPackageJson)) {
     try {
       const pkg = JSON.parse(readFileSync(backendPackageJson, 'utf-8'));
       const deps = Object.keys(pkg.dependencies || {}).slice(0, 5);
-      console.log('📦 Backend dependencies (sample):', deps.join(', '));
+      // Removed: console.log('📦 Backend dependencies (sample):', deps.join(', '));
       if (pkg.type !== 'module') {
         throw new Error(
           `Backend package.json at ${backendPackageJson} must include "type": "module" for ES module imports.`
@@ -295,8 +295,8 @@ export async function startEmbeddedServer(): Promise<{ port: number; server: Ser
   try {
     // Dynamically import backend server
     const backendInfo = getBackendServerPath();
-    console.log(`📦 Loading backend server from: ${backendInfo.path}`);
-    console.log(`📦 Path type: ${backendInfo.isAbsolute ? 'absolute' : 'relative'}`);
+    // Removed: console.log(`📦 Loading backend server from: ${backendInfo.path}`);
+    // Removed: console.log(`📦 Path type: ${backendInfo.isAbsolute ? 'absolute' : 'relative'}`);
     
     // Verify package.json exists for ES module support
     if (backendInfo.packageJsonPath) {
@@ -338,7 +338,7 @@ export async function startEmbeddedServer(): Promise<{ port: number; server: Ser
       importPath = backendInfo.path;
     }
     
-    console.log(`📦 Import URL: ${importPath}`);
+    // Removed: console.log(`📦 Import URL: ${importPath}`);
     
     let backendModule;
     try {
@@ -409,7 +409,7 @@ export async function startEmbeddedServer(): Promise<{ port: number; server: Ser
       throw new Error(`startServer function not found. Available exports: ${availableExports}`);
     }
     
-    console.log('🚀 Calling startServer function...');
+    // Removed: console.log('🚀 Calling startServer function...');
     const server = await startServerFn(port);
     
     if (!server) {
@@ -417,7 +417,7 @@ export async function startEmbeddedServer(): Promise<{ port: number; server: Ser
       throw new Error('startServer function did not return a server instance');
     }
     
-    console.log('🔍 Checking if server is listening...');
+    // Removed: console.log('🔍 Checking if server is listening...');
     const address = server.address();
     if (!address) {
       console.error('❌ Server instance created but not listening');
@@ -425,14 +425,14 @@ export async function startEmbeddedServer(): Promise<{ port: number; server: Ser
     }
     
     const actualPort = typeof address === 'object' ? address.port : port;
-    console.log(`✅ Server is listening on port ${actualPort}`);
-    console.log(`✅ Server address:`, address);
+    // Removed: console.log(`✅ Server is listening on port ${actualPort}`);
+    // Removed: console.log(`✅ Server address:`, address);
     
     serverInstance = server;
-    console.log(`✅ Embedded server running on http://localhost:${actualPort}`);
+    // Removed: console.log(`✅ Embedded server running on http://localhost:${actualPort}`);
     
     // Verify server responds to health check
-    console.log('🏥 Verifying health endpoint...');
+    // Removed: console.log('🏥 Verifying health endpoint...');
     try {
       const healthResponse = await fetch(`http://localhost:${actualPort}/api/health`, {
         signal: AbortSignal.timeout(5000)
@@ -500,13 +500,13 @@ export async function stopEmbeddedServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
       if (!server.listening) {
-        console.log('⚠️ Server is not listening');
+        // Removed: console.log('⚠️ Server is not listening');
         serverInstance = null;
         resolve();
         return;
       }
 
-      console.log('🛑 Stopping embedded server...');
+      // Removed: console.log('🛑 Stopping embedded server...');
       server.close((err) => {
         if (err) {
           console.error('❌ Error stopping server:', err);

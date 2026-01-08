@@ -123,7 +123,11 @@ const DEFAULT_CLOUD_API_URL = 'https://designqa.onrender.com';
 // Get the API base URL with the correct port
 export function getApiBaseUrl(): string {
   const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl && shouldUseConfiguredUrl(envApiUrl)) {
+  const isElectron =
+    typeof window !== 'undefined' &&
+    typeof (window as any).electronAPI !== 'undefined';
+
+  if (!isElectron && envApiUrl && shouldUseConfiguredUrl(envApiUrl)) {
     return envApiUrl;
   }
 

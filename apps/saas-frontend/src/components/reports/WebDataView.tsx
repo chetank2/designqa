@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WebData } from '../../../../src/types/extractor';
+import { WebData } from '@designqa/shared-types';
 import {
   SwatchIcon,
   DocumentTextIcon,

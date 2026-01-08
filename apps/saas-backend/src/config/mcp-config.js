@@ -8,6 +8,8 @@ import FigmaMCPClient from '../figma/mcpClient.js';
 import { RemoteMCPClient } from '../figma/RemoteMCPClient.js';
 import { getSupabaseClient } from './supabase.js';
 import { getServices } from '../database/init.js';
+import { circuitBreakerRegistry } from '../core/resilience/CircuitBreaker.js';
+import { logger } from '../utils/logger.js';
 
 const PROVIDERS = {
   API: 'api',
@@ -42,12 +44,24 @@ function normalizeProvider(value) {
 }
 
 /**
- * Verify MCP server is reachable at the given port
+ * Verify MCP server is reachable at the given port with circuit breaker
  * @param {number} port - Port to check
  * @returns {Promise<boolean>} True if server is reachable
  */
 async function verifyMCPServerReachable(port) {
-  try {
+  const circuitBreaker = circuitBreakerRegistry.getOrCreate(`mcp-verify-${port}`, {
+    failureThreshold: 3,
+    successThreshold: 2,
+    timeout: 3000,
+    resetTimeout: 10000
+  });
+
+  const fallback = () => {
+    logger.warn(`MCP server verification failed for port ${port}, using fallback`);
+    return false;
+  };
+
+  return circuitBreaker.execute(async () => {
     const url = `http://127.0.0.1:${port}/mcp`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -59,10 +73,13 @@ async function verifyMCPServerReachable(port) {
     });
 
     clearTimeout(timeoutId);
-    return response.status >= 200 && response.status < 500;
-  } catch (error) {
-    return false;
-  }
+
+    if (response.status >= 200 && response.status < 500) {
+      return true;
+    } else {
+      throw new Error(`MCP server returned status ${response.status}`);
+    }
+  }, fallback);
 }
 
 /**
@@ -82,13 +99,13 @@ async function checkDesktopMCPAvailability() {
     const configuredPort = parseInt(configuredPortRaw, 10);
     if (Number.isFinite(configuredPort) && configuredPort > 0) {
       // Verify the port is actually reachable before marking as available
-      console.log(`[MCP] Verifying Desktop MCP at port ${configuredPort}...`);
+      // Removed: console.log(`[MCP] Verifying Desktop MCP at port ${configuredPort}...`);
       const isReachable = await verifyMCPServerReachable(configuredPort);
       
       if (isReachable) {
         desktopMCPAvailable = true;
         desktopMCPPort = configuredPort;
-        console.log(`[MCP] Desktop MCP verified at port ${configuredPort}`);
+        // Removed: console.log(`[MCP] Desktop MCP verified at port ${configuredPort}`);
         setTimeout(() => {
           desktopMCPAvailable = null;
           desktopMCPPort = null;
@@ -122,13 +139,13 @@ async function checkDesktopMCPAvailability() {
     const discovery = await discoverMCPPort();
     if (discovery.port) {
       // Verify discovered port is reachable
-      console.log(`[MCP] Verifying discovered Desktop MCP at port ${discovery.port}...`);
+      // Removed: console.log(`[MCP] Verifying discovered Desktop MCP at port ${discovery.port}...`);
       const isReachable = await verifyMCPServerReachable(discovery.port);
       
       if (isReachable) {
         desktopMCPAvailable = true;
         desktopMCPPort = discovery.port;
-        console.log(`[MCP] Desktop MCP verified at discovered port ${discovery.port}`);
+        // Removed: console.log(`[MCP] Desktop MCP verified at discovered port ${discovery.port}`);
         
         // Clear cache after 30 seconds
         setTimeout(() => {
@@ -270,32 +287,61 @@ async function getFigmaToken(userId = null) {
 }
 
 /**
- * Connect Desktop MCP with retry logic
+ * Connect Desktop MCP with circuit breaker protection
  * @param {DesktopMCPClient} client - Desktop MCP client instance
  * @param {number} maxAttempts - Maximum retry attempts
  * @returns {Promise<boolean>} True if connected successfully
  */
 async function connectDesktopMCPWithRetry(client, maxAttempts = 3) {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`🔄 Desktop MCP connection attempt ${attempt}/${maxAttempts}...`);
-      const connected = await client.connect();
-      if (connected) {
-        console.log(`✅ Desktop MCP connected successfully on attempt ${attempt}`);
-        return true;
-      } else {
-        console.warn(`⚠️ Desktop MCP connection attempt ${attempt} returned false`);
-      }
-    } catch (error) {
-      console.error(`❌ Desktop MCP connection attempt ${attempt} failed:`, error.message);
-      if (attempt < maxAttempts) {
-        console.log(`⏳ Waiting 1 second before retry...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+  const circuitBreaker = circuitBreakerRegistry.getOrCreate('desktop-mcp-connect', {
+    failureThreshold: 3,
+    successThreshold: 2,
+    timeout: 5000, // 5 second timeout per connection attempt
+    resetTimeout: 30000 // 30 second reset timeout
+  });
+
+  const fallback = () => {
+    logger.warn('Desktop MCP connection failed, all attempts exhausted');
+    return false;
+  };
+
+  return circuitBreaker.execute(async () => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        logger.info(`Desktop MCP connection attempt ${attempt}/${maxAttempts}`);
+
+        // Add timeout per connection attempt
+        const connectionPromise = client.connect();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Connection timeout')), 3000);
+        });
+
+        const connected = await Promise.race([connectionPromise, timeoutPromise]);
+
+        if (connected) {
+          logger.info(`Desktop MCP connected successfully on attempt ${attempt}`);
+          return true;
+        } else {
+          const error = new Error(`Desktop MCP connection attempt ${attempt} returned false`);
+          if (attempt === maxAttempts) throw error;
+          logger.warn(error.message);
+        }
+      } catch (error) {
+        const isLastAttempt = attempt === maxAttempts;
+        logger.error(`Desktop MCP connection attempt ${attempt} failed: ${error.message}`);
+
+        if (isLastAttempt) {
+          throw new Error(`Desktop MCP connection failed after ${maxAttempts} attempts: ${error.message}`);
+        }
+
+        // Exponential backoff: 500ms, 1000ms, 2000ms, etc.
+        const delay = Math.min(500 * Math.pow(2, attempt - 1), 5000);
+        logger.info(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-  }
-  console.error(`❌ Desktop MCP connection failed after ${maxAttempts} attempts`);
-  return false;
+    throw new Error(`Desktop MCP connection failed after ${maxAttempts} attempts`);
+  }, fallback);
 }
 
 /**
@@ -335,6 +381,8 @@ export async function getMCPClient(options = {}) {
   const overrideProvider = normalizeProvider(mode);
   let currentMode = overrideProvider;
 
+  // Removed: console.log(`🔍 [DEBUG] getMCPClient() called with options:`, { userId: !!userId, figmaToken: !!figmaToken, mode, overrideProvider });
+
   // Determine if we're in local mode
   const runningInLocalMode = isLocalMode();
   
@@ -345,15 +393,15 @@ export async function getMCPClient(options = {}) {
 
   // Auto-detect desktop MCP if no mode specified and auto-detect is enabled
   if (!currentMode && autoDetectDesktop && runningInLocalMode) {
-    console.log('[MCP] Auto-detecting Desktop MCP (local mode)...');
+    // Removed: console.log('[MCP] Auto-detecting Desktop MCP (local mode)...');
     const desktopCheck = await checkDesktopMCPAvailability();
     if (desktopCheck.available) {
       currentMode = PROVIDERS.DESKTOP;
-      console.log(`🖥️  Desktop MCP detected on port ${desktopCheck.port}`);
+      // Removed: console.log(`🖥️  Desktop MCP detected on port ${desktopCheck.port}`);
     }
   } else if (!currentMode && !runningInLocalMode) {
     // In cloud mode, don't try Desktop MCP
-    console.log('[MCP] Running in cloud mode - skipping Desktop MCP auto-detection');
+    // Removed: console.log('[MCP] Running in cloud mode - skipping Desktop MCP auto-detection');
   }
 
   // Fall back to configured provider if no desktop found
@@ -382,7 +430,7 @@ export async function getMCPClient(options = {}) {
       }
 
       const desktopUrl = process.env.FIGMA_DESKTOP_MCP_URL || `http://127.0.0.1:${desktopCheck.port}/mcp`;
-      console.log(`🖥️  Initializing Desktop MCP HTTP client at ${desktopUrl}`);
+      // Removed: console.log(`🖥️  Initializing Desktop MCP HTTP client at ${desktopUrl}`);
 
       mcpClientInstance = new RemoteMCPClient({
         remoteUrl: desktopUrl,
@@ -432,8 +480,8 @@ export async function getMCPClient(options = {}) {
       throw new Error('Figma connection failed: OAuth not connected. Complete Figma OAuth in Settings, or switch to API mode.');
     }
 
-    console.log(`🔌 Initializing Remote MCP Client with source: ${tokenSource || 'oauth'}`);
-    console.log(`🔑 Token (last 4): ...${token.slice(-4)}`);
+    // Removed: console.log(`🔌 Initializing Remote MCP Client with source: ${tokenSource || 'oauth'}`);
+    // Removed: console.log(`🔑 Token (last 4): ...${token.slice(-4)}`);
 
     mcpClientInstance = new RemoteMCPClient({
       remoteUrl: process.env.FIGMA_MCP_URL || 'https://mcp.figma.com/mcp',

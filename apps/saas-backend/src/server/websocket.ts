@@ -46,7 +46,7 @@ export class WebSocketManager {
 
   private setupEventHandlers() {
     this.io.on('connection', (socket) => {
-      console.log(`WebSocket client connected: ${socket.id}`);
+      // Removed: console.log(`WebSocket client connected: ${socket.id}`);
 
       // Handle joining comparison room
       socket.on('join-comparison', (comparisonId: string) => {
@@ -57,7 +57,7 @@ export class WebSocketManager {
         }
         this.activeComparisons.get(comparisonId)!.add(socket.id);
         
-        console.log(`Socket ${socket.id} joined comparison ${comparisonId}`);
+        // Removed: console.log(`Socket ${socket.id} joined comparison ${comparisonId}`);
       });
 
       // Handle leaving comparison room
@@ -72,12 +72,12 @@ export class WebSocketManager {
           }
         }
         
-        console.log(`Socket ${socket.id} left comparison ${comparisonId}`);
+        // Removed: console.log(`Socket ${socket.id} left comparison ${comparisonId}`);
       });
 
       // Handle disconnection
       socket.on('disconnect', () => {
-        console.log(`WebSocket client disconnected: ${socket.id}`);
+        // Removed: console.log(`WebSocket client disconnected: ${socket.id}`);
         
         // Remove from all active comparisons
         for (const [comparisonId, sockets] of this.activeComparisons.entries()) {

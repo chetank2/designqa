@@ -168,7 +168,7 @@ class Logger {
   enableFileLogging() {
     this.fileLoggingEnabled = true;
     this.ensureLogDir();
-    console.log(`📝 File logging enabled - logs will be written to: ${this.logDir}`);
+    // Removed: console.log(`📝 File logging enabled - logs will be written to: ${this.logDir}`);
   }
 
   /**
@@ -184,7 +184,7 @@ class Logger {
     const { consoleMessage, fileMessage } = this.formatMessage(level, message, meta);
     
     // Output to console with immediate flush for terminal visibility
-    console.log(consoleMessage);
+    // Removed: console.log(consoleMessage);
     // Ensure immediate flush to terminal (especially important for real-time comparison logs)
     if (process.stdout.isTTY && typeof process.stdout.flush === 'function') {
       try {

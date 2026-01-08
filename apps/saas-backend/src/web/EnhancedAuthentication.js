@@ -17,7 +17,7 @@ export class EnhancedAuthentication {
    * Enhanced form authentication that handles custom forms
    */
   async handleFormAuthentication(auth) {
-    console.log('🔐 Starting enhanced form authentication...');
+    // Removed: console.log('🔐 Starting enhanced form authentication...');
     
     try {
       // Step 1: Wait for page to load and stabilize
@@ -25,7 +25,7 @@ export class EnhancedAuthentication {
       
       // Step 2: Find all input fields dynamically
       const inputFields = await this.findAllInputFields();
-      console.log(`🔍 Found ${inputFields.length} input fields:`, inputFields);
+      // Removed: console.log(`🔍 Found ${inputFields.length} input fields:`, inputFields);
       
       if (inputFields.length < 2) {
         throw new Error(`Insufficient input fields found. Expected at least 2 (username/password), found ${inputFields.length}`);
@@ -38,7 +38,7 @@ export class EnhancedAuthentication {
         throw new Error(`Could not identify login fields. Username: ${!!usernameField}, Password: ${!!passwordField}`);
       }
       
-      console.log(`✅ Identified fields - Username: ${usernameField.selector}, Password: ${passwordField.selector}`);
+      // Removed: console.log(`✅ Identified fields - Username: ${usernameField.selector}, Password: ${passwordField.selector}`);
       
       // Step 4: Fill credentials with enhanced typing
       await this.fillCredentials(usernameField.selector, passwordField.selector, auth);
@@ -62,7 +62,7 @@ export class EnhancedAuthentication {
    * Wait for page to stabilize (handle SPA loading)
    */
   async waitForPageStability() {
-    console.log('⏳ Waiting for page stability...');
+    // Removed: console.log('⏳ Waiting for page stability...');
     
     // Wait for network to be idle (Puppeteer syntax)
     try {
@@ -166,7 +166,7 @@ export class EnhancedAuthentication {
    * Fill credentials with enhanced typing simulation
    */
   async fillCredentials(usernameSelector, passwordSelector, auth) {
-    console.log('📝 Filling credentials...');
+    // Removed: console.log('📝 Filling credentials...');
     
     // Clear and fill username
     await this.page.click(usernameSelector);
@@ -190,7 +190,7 @@ export class EnhancedAuthentication {
    * Submit form using multiple strategies
    */
   async submitForm() {
-    console.log('🚀 Submitting form...');
+    // Removed: console.log('🚀 Submitting form...');
     
     const submitStrategies = [
       // Strategy 1: Find submit button by text (Puppeteer syntax)
@@ -251,14 +251,14 @@ export class EnhancedAuthentication {
     
     for (let i = 0; i < submitStrategies.length; i++) {
       try {
-        console.log(`🎯 Trying submit strategy ${i + 1}...`);
+        // Removed: console.log(`🎯 Trying submit strategy ${i + 1}...`);
         const success = await submitStrategies[i]();
         if (success) {
-          console.log(`✅ Submit strategy ${i + 1} succeeded`);
+          // Removed: console.log(`✅ Submit strategy ${i + 1} succeeded`);
           return;
         }
       } catch (error) {
-        console.log(`⚠️ Submit strategy ${i + 1} failed:`, error.message);
+        // Removed: console.log(`⚠️ Submit strategy ${i + 1} failed:`, error.message);
       }
     }
     
@@ -269,7 +269,7 @@ export class EnhancedAuthentication {
    * Wait for authentication result
    */
   async waitForAuthenticationResult() {
-    console.log('⏳ Waiting for authentication result...');
+    // Removed: console.log('⏳ Waiting for authentication result...');
     
     try {
       // Wait for navigation or URL change (Puppeteer syntax)
@@ -288,7 +288,7 @@ export class EnhancedAuthentication {
       }
       
       // If URL changed but no navigation event, that's still success
-      console.log('✅ Authentication completed - URL changed without navigation event');
+      // Removed: console.log('✅ Authentication completed - URL changed without navigation event');
     }
   }
 }

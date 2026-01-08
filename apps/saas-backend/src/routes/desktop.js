@@ -101,7 +101,7 @@ export async function registerDesktop(req, res) {
       token = Buffer.from(JSON.stringify(payload)).toString('base64');
     }
 
-    console.log(`✅ Desktop registered: ${finalDesktopId} for user ${userId}`);
+    // Removed: console.log(`✅ Desktop registered: ${finalDesktopId} for user ${userId}`);
 
     res.json({
       success: true,

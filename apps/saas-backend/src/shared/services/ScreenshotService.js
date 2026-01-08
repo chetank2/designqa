@@ -30,7 +30,7 @@ export class ScreenshotService {
     directories.forEach(dir => {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
-        console.log(`📁 Created directory: ${dir}`);
+        // Removed: console.log(`📁 Created directory: ${dir}`);
       }
     });
   }
@@ -102,7 +102,7 @@ export class ScreenshotService {
       const metadataPath = path.join(this.screenshotsPath, `${comparisonId}.json`);
       fs.writeFileSync(metadataPath, JSON.stringify(screenshotData, null, 2));
 
-      console.log(`✅ Screenshot uploaded: ${filename}`);
+      // Removed: console.log(`✅ Screenshot uploaded: ${filename}`);
       return screenshotData;
 
     } catch (error) {
@@ -213,7 +213,7 @@ export class ScreenshotService {
       const resultPath = path.join(this.reportsPath, `comparison_${comparison.id}.json`);
       fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
-      console.log(`✅ Screenshot comparison completed: ${similarity.toFixed(2)}% similarity`);
+      // Removed: console.log(`✅ Screenshot comparison completed: ${similarity.toFixed(2)}% similarity`);
       return result;
 
     } catch (error) {
@@ -391,7 +391,7 @@ export class ScreenshotService {
         fs.unlinkSync(metadataPath);
       }
 
-      console.log(`✅ Screenshot deleted: ${screenshotId}`);
+      // Removed: console.log(`✅ Screenshot deleted: ${screenshotId}`);
       return true;
 
     } catch (error) {
@@ -424,7 +424,7 @@ export class ScreenshotService {
         fs.unlinkSync(comparisonPath);
       }
 
-      console.log(`✅ Comparison deleted: ${comparisonId}`);
+      // Removed: console.log(`✅ Comparison deleted: ${comparisonId}`);
       return true;
 
     } catch (error) {
@@ -510,7 +510,7 @@ export class ScreenshotService {
         }
       });
 
-      console.log(`✅ Cleanup completed: ${deletedCount} files deleted`);
+      // Removed: console.log(`✅ Cleanup completed: ${deletedCount} files deleted`);
       return { deletedCount, retentionDays };
 
     } catch (error) {

@@ -21,15 +21,15 @@ export class ComparisonService {
    */
   validateFigmaUrl(figmaUrl, nodeId = null) {
     try {
-      console.log('🔍 DEBUG validateFigmaUrl:', { figmaUrl, nodeId });
+      // Removed: console.log('🔍 DEBUG validateFigmaUrl:', { figmaUrl, nodeId });
       const extractedNodeId = nodeId || extractNodeIdFromUrl(figmaUrl);
       const fileKey = extractFigmaFileKey(figmaUrl);
-      console.log('🔍 DEBUG extracted:', { extractedNodeId, fileKey });
+      // Removed: console.log('🔍 DEBUG extracted:', { extractedNodeId, fileKey });
 
       if (!fileKey) {
         // For testing: allow mock file keys
         if (typeof figmaUrl === 'string' && (figmaUrl.includes('abc123def456') || figmaUrl.includes('test'))) {
-          console.log('🧪 Using mock file key for testing');
+          // Removed: console.log('🧪 Using mock file key for testing');
           return {
             fileKey: 'mock-file-key',
             nodeId: extractedNodeId || '0:1'
@@ -207,13 +207,13 @@ export class ComparisonService {
    */
   async compareExtractedData(figmaData, webData, options = {}) {
     try {
-      console.log('🔍 compareExtractedData called with:', {
-        figmaDataType: typeof figmaData,
-        webDataType: typeof webData,
-        figmaComponents: figmaData?.components?.length || figmaData?.elements?.length || 0,
-        webElements: webData?.elements?.length || 0,
-        options
-      });
+      // console.log('🔍 compareExtractedData called with:', {
+      //   figmaDataType: typeof figmaData,
+      //   webDataType: typeof webData,
+      //   figmaComponents: figmaData?.components?.length || figmaData?.elements?.length || 0,
+      //   webElements: webData?.elements?.length || 0,
+      //   options
+      // });
 
       // Validate that we have the required data
       if (!figmaData || (!figmaData.components && !figmaData.elements)) {
@@ -241,7 +241,7 @@ export class ComparisonService {
       const startTime = Date.now();
 
       // Perform REAL comparison using the comparison engine
-      console.log('⚖️ Starting real design comparison...');
+      // Removed: console.log('⚖️ Starting real design comparison...');
       const engineResult = await this.comparisonEngine.compareDesigns(
         normalizedFigmaData,
         normalizedWebData,
@@ -316,12 +316,12 @@ export class ComparisonService {
         timestamp: new Date().toISOString()
       };
 
-      console.log('✅ Comparison completed:', {
-        similarity: (overallSimilarity * 100).toFixed(1) + '%',
-        matches: totalMatches,
-        deviations: totalDeviations,
-        processingTime: comparisonResult.processingTime + 'ms'
-      });
+      // console.log('✅ Comparison completed:', {
+      //   similarity: (overallSimilarity * 100).toFixed(1) + '%',
+      //   matches: totalMatches,
+      //   deviations: totalDeviations,
+      //   processingTime: comparisonResult.processingTime + 'ms'
+      // });
 
       return comparisonResult;
 
@@ -392,7 +392,7 @@ export class ComparisonService {
 
       // Perform visual comparison if enabled
       if (options.includeVisual) {
-        console.log('🎨 Performing visual comparison...');
+        // Removed: console.log('🎨 Performing visual comparison...');
         try {
           const { EnhancedVisualComparison } = await import('../visual/enhancedVisualComparison.js');
           const visualComparison = new EnhancedVisualComparison(this.config);

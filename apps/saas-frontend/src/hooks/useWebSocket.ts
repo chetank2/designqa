@@ -35,7 +35,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     // Don't attempt to connect if we're in production (Netlify) or URL is empty
     if (!autoConnect || isProduction || !url) {
       if (isProduction) {
-        console.log('🔌 WebSocket disabled in production environment')
+        // console.log('🔌 WebSocket disabled in production environment')
       }
       return;
     }
@@ -51,13 +51,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     const socket = socketRef.current
 
     socket.on('connect', () => {
-      console.log('🔌 WebSocket connected')
+      // console.log('🔌 WebSocket connected')
       setIsConnected(true)
       setConnectionError(null)
     })
 
     socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket disconnected:', reason)
+      // console.log('🔌 WebSocket disconnected:', reason)
       setIsConnected(false)
     })
 
@@ -67,7 +67,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     })
 
     return () => {
-      console.log('🔌 Cleaning up WebSocket connection')
+      // console.log('🔌 Cleaning up WebSocket connection')
       socket.disconnect()
     }
   }, [url, autoConnect])

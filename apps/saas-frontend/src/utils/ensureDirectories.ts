@@ -20,7 +20,7 @@ export const ensureOutputDirectories = (): void => {
   directories.forEach(dir => {
     const dirPath = path.resolve(process.cwd(), dir);
     if (!fs.existsSync(dirPath)) {
-      console.log(`Creating directory: ${dirPath}`);
+      // Removed: console.log(`Creating directory: ${dirPath}`);
       fs.mkdirSync(dirPath, { recursive: true });
     }
   });

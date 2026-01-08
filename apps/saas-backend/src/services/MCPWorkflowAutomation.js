@@ -55,7 +55,7 @@ export class MCPWorkflowAutomation {
             timeout: workflow.timeout || this.config.defaultTimeout,
             createdAt: new Date().toISOString()
         });
-        console.log(`🔄 Registered workflow: ${workflow.name} (${id})`);
+        // Removed: console.log(`🔄 Registered workflow: ${workflow.name} (${id})`);
     }
 
     /**
@@ -139,7 +139,7 @@ export class MCPWorkflowAutomation {
      * Execute a single workflow step
      */
     async executeStep(step, inputs, execution) {
-        console.log(`   ▶️ Executing step: ${step.name}`);
+        // Removed: console.log(`   ▶️ Executing step: ${step.name}`);
 
         try {
             switch (step.action) {
@@ -244,7 +244,7 @@ export class MCPWorkflowAutomation {
         const message = step.message || `Workflow step completed`;
 
         // This would use NotificationService
-        console.log(`   📢 Notification: ${message}`);
+        // Removed: console.log(`   📢 Notification: ${message}`);
 
         return { success: true };
     }

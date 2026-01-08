@@ -3,9 +3,9 @@
  * Reuses saas-backend server with local configuration
  */
 
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { app } from 'electron';
 
 // Dynamic import for dotenv to handle missing package gracefully
@@ -31,29 +31,77 @@ const __dirname = dirname(__filename);
 /**
  * Resolve backend server path for both development and production
  */
-function getBackendServerPath(): string {
+function getBackendServerPath(): { path: string; isAbsolute: boolean; packageJsonPath?: string } {
   // In development: relative to source
   if (process.env.NODE_ENV === 'development' || __dirname.includes('src')) {
-    return '../../../saas-backend/src/core/server/index.js';
+    return {
+      path: '../../../saas-backend/src/core/server/index.js',
+      isAbsolute: false,
+      packageJsonPath: '../../../saas-backend/package.json'
+    };
   }
   
   // In production: backend files are copied to saas-backend/ in the app bundle
-  // They should be unpacked from ASAR, so try unpacked location first
+  // They should be unpacked from ASAR
   const resourcesPath = process.resourcesPath || __dirname;
-  
-  // Try unpacked location first (if backend is unpacked from ASAR)
-  const unpackedPath = join(resourcesPath, 'app.asar.unpacked', 'saas-backend/src/core/server/index.js');
-  if (existsSync(unpackedPath)) {
-    // Use file:// URL for absolute paths in dynamic import
-    return `file://${unpackedPath}`;
+
+  const candidates = [
+    {
+      label: 'app.asar.unpacked',
+      root: join(resourcesPath, 'app.asar.unpacked', 'saas-backend')
+    },
+    {
+      label: 'resources/saas-backend',
+      root: join(resourcesPath, 'saas-backend')
+    },
+    {
+      label: 'app.asar',
+      root: join(resourcesPath, 'app.asar', 'saas-backend')
+    }
+  ];
+
+  const serverSuffix = join('src', 'core', 'server', 'index.js');
+
+  const resolveCandidate = (root: string) => {
+    const serverPath = join(root, serverSuffix);
+    const packageJson = join(root, 'package.json');
+    const nodeModules = join(root, 'node_modules');
+    return { serverPath, packageJson, nodeModules };
+  };
+
+  // Prefer an entrypoint that sits next to its node_modules (ESM package resolution needs this).
+  for (const candidate of candidates) {
+    const { serverPath, packageJson, nodeModules } = resolveCandidate(candidate.root);
+    if (!existsSync(serverPath)) continue;
+    if (existsSync(nodeModules) && existsSync(packageJson)) {
+      return { path: serverPath, isAbsolute: true, packageJsonPath: packageJson };
+    }
+  }
+
+  // Next best: has package.json (ESM), even if node_modules is missing (will fail with a clearer error later).
+  for (const candidate of candidates) {
+    const { serverPath, packageJson } = resolveCandidate(candidate.root);
+    if (!existsSync(serverPath)) continue;
+    if (existsSync(packageJson)) {
+      return { path: serverPath, isAbsolute: true, packageJsonPath: packageJson };
+    }
+  }
+
+  // Last resort: server file exists but no package.json (likely to trigger ESM import errors).
+  for (const candidate of candidates) {
+    const { serverPath, packageJson } = resolveCandidate(candidate.root);
+    if (!existsSync(serverPath)) continue;
+    console.warn(`⚠️ Found backend at (${candidate.label}) but package.json is missing:`, packageJson);
+    return { path: serverPath, isAbsolute: true, packageJsonPath: packageJson };
   }
   
-  // Try relative path from dist/main (in app.asar)
-  // dist/main/server.js -> saas-backend/src/core/server/index.js
-  const relativePath = '../../../saas-backend/src/core/server/index.js';
-  
-  // Fallback to relative path
-  return relativePath;
+  // Fallback to relative path from dist/main
+  console.warn('⚠️ Backend not found in expected locations, using relative path');
+  return {
+    path: '../../../saas-backend/src/core/server/index.js',
+    isAbsolute: false,
+    packageJsonPath: '../../../saas-backend/package.json'
+  };
 }
 
 /**
@@ -75,7 +123,7 @@ async function loadDesktopEnv() {
     for (const envPath of envPaths) {
       if (existsSync(envPath)) {
         dotenvModule.config({ path: envPath });
-        console.log(`📄 Loaded environment from: ${envPath}`);
+        // Removed: console.log(`📄 Loaded environment from: ${envPath}`);
         break;
       }
     }
@@ -97,6 +145,28 @@ async function loadDesktopEnv() {
     process.env.PERSIST_BROWSER_SESSIONS = 'true';
   }
   
+  // Force the embedded backend to always bind to the desktop port.
+  process.env.PORT = '3847';
+  
+  // Also set FIGMA_CONNECTION_MODE to desktop to ensure MCP config uses desktop path
+  process.env.FIGMA_CONNECTION_MODE = 'desktop';
+
+  // Desktop MCP defaults (Figma Desktop uses 3845)
+  if (!process.env.FIGMA_MCP_PORT) {
+    process.env.FIGMA_MCP_PORT = '3845';
+  }
+  if (!process.env.FIGMA_DESKTOP_MCP_URL) {
+    process.env.FIGMA_DESKTOP_MCP_URL = `http://127.0.0.1:${process.env.FIGMA_MCP_PORT}/mcp`;
+  }
+
+  // Enable MCP by default in desktop/local mode
+  if (!process.env.MCP_ENABLED) {
+    process.env.MCP_ENABLED = 'true';
+  }
+  if (!process.env.ENABLE_LOCAL_MCP) {
+    process.env.ENABLE_LOCAL_MCP = 'true';
+  }
+  
   // Disable Supabase for desktop mode unless explicitly configured
   if (!process.env.SUPABASE_URL) {
     delete process.env.SUPABASE_URL;
@@ -114,56 +184,265 @@ let serverInstance: any = null;
  */
 export async function startEmbeddedServer(): Promise<{ port: number; server: any }> {
   // If server is already running, return existing instance
-  if (serverInstance) {
-    return { port: 3847, server: serverInstance };
+  if (serverInstance && serverInstance.listening) {
+    const address = serverInstance.address();
+    const port = typeof address === 'object' && address ? address.port : 3847;
+    return { port, server: serverInstance };
   }
 
   await loadDesktopEnv();
+  
+  // For ES modules, Node.js resolves node_modules relative to the importing file
+  // We need to ensure backend node_modules are accessible
+  // Check if backend node_modules exist and log for debugging
+  const resourcesPath = process.resourcesPath || __dirname;
+  const backendBasePath = join(resourcesPath, 'app.asar.unpacked', 'saas-backend');
+  const backendNodeModules = join(backendBasePath, 'node_modules');
+  const backendPackageJson = join(backendBasePath, 'package.json');
+  
+  // Set process.cwd() to backend directory so backend can find frontend/dist
+  // This is critical for frontend file serving in Electron
+  const originalCwd = process.cwd();
+  if (existsSync(backendBasePath)) {
+    process.chdir(backendBasePath);
+  } else {
+    console.warn(`⚠️ Backend base path not found: ${backendBasePath}`);
+  }
+  
+  console.log('📦 Checking backend dependencies...');
+  console.log('📦 Backend node_modules exists:', existsSync(backendNodeModules));
+  
+  if (existsSync(backendPackageJson)) {
+    try {
+      const pkg = JSON.parse(readFileSync(backendPackageJson, 'utf-8'));
+      const deps = Object.keys(pkg.dependencies || {}).slice(0, 5);
+      if (pkg.type !== 'module') {
+        throw new Error(
+          `Backend package.json at ${backendPackageJson} must include "type": "module" for ES module imports.`
+        );
+      }
+    } catch (err) {
+      // Treat invalid/missing ESM config as fatal; otherwise the dynamic import will fail with a confusing message.
+      throw new Error(
+        `Backend module import failed. Ensure ${backendPackageJson} exists and has "type": "module".`
+      );
+    }
+  } else {
+    throw new Error(
+      `Backend module import failed. Ensure ${backendPackageJson} exists and has "type": "module".`
+    );
+  }
+  
+  if (!existsSync(backendNodeModules)) {
+    console.error('❌ Backend node_modules not found at:', backendNodeModules);
+    console.error('❌ This will cause module resolution failures');
+    console.error('❌ Make sure backend dependencies are installed and unpacked from ASAR');
+    throw new Error(
+      `Backend dependencies missing at ${backendNodeModules}. ` +
+      `Rebuild the desktop app after running the backend dependency install step.`
+    );
+  } else {
+    // Check if express exists
+    const expressPath = join(backendNodeModules, 'express');
+    console.log('📦 Express module exists:', existsSync(expressPath));
+    if (!existsSync(expressPath)) {
+      console.error('❌ Express not found in backend node_modules');
+      console.error('❌ Backend dependencies may not be installed correctly');
+      throw new Error(
+        `Backend dependency 'express' is missing at ${expressPath}. ` +
+        `Rebuild the desktop app to ensure saas-backend/node_modules is packaged.`
+      );
+    }
+  }
 
   // Use port from env or default
   const port = parseInt(process.env.PORT || '3847', 10);
 
   try {
     // Dynamically import backend server
-    let backendPath = getBackendServerPath();
-    console.log(`📦 Loading backend server from: ${backendPath}`);
+    const backendInfo = getBackendServerPath();
     
-    // In production, resolve absolute path for unpacked files
-    if (process.resourcesPath && backendPath.startsWith('file://')) {
-      // Already a file:// URL, use as-is
-      const backendModule = await import(backendPath);
-      const startServer = backendModule.startServer;
+    // Verify package.json exists for ES module support
+    if (backendInfo.packageJsonPath) {
+      const packageJsonExists = backendInfo.isAbsolute 
+        ? existsSync(backendInfo.packageJsonPath)
+        : existsSync(join(__dirname, backendInfo.packageJsonPath));
       
-      if (!startServer) {
-        throw new Error(`startServer function not found. Available exports: ${Object.keys(backendModule).join(', ')}`);
+      if (!packageJsonExists) {
+        console.warn(`⚠️ Backend package.json not found at: ${backendInfo.packageJsonPath}`);
+        console.warn('⚠️ This may cause ES module import to fail');
+      } else {
+        // Verify it has "type": "module"
+        try {
+          const packageJsonPath = backendInfo.isAbsolute 
+            ? backendInfo.packageJsonPath!
+            : join(__dirname, backendInfo.packageJsonPath!);
+          const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
+          const packageJson = JSON.parse(packageJsonContent);
+          if (packageJson.type !== 'module') {
+            console.warn(`⚠️ Backend package.json does not have "type": "module"`);
+          } else {
+            console.log('✅ Backend package.json has "type": "module"');
+          }
+        } catch (err) {
+          console.warn('⚠️ Could not verify package.json:', err);
+        }
+      }
+    }
+    
+    // For ES modules, Node.js needs to find package.json with "type": "module"
+    // When using file:// URLs, Node.js looks for package.json in parent directories
+    let importPath: string;
+    if (backendInfo.isAbsolute) {
+      // Use Node.js pathToFileURL for proper file:// URL construction
+      // Node.js will automatically look for package.json in parent directories
+      importPath = pathToFileURL(backendInfo.path).href;
+    } else {
+      // Relative paths work as-is with dynamic import
+      importPath = backendInfo.path;
+    }
+    
+    let backendModule;
+    try {
+      backendModule = await import(importPath);
+    } catch (importError: any) {
+      // Handle import errors specifically
+      const importErrorMessage = importError instanceof Error ? importError.message : String(importError);
+      console.error('❌ Failed to import backend module:', importErrorMessage);
+      console.error('Backend path:', backendInfo.path);
+      console.error('Import path:', importPath);
+
+      // Best-effort diagnostics about ESM config
+      let packageJsonPathResolved: string | null = null;
+      let packageJsonExists = false;
+      let packageJsonType: string | null = null;
+      if (backendInfo.packageJsonPath) {
+        packageJsonPathResolved = backendInfo.isAbsolute
+          ? backendInfo.packageJsonPath
+          : join(__dirname, backendInfo.packageJsonPath);
+        packageJsonExists = existsSync(packageJsonPathResolved);
+        if (packageJsonExists) {
+          try {
+            const packageJsonContent = readFileSync(packageJsonPathResolved, 'utf-8');
+            const packageJson = JSON.parse(packageJsonContent);
+            packageJsonType = typeof packageJson.type === 'string' ? packageJson.type : null;
+          } catch {
+            packageJsonType = null;
+          }
+        }
+        console.error('Package.json path:', packageJsonPathResolved);
+        console.error('Package.json exists:', packageJsonExists);
+        console.error('Package.json type:', packageJsonType);
       }
       
-      const server = await startServer(port);
-      serverInstance = server;
-      console.log(`✅ Embedded server running on http://localhost:${port}`);
-      return { port, server };
+      // Check if file exists
+      if (backendInfo.isAbsolute && !existsSync(backendInfo.path)) {
+        throw new Error(`Backend server file not found at: ${backendInfo.path}. Make sure backend files are copied correctly.`);
+      }
+      
+      // Check for module type errors - provide helpful guidance
+      if (importErrorMessage.includes('Cannot use import statement') || 
+          importErrorMessage.includes('Unexpected token') ||
+          importErrorMessage.includes('module')) {
+        const helpfulMsg = backendInfo.packageJsonPath
+          ? (
+              packageJsonExists && packageJsonType === 'module'
+                ? `Backend module import failed even though ${packageJsonPathResolved} has "type": "module". ` +
+                  `This usually means the backend entrypoint and its package.json are not being resolved as a single ESM package at runtime ` +
+                  `(common cause: importing from app.asar while package.json/node_modules live in app.asar.unpacked). ` +
+                  `Error: ${importErrorMessage}`
+                : `Backend module import failed. Ensure ${packageJsonPathResolved || backendInfo.packageJsonPath} exists and has "type": "module". ` +
+                  `Detected type: ${packageJsonType ?? 'missing/unknown'}. Error: ${importErrorMessage}`
+            )
+          : `Backend module import failed. The backend file may not be properly configured as an ES module. Error: ${importErrorMessage}`;
+        throw new Error(helpfulMsg);
+      }
+      
+      throw new Error(`Failed to load backend server: ${importErrorMessage}`);
     }
     
-    // For relative paths, use normal import
-    const backendModule = await import(backendPath);
-    const startServer = backendModule.startServer;
+    console.log('📦 Backend module loaded successfully');
+    const startServerFn = backendModule.startServer || backendModule.default?.startServer;
     
-    if (!startServer) {
-      throw new Error(`startServer function not found in ${backendPath}. Available exports: ${Object.keys(backendModule).join(', ')}`);
+    if (!startServerFn) {
+      const availableExports = Object.keys(backendModule).join(', ');
+      console.error('❌ startServer function not found in backend module');
+      console.error('Available exports:', availableExports);
+      throw new Error(`startServer function not found. Available exports: ${availableExports}`);
     }
     
-    const server = await startServer(port);
+    const server = await startServerFn(port);
+    
+    if (!server) {
+      console.error('❌ startServer returned null or undefined');
+      throw new Error('startServer function did not return a server instance');
+    }
+    
+    const address = server.address();
+    if (!address) {
+      console.error('❌ Server instance created but not listening');
+      throw new Error('Server created but server.address() returned null - server may not be listening');
+    }
+    
+    const actualPort = typeof address === 'object' ? address.port : port;
+    
     serverInstance = server;
-    console.log(`✅ Embedded server running on http://localhost:${port}`);
-    return { port, server };
-  } catch (error) {
-    console.error('❌ Failed to start embedded server:', error);
-    console.error('Backend path attempted:', getBackendServerPath());
-    if (error instanceof Error) {
-      console.error('Error details:', error.message);
-      console.error('Stack:', error.stack);
+    
+    // Verify server responds to health check
+    try {
+      const healthResponse = await fetch(`http://localhost:${actualPort}/api/health`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (healthResponse.ok) {
+        console.log('✅ Health check passed - server is fully operational');
+      } else {
+        console.warn(`⚠️ Health check returned status ${healthResponse.status}`);
+      }
+    } catch (healthError) {
+      console.warn('⚠️ Health check failed:', healthError instanceof Error ? healthError.message : String(healthError));
+      console.warn('Server may still be starting up...');
     }
-    throw error;
+    
+    return { port: actualPort, server };
+  } catch (error) {
+    console.error('═'.repeat(80));
+    console.error('❌ FATAL: Failed to start embedded server');
+    console.error('═'.repeat(80));
+    console.error('Error:', error);
+    console.error('Backend path info:', getBackendServerPath());
+    console.error('Resources path:', process.resourcesPath);
+    console.error('Current __dirname:', __dirname);
+    console.error('PORT:', port);
+    
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error name:', error.name);
+      // Log full stack trace to help debug
+      if (error.stack) {
+        console.error('Full stack trace:');
+        console.error(error.stack);
+      }
+    }
+    
+    // Check common failure points
+    const backendInfo = getBackendServerPath();
+    if (backendInfo.isAbsolute) {
+      console.error('File exists check:', existsSync(backendInfo.path));
+      if (backendInfo.packageJsonPath) {
+        console.error('Package.json exists:', existsSync(backendInfo.packageJsonPath));
+      }
+    }
+    
+    console.error('═'.repeat(80));
+    
+    // Re-throw with detailed message (keep original for debugging)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Server startup failed: ${errorMessage}`);
+  } finally {
+    // Restore original working directory
+    if (originalCwd) {
+      process.chdir(originalCwd);
+    }
   }
 }
 
@@ -181,13 +460,13 @@ export async function stopEmbeddedServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
       if (!server.listening) {
-        console.log('⚠️ Server is not listening');
+        // Removed: console.log('⚠️ Server is not listening');
         serverInstance = null;
         resolve();
         return;
       }
 
-      console.log('🛑 Stopping embedded server...');
+      // Removed: console.log('🛑 Stopping embedded server...');
       server.close((err: any) => {
         if (err) {
           console.error('❌ Error stopping server:', err);

@@ -65,7 +65,7 @@
     "socket.io": "^4.8.1",
     "sprintf-js": "^1.1.3",
     "uuid": "^11.1.0",
-    "zod": "^3.25.76"
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
@@ -85,7 +85,21 @@
   "jest": {
     "testEnvironment": "node",
     "transform": {
-      "^.+\\.js$": ["babel-jest", { "presets": [["@babel/preset-env", { "targets": { "node": "current" } }]] }]
+      "^.+\\.js$": [
+        "babel-jest",
+        {
+          "presets": [
+            [
+              "@babel/preset-env",
+              {
+                "targets": {
+                  "node": "current"
+                }
+              }
+            ]
+          ]
+        }
+      ]
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(.*\\.mjs$))"

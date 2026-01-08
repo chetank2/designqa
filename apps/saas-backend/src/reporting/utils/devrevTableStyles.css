@@ -92,6 +92,18 @@
   border-color: #9ca3af;
 }
 
+.btn-developer {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: white;
+  border: 1px solid #2563eb;
+}
+
+.btn-developer:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
 .table-filter {
   flex: 1;
   min-width: 280px;

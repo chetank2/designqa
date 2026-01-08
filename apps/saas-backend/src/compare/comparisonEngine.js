@@ -27,7 +27,7 @@ class ComparisonEngine {
         const registry = getDesignSystemRegistry();
         this.designSystem = registry.get(dsId);
         if (this.designSystem) {
-          console.log(`🎨 Loaded design system: ${this.designSystem.name}`);
+          // Removed: console.log(`🎨 Loaded design system: ${this.designSystem.name}`);
           this.tokenMapper = new TokenMappingService(dsId);
         }
       } catch (err) {
@@ -67,7 +67,7 @@ class ComparisonEngine {
         const registry = getDesignSystemRegistry();
         this.designSystem = registry.get(options.designSystemId);
         if (this.designSystem) {
-          console.log(`🎨 Loaded design system for request: ${this.designSystem.name}`);
+          // Removed: console.log(`🎨 Loaded design system for request: ${this.designSystem.name}`);
           this.tokenMapper = new TokenMappingService(options.designSystemId);
         }
       } catch (err) {
@@ -1419,13 +1419,52 @@ class ComparisonEngine {
       summary: 'consistent'
     };
 
-    // Properties to validate
+    // Properties to validate - expanded coverage
     const props = [
+      // Colors
       { figma: 'backgroundColor', web: 'backgroundColor', cat: 'colors', prop: 'background' },
       { figma: 'color', web: 'color', cat: 'colors', prop: 'foreground' },
+      { figma: 'borderColor', web: 'borderColor', cat: 'colors', prop: 'border' },
+
+      // Typography
       { figma: 'fontSize', web: 'fontSize', cat: 'typography', prop: 'fontSize' },
+      { figma: 'fontFamily', web: 'fontFamily', cat: 'typography', prop: 'fontFamily' },
+      { figma: 'fontWeight', web: 'fontWeight', cat: 'typography', prop: 'fontWeight' },
+      { figma: 'lineHeight', web: 'lineHeight', cat: 'typography', prop: 'lineHeight' },
+      { figma: 'letterSpacing', web: 'letterSpacing', cat: 'typography', prop: 'letterSpacing' },
+
+      // Spacing
       { figma: 'paddingTop', web: 'paddingTop', cat: 'spacing', prop: 'padding' },
-      { figma: 'borderRadius', web: 'borderRadius', cat: 'borderRadius', prop: 'radius' }
+      { figma: 'paddingRight', web: 'paddingRight', cat: 'spacing', prop: 'padding' },
+      { figma: 'paddingBottom', web: 'paddingBottom', cat: 'spacing', prop: 'padding' },
+      { figma: 'paddingLeft', web: 'paddingLeft', cat: 'spacing', prop: 'padding' },
+      { figma: 'marginTop', web: 'marginTop', cat: 'spacing', prop: 'margin' },
+      { figma: 'marginRight', web: 'marginRight', cat: 'spacing', prop: 'margin' },
+      { figma: 'marginBottom', web: 'marginBottom', cat: 'spacing', prop: 'margin' },
+      { figma: 'marginLeft', web: 'marginLeft', cat: 'spacing', prop: 'margin' },
+      { figma: 'gap', web: 'gap', cat: 'spacing', prop: 'gap' },
+
+      // Border radius
+      { figma: 'borderRadius', web: 'borderRadius', cat: 'borderRadius', prop: 'radius' },
+      { figma: 'borderTopLeftRadius', web: 'borderTopLeftRadius', cat: 'borderRadius', prop: 'radius' },
+      { figma: 'borderTopRightRadius', web: 'borderTopRightRadius', cat: 'borderRadius', prop: 'radius' },
+      { figma: 'borderBottomLeftRadius', web: 'borderBottomLeftRadius', cat: 'borderRadius', prop: 'radius' },
+      { figma: 'borderBottomRightRadius', web: 'borderBottomRightRadius', cat: 'borderRadius', prop: 'radius' },
+
+      // Border
+      { figma: 'borderWidth', web: 'borderWidth', cat: 'spacing', prop: 'border' },
+      { figma: 'borderStyle', web: 'borderStyle', cat: 'borders', prop: 'style' },
+
+      // Shadows
+      { figma: 'boxShadow', web: 'boxShadow', cat: 'shadows', prop: 'boxShadow' },
+
+      // Layout
+      { figma: 'width', web: 'width', cat: 'sizing', prop: 'width' },
+      { figma: 'height', web: 'height', cat: 'sizing', prop: 'height' },
+      { figma: 'minWidth', web: 'minWidth', cat: 'sizing', prop: 'minWidth' },
+      { figma: 'minHeight', web: 'minHeight', cat: 'sizing', prop: 'minHeight' },
+      { figma: 'maxWidth', web: 'maxWidth', cat: 'sizing', prop: 'maxWidth' },
+      { figma: 'maxHeight', web: 'maxHeight', cat: 'sizing', prop: 'maxHeight' }
     ];
 
     for (const config of props) {

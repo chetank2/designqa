@@ -10,8 +10,8 @@ interface AuthContextType {
   user: LocalUser;
   session: null;
   loading: boolean;
-  signIn: () => Promise<{ error: null }>;
-  signUp: () => Promise<{ error: null }>;
+  signIn: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<void>;
   resetPassword: () => Promise<{ error: null }>;
 }
@@ -29,8 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: defaultUser,
     session: null,
     loading: false,
-    signIn: async () => ({ error: null }),
-    signUp: async () => ({ error: null }),
+    signIn: async (email: string, password: string) => ({ error: null }),
+    signUp: async (email: string, password: string) => ({ error: null }),
     signOut: async () => Promise.resolve(),
     resetPassword: async () => ({ error: null })
   };

@@ -85,7 +85,7 @@ export async function deleteToken(userId?: string): Promise<void> {
   try {
     const account = userId ? `${ACCOUNT_NAME}-${userId}` : ACCOUNT_NAME;
     await keytarModule.deletePassword(SERVICE_NAME, account);
-    console.log('✅ Token deleted from keychain');
+    // Removed: console.log('✅ Token deleted from keychain');
   } catch (error) {
     console.error('❌ Failed to delete token from keychain:', error);
   }

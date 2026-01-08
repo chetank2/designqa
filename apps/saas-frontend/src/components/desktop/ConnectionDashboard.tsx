@@ -114,7 +114,7 @@ export default function ConnectionDashboard() {
             </Alert>
           ) : (
             <Alert variant="destructive">
-              <XCircleIcon className="h-4 w-4" />
+              <XCircle className="h-4 w-4" />
               <AlertDescription>
                 Not connected to MCP. Check your settings to enable a connection.
               </AlertDescription>

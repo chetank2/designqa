@@ -160,7 +160,7 @@ class BrowserPool {
     try {
       // Validate browser availability first
       const browserInfo = await validateBrowserAvailability();
-      console.log(`🌐 Browser info:`, browserInfo);
+      // Removed: console.log(`🌐 Browser info:`, browserInfo);
       
       // Get optimized browser configuration
       const launchOptions = getBrowserConfig({
@@ -174,11 +174,11 @@ class BrowserPool {
         ...options
       });
 
-      console.log(`🚀 Launching browser with config:`, {
-        executablePath: launchOptions.executablePath || 'bundled',
-        headless: launchOptions.headless,
-        platform: process.platform
-      });
+      // console.log(`🚀 Launching browser with config:`, {
+      //   executablePath: launchOptions.executablePath || 'bundled',
+      //   headless: launchOptions.headless,
+      //   platform: process.platform
+      // });
 
       const browser = await puppeteer.launch(launchOptions);
       this.browsers.set(browserKey, browser);
@@ -193,12 +193,12 @@ class BrowserPool {
       
       // Handle browser disconnection
       browser.on('disconnected', () => {
-        console.log(`🔌 Browser disconnected: ${browserKey}`);
+        // Removed: console.log(`🔌 Browser disconnected: ${browserKey}`);
         this.browsers.delete(browserKey);
         this.cleanupPagesForBrowser(browser);
       });
 
-      console.log(`✅ Browser launched successfully: ${browserKey}`);
+      // Removed: console.log(`✅ Browser launched successfully: ${browserKey}`);
       return browser;
     } catch (error) {
       console.error(`❌ Failed to launch browser: ${error.message}`);
@@ -266,7 +266,7 @@ class BrowserPool {
       
       // Add cleanup handlers
       page.on('close', () => {
-        console.log(`📄 Page closed: ${pageId}`);
+        // Removed: console.log(`📄 Page closed: ${pageId}`);
         this.pages.delete(pageId);
       });
       
@@ -275,7 +275,7 @@ class BrowserPool {
         this.pages.delete(pageId);
       });
 
-      console.log(`✅ Page created: ${pageId}`);
+      // Removed: console.log(`✅ Page created: ${pageId}`);
       return { page, pageId };
     });
   }
@@ -380,7 +380,7 @@ class BrowserPool {
       );
 
     if (idlePages.length > 0) {
-      console.log(`🧹 Cleaning up ${idlePages.length} idle pages...`);
+      // Removed: console.log(`🧹 Cleaning up ${idlePages.length} idle pages...`);
       for (const [pageId] of idlePages) {
         await this.closePage(pageId);
       }

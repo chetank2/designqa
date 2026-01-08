@@ -2,6 +2,9 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 import { v4 as uuidv4 } from 'uuid';
 import { encrypt, decrypt } from './CredentialEncryption.js';
+import { handleError, createStandardError } from '../utils/standardErrorHandler.js';
+import { logger } from '../utils/logger.js';
+import { circuitBreakerRegistry } from '../core/resilience/CircuitBreaker.js';
 
 /**
  * Service to handle Figma OAuth authentication and token management
@@ -11,12 +14,20 @@ export class FigmaAuthService {
         this.db = dbAdapter;
         this.encryptionKey = encryptionKey;
         this.algo = 'aes-256-gcm';
-        
+
+        // Initialize circuit breaker for OAuth operations
+        this.oauthCircuitBreaker = circuitBreakerRegistry.getOrCreate('figma-oauth', {
+            failureThreshold: 3,
+            successThreshold: 2,
+            timeout: 10000,
+            resetTimeout: 60000
+        });
+
         // Log encryption key status (not the actual key) for debugging
         if (!encryptionKey) {
-            console.warn('⚠️ FigmaAuthService: No encryption key provided. CREDENTIAL_ENCRYPTION_KEY environment variable may not be set.');
+            logger.warn('FigmaAuthService: No encryption key provided. CREDENTIAL_ENCRYPTION_KEY environment variable may not be set.');
         } else {
-            console.log('✅ FigmaAuthService: Encryption key configured');
+            logger.info('FigmaAuthService: Encryption key configured');
         }
     }
     
@@ -46,8 +57,8 @@ export class FigmaAuthService {
             throw new Error('Cannot save credentials: CREDENTIAL_ENCRYPTION_KEY environment variable is not configured on the server.');
         }
 
-        console.log('Saving Figma credentials for user:', userId);
-        console.log('Encryption key configured:', this.isEncryptionConfigured());
+        // Removed: console.log('Saving Figma credentials for user:', userId);
+        // Removed: console.log('Encryption key configured:', this.isEncryptionConfigured());
 
         const encryptedSecret = encrypt(clientSecret, this.encryptionKey);
 
@@ -60,7 +71,7 @@ export class FigmaAuthService {
         });
 
         if (error) throw error;
-        console.log('Figma credentials saved successfully');
+        // Removed: console.log('Figma credentials saved successfully');
         return true;
     }
 
@@ -72,12 +83,12 @@ export class FigmaAuthService {
         try {
             const data = await this.db.getFigmaCredentials(userId);
             if (!data) {
-                console.log(`Figma credentials: No data found for user ${userId}`);
+                // Removed: console.log(`Figma credentials: No data found for user ${userId}`);
                 return null;
             }
 
             // Log raw data structure for debugging (without sensitive values)
-            console.log('Figma credentials raw data keys:', Object.keys(data));
+            // Removed: console.log('Figma credentials raw data keys:', Object.keys(data));
 
             // Handle potential missing or undefined fields from database
             // Support both snake_case (from DB) and camelCase (after conversion)
@@ -89,14 +100,14 @@ export class FigmaAuthService {
                 expiresAt: data.expires_at || data.expiresAt || null
             };
 
-            console.log('Figma credentials safeData:', {
-                hasClientId: !!safeData.clientId,
-                hasClientSecret: !!safeData.clientSecret,
-                clientSecretType: typeof safeData.clientSecret,
-                clientSecretLength: safeData.clientSecret?.length || 0,
-                hasAccessToken: !!safeData.accessToken,
-                hasRefreshToken: !!safeData.refreshToken
-            });
+            // console.log('Figma credentials safeData:', {
+            //     hasClientId: !!safeData.clientId,
+            //     hasClientSecret: !!safeData.clientSecret,
+            //     clientSecretType: typeof safeData.clientSecret,
+            //     clientSecretLength: safeData.clientSecret?.length || 0,
+            //     hasAccessToken: !!safeData.accessToken,
+            //     hasRefreshToken: !!safeData.refreshToken
+            // });
 
             // Check encryption configuration before attempting decrypt
             if (!this.isEncryptionConfigured()) {
@@ -114,7 +125,7 @@ export class FigmaAuthService {
             if (safeData.clientSecret && typeof safeData.clientSecret === 'string' && safeData.clientSecret.length > 0) {
                 try {
                     decryptedSecret = decrypt(safeData.clientSecret, this.encryptionKey);
-                    console.log('Figma credentials: Client secret decrypted successfully');
+                    // Removed: console.log('Figma credentials: Client secret decrypted successfully');
                 } catch (error) {
                     console.error('Failed to decrypt client secret:', error.message);
                     // Return error info instead of silently failing

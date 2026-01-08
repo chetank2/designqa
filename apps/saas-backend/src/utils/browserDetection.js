@@ -43,7 +43,7 @@ export function getBrowserExecutablePath() {
   // Find first existing browser executable
   for (const path of platformPaths) {
     if (existsSync(path)) {
-      console.log(`✅ Found browser executable: ${path}`);
+      // Removed: console.log(`✅ Found browser executable: ${path}`);
       return path;
     }
   }
@@ -121,7 +121,7 @@ export async function validateBrowserAvailability() {
   const executablePath = getBrowserExecutablePath();
   
   if (!executablePath) {
-    console.log('ℹ️ Using Puppeteer bundled Chromium (recommended for Docker/CI)');
+    // Removed: console.log('ℹ️ Using Puppeteer bundled Chromium (recommended for Docker/CI)');
     return { available: true, type: 'bundled', path: null };
   }
 

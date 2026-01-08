@@ -10,9 +10,18 @@ import { getSupabaseClient } from '../config/supabase.js';
 export class CredentialService {
   constructor(adapter, encryptionKey = null) {
     this.repository = new CredentialRepository(adapter);
-    this.encryptionKey = encryptionKey || process.env.CREDENTIAL_ENCRYPTION_KEY || 
-                        process.env.LOCAL_CREDENTIAL_KEY ||
-                        'local-credential-encryption-key-change-in-production';
+
+    // Require encryption key from environment - no hardcoded fallback for security
+    this.encryptionKey = encryptionKey || process.env.CREDENTIAL_ENCRYPTION_KEY || process.env.LOCAL_CREDENTIAL_KEY;
+
+    if (!this.encryptionKey) {
+      throw new Error('CREDENTIAL_ENCRYPTION_KEY or LOCAL_CREDENTIAL_KEY environment variable is required for secure operation');
+    }
+
+    if (this.encryptionKey.length < 32) {
+      throw new Error('Encryption key must be at least 32 characters long for security');
+    }
+
     this.credentialManager = new CredentialManager(this.encryptionKey);
     this.supabase = getSupabaseClient(false);
   }

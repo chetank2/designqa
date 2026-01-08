@@ -158,7 +158,10 @@ export class ScreenshotAutomation {
                     await page.waitForSelector(selector, { timeout: 2000 });
                     await page.type(selector, auth.username);
                     break;
-                } catch (_) { }
+                } catch (error) {
+                    // Removed: console.log(`Failed to find username selector ${selector}:`, error.message);
+                    // Continue to try next selector
+                }
             }
 
             for (const selector of passwordSelectors) {
@@ -166,7 +169,10 @@ export class ScreenshotAutomation {
                     await page.waitForSelector(selector, { timeout: 2000 });
                     await page.type(selector, auth.password);
                     break;
-                } catch (_) { }
+                } catch (error) {
+                    // Removed: console.log(`Failed to find password selector ${selector}:`, error.message);
+                    // Continue to try next selector
+                }
             }
 
             // Submit form
@@ -223,7 +229,7 @@ export class ScreenshotAutomation {
         };
 
         this.scheduledJobs.set(jobId, job);
-        console.log(`📸 Scheduled screenshot job: ${jobId} (every ${intervalMs}ms)`);
+        // Removed: console.log(`📸 Scheduled screenshot job: ${jobId} (every ${intervalMs}ms)`);
 
         return job;
     }
@@ -237,7 +243,7 @@ export class ScreenshotAutomation {
         if (job) {
             clearInterval(job.intervalId);
             this.scheduledJobs.delete(jobId);
-            console.log(`🛑 Cancelled screenshot job: ${jobId}`);
+            // Removed: console.log(`🛑 Cancelled screenshot job: ${jobId}`);
         }
     }
 

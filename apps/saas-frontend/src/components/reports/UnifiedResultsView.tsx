@@ -6,6 +6,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ComparisonResult } from '../../types';
+import { ComparisonData } from '@designqa/shared-types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,13 +54,14 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
   }
 
   const { comparison, extractionDetails } = result.data;
-  const regressionRisk = comparison?.summary?.regressionRisk;
-  const remediationLinks = comparison?.remediationLinks || [];
+  const comparisonData = comparison as ComparisonData;
+  const regressionRisk = comparisonData?.summary?.regressionRisk;
+  const remediationLinks = comparisonData?.remediationLinks || [];
   
   // Handle different comparison data structures
-  const similarityScore = comparison?.overallSimilarity || 
+  const similarityScore = comparisonData?.overallSimilarity ||
                           (extractionDetails?.comparison?.matchPercentage / 100) ||
-                          (comparison?.summary?.totalMatches / Math.max(comparison?.summary?.totalComponents || 1, 1)) ||
+                          (comparisonData?.summary?.totalMatches / Math.max(comparisonData?.summary?.totalComponents || 1, 1)) ||
                           0;
   
   const similarity = Math.round(similarityScore * 100);
@@ -194,7 +196,22 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FigmaDataView data={{ data: result.data.figmaData, metadata: extractionDetails.figma }} />
+              <FigmaDataView data={{
+                data: {
+                  document: {},
+                  components: result.data.figmaData?.components || [],
+                  styles: result.data.figmaData?.styles || [],
+                  ...result.data.figmaData
+                },
+                metadata: {
+                  version: extractionDetails.figma?.extractorVersion || '1.0.0',
+                  extractorType: 'figma',
+                  ...extractionDetails.figma
+                },
+                id: result.comparisonId || '',
+                timestamp: Date.now(),
+                source: 'figma'
+              }} />
             </CardContent>
           </Card>
         )}
@@ -254,7 +271,7 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
                   <h4 className="font-semibold mb-3">Figma Typography</h4>
                   {result.data.figmaData.typography?.length ? (
                     <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                      {result.data.figmaData.typography.map((token, index) => (
+                      {result.data.figmaData.typography.map((token: any, index: number) => (
                         <li key={`fg-typo-${token.id || index}`} className="rounded-lg border bg-gray-50 p-3 text-xs space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-gray-900">{token.name || `Style ${index + 1}`}</span>
@@ -368,7 +385,7 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {remediationLinks.map((item, index) => (
+            {remediationLinks.map((item: any, index: number) => (
               <div key={`${item.type}-${index}`} className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
                 <div>
                   <p className="text-sm font-medium text-foreground">

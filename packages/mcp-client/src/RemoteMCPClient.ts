@@ -53,7 +53,7 @@ export class RemoteMCPClient implements IMCPClient {
   async connect(): Promise<boolean> {
     try {
       this.connectionState = MCPConnectionState.CONNECTING;
-      console.log('🔄 Connecting to remote Figma MCP...');
+      // Removed: console.log('🔄 Connecting to remote Figma MCP...');
 
       const token = await this.getToken();
 
@@ -101,7 +101,7 @@ export class RemoteMCPClient implements IMCPClient {
         this.sessionId = `remote_${Date.now()}`;
       }
 
-      console.log('🔑 Remote MCP session established');
+      // Removed: console.log('🔑 Remote MCP session established');
 
       // Consume the initialize response
       await initResponse.text();
@@ -133,12 +133,12 @@ export class RemoteMCPClient implements IMCPClient {
 
       this.initialized = true;
       this.connectionState = MCPConnectionState.CONNECTED;
-      console.log('✅ Remote MCP client connected successfully');
+      // Removed: console.log('✅ Remote MCP client connected successfully');
 
       // Step 3: List available tools
       try {
         const tools = await this.listTools();
-        console.log('📋 Available remote MCP tools:', tools?.tools?.map(t => t.name) || []);
+        // Removed: console.log('📋 Available remote MCP tools:', tools?.tools?.map(t => t.name) || []);
       } catch (toolsError) {
         console.warn('⚠️ Could not list tools:', toolsError);
       }
@@ -175,7 +175,7 @@ export class RemoteMCPClient implements IMCPClient {
     }
 
     try {
-      console.log(`🔧 Sending remote request: ${request.method}`);
+      // Removed: console.log(`🔧 Sending remote request: ${request.method}`);
 
       const token = await this.getToken();
 
@@ -204,7 +204,7 @@ export class RemoteMCPClient implements IMCPClient {
         
         // Handle 401 Unauthorized - try token refresh if provider available
         if (response.status === 401 && this.tokenProvider && retryCount === 0) {
-          console.log('🔄 Received 401, attempting token refresh...');
+          // Removed: console.log('🔄 Received 401, attempting token refresh...');
           
           try {
             const newToken = await this.tokenProvider();
@@ -236,7 +236,7 @@ export class RemoteMCPClient implements IMCPClient {
         throw new MCPToolError(`MCP Error: ${result.error.message}`, request.method);
       }
 
-      console.log(`✅ Remote request ${request.method} successful`);
+      // Removed: console.log(`✅ Remote request ${request.method} successful`);
       return result.result;
 
     } catch (error) {
@@ -327,7 +327,7 @@ export class RemoteMCPClient implements IMCPClient {
     this.initialized = false;
     this.connectionState = MCPConnectionState.DISCONNECTED;
     this.sessionId = null;
-    console.log('🔌 Remote MCP client disconnected');
+    // Removed: console.log('🔌 Remote MCP client disconnected');
   }
 
   /**

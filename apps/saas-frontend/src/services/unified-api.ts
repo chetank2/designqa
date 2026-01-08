@@ -38,7 +38,7 @@ class UnifiedApiService {
     }, this.timeout);
 
     try {
-      console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+      // Removed: console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
 
       const response = await fetch(url, {
         ...options,
@@ -52,21 +52,35 @@ class UnifiedApiService {
 
       clearTimeout(timeoutId);
 
-      const data = await response.json() as ApiResponse<T>;
-
-      console.log(`📥 API Response [${response.status}]:`, {
-        success: data.success,
-        hasData: !!data.data,
-        hasError: !!data.error,
-        timestamp: data.timestamp
-      });
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status}`);
+      const responseText = await response.text();
+      let data: ApiResponse<T> | null = null;
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText) as ApiResponse<T>;
+        } catch (parseError) {
+          data = null;
+        }
       }
 
-      if (!data.success) {
-        throw new Error(data.error?.message || 'API request failed');
+      // console.log(`📥 API Response [${response.status}]:`, {
+      //   success: data.success,
+      //   hasData: !!data.data,
+      //   hasError: !!data.error,
+      //   timestamp: data.timestamp
+      // });
+
+      if (!response.ok || !data?.success) {
+        const fallbackMessage = typeof (data as any)?.message === 'string' ? (data as any).message : '';
+        const message = data?.error?.message || (typeof data?.error === 'string' ? data.error : '') || fallbackMessage || responseText || `HTTP ${response.status}`;
+        const apiError = new Error(message) as Error & { status?: number; code?: string; details?: string };
+        apiError.status = response.status;
+        apiError.code = data?.error?.code;
+        apiError.details = data?.error?.details || (data as any)?.details;
+        throw apiError;
+      }
+
+      if (!data) {
+        throw new Error('API response was empty or malformed');
       }
 
       return data;
@@ -93,11 +107,11 @@ class UnifiedApiService {
    * Compare Figma and web URLs
    */
   async compareUrls(request: ComparisonRequest): Promise<ComparisonResult> {
-    console.log('🚀 Starting comparison:', {
-      figmaUrl: request.figmaUrl,
-      webUrl: request.webUrl,
-      hasAuth: !!request.authentication
-    });
+    // console.log('🚀 Starting comparison:', {
+    //   figmaUrl: request.figmaUrl,
+    //   webUrl: request.webUrl,
+    //   hasAuth: !!request.authentication
+    // });
 
     // Validate request
     this.validateComparisonRequest(request);
@@ -135,6 +149,49 @@ class UnifiedApiService {
    */
   async getMCPStatus(): Promise<ApiResponse<any>> {
     return this.request('/api/mcp/status');
+  }
+
+  /**
+   * Get all design systems
+   */
+  async getDesignSystems(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/design-systems');
+  }
+
+  /**
+   * Get design system by ID
+   */
+  async getDesignSystem(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/design-systems/${id}`);
+  }
+
+  /**
+   * Create new design system
+   */
+  async createDesignSystem(designSystem: any): Promise<ApiResponse<any>> {
+    return this.request('/api/design-systems', {
+      method: 'POST',
+      body: JSON.stringify(designSystem),
+    });
+  }
+
+  /**
+   * Update design system
+   */
+  async updateDesignSystem(id: string, designSystem: any): Promise<ApiResponse<any>> {
+    return this.request(`/api/design-systems/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(designSystem),
+    });
+  }
+
+  /**
+   * Delete design system
+   */
+  async deleteDesignSystem(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/design-systems/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   /**

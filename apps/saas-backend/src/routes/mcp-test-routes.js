@@ -17,12 +17,12 @@ router.post('/test-connection', async (req, res) => {
   try {
     const { method, serverUrl, endpoint } = req.body;
     
-    console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint, body: req.body });
+    // Removed: console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint, body: req.body });
     
     // Normalize method value (handle case variations and aliases)
     const normalizedMethod = method ? String(method).toLowerCase().trim() : null;
     
-    console.log('🔍 Normalized method:', normalizedMethod);
+    // Removed: console.log('🔍 Normalized method:', normalizedMethod);
     
     switch (normalizedMethod) {
       case 'direct_api':
@@ -34,7 +34,7 @@ router.post('/test-connection', async (req, res) => {
       case 'desktop':
       case 'local':
       case 'figma-desktop':
-        console.log('✅ Routing to testDesktopMCP');
+        // Removed: console.log('✅ Routing to testDesktopMCP');
         return await testDesktopMCP(req, res);
         
       case 'mcp_server_remote':
@@ -66,7 +66,7 @@ router.post('/test-connection', async (req, res) => {
  */
 async function testDesktopMCP(req, res) {
   try {
-    console.log('🖥️  Testing Desktop MCP connection...');
+    // Removed: console.log('🖥️  Testing Desktop MCP connection...');
     
     // Check if we're in desktop environment
     const isDesktopEnvironment = 

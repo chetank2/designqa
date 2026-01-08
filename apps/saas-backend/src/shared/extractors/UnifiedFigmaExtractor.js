@@ -54,7 +54,7 @@ export class UnifiedFigmaExtractor {
     if (options.designSystemId) {
       const ds = getDesignSystem(options.designSystemId);
       if (ds) {
-        console.log(`🎨 Using Design System for extraction: ${ds.name}`);
+        // Removed: console.log(`🎨 Using Design System for extraction: ${ds.name}`);
         // Add to options so it propagates to data adapters
         options = { ...options, designSystem: ds };
       } else {
@@ -86,13 +86,14 @@ export class UnifiedFigmaExtractor {
       // DESKTOP MODE: Only Desktop MCP + API Fallback
       methods = methods.filter(m => m.name === 'desktop-mcp' || (allowApiFallback && m.name === 'figma-api'));
 
-      // key optimization: Reduce timeout for Desktop MCP check. 
-      // If it's not running, we want to fail fast to API.
+      // Use appropriate timeout for Desktop MCP check.
+      // If it's not running, we still want reasonable timeout for complex files.
       const desktopMethod = methods.find(m => m.name === 'desktop-mcp');
       if (desktopMethod) {
-        // Temporarily wrap the extract method to use a shorter timeout
+        // Use environment timeout or a reasonable default (don't fail too fast)
+        const desktopTimeout = parseInt(process.env.FIGMA_EXTRACTION_TIMEOUT || '60000', 10);
         const originalExtract = desktopMethod.extract;
-        desktopMethod.extract = (url, opts) => originalExtract(url, { ...opts, timeout: 5000 }); // 5s timeout for local check
+        desktopMethod.extract = (url, opts) => originalExtract(url, { ...opts, timeout: desktopTimeout });
       }
     } else if (!isDesktopMode) {
       // CLOUD/WEB MODE: No Desktop MCP.
@@ -128,10 +129,10 @@ export class UnifiedFigmaExtractor {
       try {
         process.stdout.write(`🔄 Attempting Figma extraction via ${method.name}\n`);
 
-        // Use shorter timeout for the first attempt to fail fast?
-        // Actually, we handled Desktop MCP timeout above.
-        // For Remote MCP, we might accept a longer timeout since connection latency exists.
-        const methodTimeout = method.name === 'desktop-mcp' ? 5000 : timeout;
+        // Use appropriate timeout for each method type
+        // Desktop MCP: Use environment timeout (handled above in method wrapping)
+        // Remote MCP: Use provided timeout since connection latency exists
+        const methodTimeout = timeout;
 
         const rawData = await this.executeWithTimeout(
           method.extract(figmaUrl, options),
@@ -148,11 +149,11 @@ export class UnifiedFigmaExtractor {
           );
 
           process.stdout.write(`✅ Figma extraction successful via ${method.name}: ${standardizedData.components.length} components, ${standardizedData.colors.length} colors, ${standardizedData.typography.length} typography entries\n`);
-          console.log(`✅ Extraction successful via ${method.name}:`, {
-            components: standardizedData.components.length,
-            colors: standardizedData.colors.length,
-            typography: standardizedData.typography.length
-          });
+          // console.log(`✅ Extraction successful via ${method.name}:`, {
+          //   components: standardizedData.components.length,
+          //   colors: standardizedData.colors.length,
+          //   typography: standardizedData.typography.length
+          // });
 
           // Return proper API response format
           return {
@@ -510,7 +511,7 @@ export class UnifiedFigmaExtractor {
       apiUrl += `/nodes?ids=${encodeURIComponent(nodeId)}`;
     }
 
-    console.log(`📡 Making Figma API request to: ${apiUrl}`);
+    // Removed: console.log(`📡 Making Figma API request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
       headers: {

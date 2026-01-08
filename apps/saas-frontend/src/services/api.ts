@@ -1,10 +1,7 @@
 import { getApiBaseUrl } from '../utils/environment';
 import axios from 'axios';
 import { AuthenticationConfig, ComparisonResult } from '../types';
-// import { FigmaData, WebData } from '../../../src/types/extractor'; // Invalid path
-// defining placeholders if not available globally
-export interface FigmaData { [key: string]: any }
-export interface WebData { [key: string]: any }
+import { FigmaData, WebData, ApiError as SharedApiError } from '@designqa/shared-types';
 
 export interface FigmaOnlyResponse {
   success: boolean;
@@ -48,12 +45,6 @@ export interface ApiResponse<T = any> {
   message?: string
 }
 
-export interface ApiError {
-  message: string
-  status?: number
-  code?: string
-  details?: string
-}
 
 class ApiService {
   private timeout: number
@@ -96,7 +87,7 @@ class ApiService {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(new Error(`Client request timeout after ${this.timeout}ms`)), this.timeout)
     try {
-      console.log(`🌐 API Request: ${apiUrl}`);
+      // Removed: console.log(`🌐 API Request: ${apiUrl}`);
       const response = await fetch(apiUrl, {
         ...options,
         signal: controller.signal,
@@ -129,9 +120,6 @@ class ApiService {
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:118', message: 'handleResponse entry', data: { status: response.status, ok: response.ok, statusText: response.statusText, contentType: response.headers.get('content-type') }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-    // #endregion
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`
       let errorDetails = '';
@@ -150,26 +138,13 @@ class ApiService {
         code: response.status.toString(),
         details: errorDetails
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:137', message: 'handleResponse throwing ApiError', data: { errorMessage, status: response.status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-      // #endregion
       throw error
     }
 
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:141', message: 'Before JSON parse', data: { status: response.status, ok: response.ok }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-      // #endregion
       const jsonData = await response.json();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:142', message: 'After JSON parse success', data: { jsonDataType: typeof jsonData, hasJsonData: !!jsonData, jsonDataKeys: jsonData ? Object.keys(jsonData).slice(0, 15) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-      // #endregion
       return jsonData;
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:144', message: 'JSON parse failed', data: { errorMessage: error instanceof Error ? error.message : String(error) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-      // #endregion
       throw new Error('Invalid JSON response from server')
     }
   }
@@ -262,7 +237,7 @@ class ApiService {
   async postAxios<T = any>(url: string, data: any, options?: { headers?: Record<string, string> }): Promise<T> {
     try {
       const apiUrl = this.getApiUrl(url);
-      console.log(`🌐 Axios Request: ${apiUrl}`);
+      // Removed: console.log(`🌐 Axios Request: ${apiUrl}`);
 
       const headers = options?.headers || {};
 
@@ -277,9 +252,9 @@ class ApiService {
       });
 
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        const apiError: ApiError = {
+        const apiError: SharedApiError = {
           message: error.response?.data?.error || error.message,
           status: error.response?.status,
           code: error.code,
@@ -294,7 +269,7 @@ class ApiService {
   async getAxios(url: string) {
     try {
       const apiUrl = this.getApiUrl(url);
-      console.log(`🌐 Axios Request: ${apiUrl}`);
+      // Removed: console.log(`🌐 Axios Request: ${apiUrl}`);
 
       const response = await axios.get(apiUrl, {
         headers: {
@@ -304,9 +279,15 @@ class ApiService {
       });
 
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.message);
+        const apiError: SharedApiError = {
+          message: error.response?.data?.error || error.message,
+          status: error.response?.status,
+          code: error.code,
+          details: error.response?.data?.details
+        };
+        throw apiError;
       }
       throw error;
     }
@@ -369,14 +350,14 @@ export const extractFigmaOnly = async (options: FigmaExtractionOptions): Promise
       designSystemId: options.designSystemId
     });
 
-    console.log('Raw API response:', response);
+    // Removed: console.log('Raw API response:', response);
 
     // Check if the response is in the expected format (with success field)
     if (response && typeof response === 'object') {
       if ('success' in response && response.success) {
         // Standard format with success field
         const data = response.data;
-        console.log('Returning response.data:', data);
+        // Removed: console.log('Returning response.data:', data);
 
         // Ensure all required fields are present - map new API structure to expected format
         return {
@@ -443,19 +424,11 @@ export const extractWebOnly = async (
 ): Promise<WebOnlyResponse['data']> => {
   // Auto-enable logging for development debugging (temporary feature)
   await enableLoggingIfElectron();
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:656', message: 'extractWebOnly entry', data: { webUrl, hasAuth: !!authentication }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-  // #endregion
   try {
-    console.log('Extracting Web-only data from URL:', webUrl);
+    // Removed: console.log('Extracting Web-only data from URL:', webUrl);
 
     // Use the UnifiedWebExtractor endpoint with FreightTiger authentication fixes
     const endpoint = '/api/web/extract-v3';
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:662', message: 'Before apiService.post', data: { endpoint, webUrl }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-    // #endregion
 
     const response = await apiService.post<any>(endpoint, {
       url: webUrl, // UnifiedWebExtractor expects 'url', not 'webUrl'
@@ -468,50 +441,32 @@ export const extractWebOnly = async (
       }
     });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:671', message: 'After apiService.post - raw response', data: { responseType: typeof response, hasResponse: !!response, responseKeys: response ? Object.keys(response).slice(0, 20) : [], hasSuccess: typeof response?.success === 'boolean', success: response?.success, hasData: !!response?.data, hasElements: !!response?.elements, dataHasElements: !!response?.data?.elements }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B' }) }).catch(() => { });
-    // #endregion
-
     // Log response structure for debugging
-    console.log('📥 Raw API response structure:', {
-      hasSuccess: typeof response?.success === 'boolean',
-      success: response?.success,
-      hasData: !!response?.data,
-      hasElements: !!response?.elements || !!response?.data?.elements,
-      topLevelKeys: Object.keys(response || {}).slice(0, 15),
-      dataKeys: response?.data ? Object.keys(response.data).slice(0, 15) : []
-    });
+      // console.log('📥 Raw API response structure:', {
+      //   hasSuccess: typeof response?.success === 'boolean',
+      //   success: response?.success,
+      //   hasData: !!response?.data,
+      //   hasElements: !!response?.elements || !!response?.data?.elements,
+      //   topLevelKeys: Object.keys(response || {}).slice(0, 15),
+      //   dataKeys: response?.data ? Object.keys(response.data).slice(0, 15) : []
+    // });
 
     // Handle response structure - backend returns both { success, data } and top-level fields
     const hasSuccessFlag = typeof response?.success === 'boolean';
     const success = hasSuccessFlag ? response.success : true;
     const errorMessage = hasSuccessFlag ? response.error : undefined;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:688', message: 'After parsing success flag', data: { hasSuccessFlag, success, errorMessage, hasData: !!response?.data, dataKeys: response?.data ? Object.keys(response.data).slice(0, 10) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-    // #endregion
-
     // Extract webData - prefer response.data, fallback to response itself
     // Backend spreads webData both in data and at top level, so either should work
     let webData = hasSuccessFlag ? (response.data ?? response) : response;
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:690', message: 'After extracting webData', data: { webDataType: typeof webData, webDataIsNull: webData === null, webDataIsUndefined: webData === undefined, webDataKeys: webData ? Object.keys(webData).slice(0, 15) : [], webDataLength: webData && typeof webData === 'object' ? Object.keys(webData).length : 0, hasElements: !!webData?.elements }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-    // #endregion
 
     // If webData is empty object but response has elements at top level, use response
     if ((!webData || Object.keys(webData).length === 0) && response?.elements) {
       console.warn('⚠️ response.data is empty, using top-level response');
       webData = response;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:694', message: 'Fallback to top-level response', data: { webDataKeys: webData ? Object.keys(webData).slice(0, 15) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-      // #endregion
     }
 
     // Validate success flag
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:697', message: 'Before success validation', data: { success, willFail: !success }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-    // #endregion
     if (!success) {
       const errorDetails = {
         errorMessage,
@@ -524,16 +479,10 @@ export const extractWebOnly = async (
         }
       };
       console.error('❌ Extraction failed - success flag is false:', errorDetails);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:710', message: 'Throwing error - success false', data: errorDetails, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       throw new Error(errorMessage || 'Failed to extract web data');
     }
 
     // Validate webData exists and is not empty
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:713', message: 'Before webData validation', data: { webDataExists: !!webData, webDataType: typeof webData, isObject: typeof webData === 'object', webDataKeys: webData ? Object.keys(webData).slice(0, 10) : [], willFail: !webData || typeof webData !== 'object' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-    // #endregion
     if (!webData || typeof webData !== 'object') {
       const errorDetails = {
         webDataType: typeof webData,
@@ -545,17 +494,11 @@ export const extractWebOnly = async (
         }
       };
       console.error('❌ Extraction failed - invalid webData:', errorDetails);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:725', message: 'Throwing error - invalid webData', data: errorDetails, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-      // #endregion
       throw new Error('Invalid response format: webData is missing or invalid');
     }
 
     // Validate that elements array exists and has content
     const elements = webData.elements;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:729', message: 'Before elements validation', data: { elementsExists: !!elements, elementsType: typeof elements, isArray: Array.isArray(elements), elementsLength: Array.isArray(elements) ? elements.length : typeof elements, willFail: !Array.isArray(elements) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
-    // #endregion
     if (!Array.isArray(elements)) {
       const errorDetails = {
         elementsType: typeof elements,
@@ -568,9 +511,6 @@ export const extractWebOnly = async (
         }
       };
       console.error('❌ Extraction failed - elements is not an array:', errorDetails);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:742', message: 'Throwing error - elements not array', data: errorDetails, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
-      // #endregion
       throw new Error('Invalid response format: elements array is missing or invalid');
     }
 
@@ -592,17 +532,9 @@ export const extractWebOnly = async (
       hasTypography: !!webData.typography,
       url: webData.url || webUrl
     });
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:764', message: 'extractWebOnly success - returning', data: { elementsCount: elements.length, webDataKeys: Object.keys(webData).slice(0, 10) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-    // #endregion
     return webData;
   } catch (error) {
     console.error('Error extracting Web-only data:', error);
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'api.ts:766', message: 'extractWebOnly catch block', data: { errorMessage: error instanceof Error ? error.message : String(error), errorName: error instanceof Error ? error.name : 'unknown', errorStack: error instanceof Error ? error.stack?.split('\n').slice(0, 3).join('|') : 'no stack' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-    // #endregion
 
     // Enhance error message with more context if it's a generic error
     if (error instanceof Error && error.message === 'Failed to extract web data') {
@@ -639,12 +571,12 @@ export const getFigmaStatus = async () => {
 // Screenshot Comparison API Functions
 export const uploadScreenshots = async (formData: FormData): Promise<{ uploadId: string }> => {
   try {
-    console.log('🌐 Uploading screenshots with FormData:', formData);
+    // Removed: console.log('🌐 Uploading screenshots with FormData:', formData);
 
     // Debug FormData contents
-    console.log('📝 FormData contents before upload:');
+    // Removed: console.log('📝 FormData contents before upload:');
     for (const [key, value] of formData.entries()) {
-      console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
+      // Removed: console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
     }
 
     const response = await apiService.postAxios<ApiResponse<{ uploadId: string }>>(

@@ -16,26 +16,26 @@ export class IssueFormatter {
    */
   transform(comparisonResults) {
     logger.info('Transforming comparison results into DevRev issues');
-    
+
     const issues = [];
     let issueId = 1;
-    
+
     try {
       // Extract all discrepancies from comparisons
       const comparisons = comparisonResults.comparisons || [];
       const metadata = comparisonResults.metadata || {};
-      
+
       comparisons.forEach(comparison => {
         // Skip comparisons with no deviations or "matches" status
         if (comparison.status === 'matches' || !comparison.deviations || comparison.deviations.length === 0) {
           return;
         }
-        
+
         // Process each deviation in the deviations array
         comparison.deviations.forEach(deviation => {
           // Determine deviation type and create appropriate issue
           const deviationType = this.detectDeviationType(deviation);
-          
+
           switch (deviationType) {
             case 'color':
               issues.push(this.createColorIssue(issueId++, deviation, comparison, metadata));
@@ -54,12 +54,52 @@ export class IssueFormatter {
           }
         });
       });
-      
+
       logger.info(`Generated ${issues.length} DevRev issues from comparison results`);
       return issues;
-      
+
     } catch (error) {
       logger.error('Failed to transform comparison results', error);
+      return [];
+    }
+  }
+
+  /**
+   * Transform comparison results into developer-friendly issues
+   * @param {Object} comparisonResults - Full comparison results
+   * @returns {Array<Object>} Array of developer-focused issues
+   */
+  transformForDevelopers(comparisonResults) {
+    logger.info('Transforming comparison results for developer CSV export');
+
+    const issues = [];
+    let issueId = 1;
+
+    try {
+      const comparisons = comparisonResults.comparisons || [];
+      const metadata = comparisonResults.metadata || {};
+
+      comparisons.forEach(comparison => {
+        if (comparison.status === 'matches' || !comparison.deviations || comparison.deviations.length === 0) {
+          return;
+        }
+
+        comparison.deviations.forEach(deviation => {
+          const baseIssue = this.createBaseIssue(issueId++, deviation, comparison, metadata);
+          const developerEnhancements = this.generateDeveloperEnhancements(deviation, comparison, metadata);
+
+          issues.push({
+            ...baseIssue,
+            ...developerEnhancements
+          });
+        });
+      });
+
+      logger.info(`Generated ${issues.length} developer-focused issues from comparison results`);
+      return issues;
+
+    } catch (error) {
+      logger.error('Failed to transform comparison results for developers', error);
       return [];
     }
   }
@@ -450,6 +490,387 @@ export class IssueFormatter {
   capitalizeFirst(str) {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * Create base issue structure for developer enhancements
+   */
+  createBaseIssue(issueId, deviation, comparison, metadata) {
+    const componentName = comparison.componentName || comparison.figmaComponent?.name || 'Unknown Component';
+    const componentId = comparison.componentId || comparison.figmaComponent?.id || 'N/A';
+    const componentType = comparison.componentType || comparison.figmaComponent?.type || 'N/A';
+
+    return {
+      issueId,
+      componentName,
+      componentId,
+      componentType,
+      issueType: this.detectDeviationType(deviation),
+      severity: this.mapSeverity(deviation.severity) || this.calculateColorSeverity(deviation),
+      priority: this.calculatePriority(this.mapSeverity(deviation.severity), this.detectDeviationType(deviation), componentName),
+      property: deviation.property || 'unknown',
+      currentValue: deviation.webValue || deviation.actual || 'N/A',
+      expectedValue: deviation.figmaValue || deviation.expected || 'N/A',
+      description: deviation.message || `${deviation.property} mismatch in ${componentName}`,
+      webElement: comparison.webElement
+    };
+  }
+
+  /**
+   * Generate developer-specific enhancements for issues
+   */
+  generateDeveloperEnhancements(deviation, comparison, metadata) {
+    const webElement = comparison.webElement || {};
+    const property = deviation.property || 'unknown';
+    const expectedValue = deviation.figmaValue || deviation.expected || '';
+    const currentValue = deviation.webValue || deviation.actual || '';
+
+    return {
+      cssSelector: this.generateCSSSelector(webElement, comparison),
+      propertyToFix: this.normalizePropertyName(property),
+      cssFix: this.generateCSSFix(property, expectedValue),
+      fileLocation: this.estimateFileLocation(webElement, comparison, metadata),
+      lineNumber: this.estimateLineNumber(property, webElement),
+      quickFixCommand: this.generateQuickFixCommand(property, expectedValue, webElement),
+      testSteps: this.generateDeveloperTestSteps(comparison, metadata),
+      screenshotUrls: this.generateScreenshotUrls(comparison, metadata),
+      designToken: this.mapToDesignToken(property, expectedValue),
+      acceptanceCriteria: this.generateAcceptanceCriteria(property, expectedValue, comparison),
+      timeEstimate: this.estimateFixTime(deviation, property)
+    };
+  }
+
+  /**
+   * Generate CSS selector for targeting the element
+   */
+  generateCSSSelector(webElement, comparison) {
+    if (!webElement) return '.component';
+
+    const tag = webElement.tag || webElement.tagName || 'div';
+    const className = webElement.className || webElement.class || '';
+    const id = webElement.id || '';
+
+    // Build selector with specificity
+    let selector = tag;
+
+    if (id) {
+      selector = `#${id}`;
+    } else if (className) {
+      const classes = className.split(' ').filter(Boolean);
+      if (classes.length > 0) {
+        selector = `.${classes[0]}`;
+        // Add additional classes for specificity if needed
+        if (classes.length > 1) {
+          selector += `.${classes[1]}`;
+        }
+      }
+    }
+
+    // Add component-specific context if available
+    const componentName = comparison.componentName;
+    if (componentName && !selector.includes(componentName.toLowerCase())) {
+      const componentClass = componentName.toLowerCase().replace(/\s+/g, '-');
+      selector = `.${componentClass} ${selector}`;
+    }
+
+    return selector;
+  }
+
+  /**
+   * Generate CSS fix rule
+   */
+  generateCSSFix(property, expectedValue) {
+    if (!property || !expectedValue) return '';
+
+    const normalizedProperty = this.normalizePropertyName(property);
+    const normalizedValue = this.normalizeValue(expectedValue, property);
+
+    return `${normalizedProperty}: ${normalizedValue};`;
+  }
+
+  /**
+   * Normalize CSS property names
+   */
+  normalizePropertyName(property) {
+    const propertyMap = {
+      'font-size': 'font-size',
+      'fontSize': 'font-size',
+      'font-weight': 'font-weight',
+      'fontWeight': 'font-weight',
+      'font-family': 'font-family',
+      'fontFamily': 'font-family',
+      'color': 'color',
+      'background-color': 'background-color',
+      'backgroundColor': 'background-color',
+      'fill': 'background-color',
+      'padding': 'padding',
+      'margin': 'margin',
+      'width': 'width',
+      'height': 'height',
+      'border-radius': 'border-radius',
+      'borderRadius': 'border-radius'
+    };
+
+    return propertyMap[property] || property.replace(/([A-Z])/g, '-$1').toLowerCase();
+  }
+
+  /**
+   * Normalize CSS values
+   */
+  normalizeValue(value, property) {
+    if (!value) return value;
+
+    // Color values
+    if (property && (property.includes('color') || property.includes('fill'))) {
+      // Ensure hex colors have # prefix
+      if (/^[0-9a-fA-F]{6}$/.test(value)) {
+        return `#${value}`;
+      }
+      // Convert rgb() to hex if needed
+      if (value.startsWith('rgb(')) {
+        return this.rgbToHex(value);
+      }
+    }
+
+    // Size values - ensure unit
+    if (property && (property.includes('size') || property.includes('width') || property.includes('height') || property.includes('padding') || property.includes('margin'))) {
+      if (/^\d+$/.test(value)) {
+        return `${value}px`;
+      }
+    }
+
+    return value;
+  }
+
+  /**
+   * Estimate likely file location for the CSS fix
+   */
+  estimateFileLocation(webElement, comparison, metadata) {
+    const componentName = comparison.componentName || 'Component';
+    const tag = webElement?.tag || webElement?.tagName || 'div';
+    const className = webElement?.className || webElement?.class || '';
+
+    // Try to determine file location based on component name
+    const sanitizedComponentName = componentName.replace(/\s+/g, '');
+
+    // Common file patterns
+    const patterns = [
+      `src/components/${sanitizedComponentName}/${sanitizedComponentName}.css`,
+      `src/components/${sanitizedComponentName}/styles.css`,
+      `src/components/${sanitizedComponentName}/index.css`,
+      `src/styles/components/${sanitizedComponentName.toLowerCase()}.css`,
+      `styles/${sanitizedComponentName.toLowerCase()}.css`,
+      `src/styles/global.css`
+    ];
+
+    // If we have a specific class name, use that
+    if (className) {
+      const firstClass = className.split(' ')[0];
+      patterns.unshift(`src/styles/${firstClass}.css`);
+    }
+
+    return patterns[0]; // Return most likely location
+  }
+
+  /**
+   * Estimate line number in CSS file
+   */
+  estimateLineNumber(property, webElement) {
+    // Simple heuristic - different properties tend to appear in certain order
+    const propertyOrder = {
+      'display': 10,
+      'position': 15,
+      'width': 20,
+      'height': 25,
+      'margin': 30,
+      'padding': 35,
+      'background-color': 40,
+      'color': 45,
+      'font-size': 50,
+      'font-weight': 55,
+      'font-family': 60,
+      'border': 65,
+      'border-radius': 70
+    };
+
+    const normalizedProperty = this.normalizePropertyName(property);
+    return propertyOrder[normalizedProperty] || 50;
+  }
+
+  /**
+   * Generate quick fix command for automated fixes
+   */
+  generateQuickFixCommand(property, expectedValue, webElement) {
+    if (!property || !expectedValue) return '';
+
+    const normalizedProperty = this.normalizePropertyName(property);
+    const normalizedValue = this.normalizeValue(expectedValue, property);
+
+    // Generate sed command for simple replacements
+    return `sed -i 's/${normalizedProperty}:.*[;}]/${normalizedProperty}: ${normalizedValue};/g' src/styles/**/*.css`;
+  }
+
+  /**
+   * Generate developer-specific test steps
+   */
+  generateDeveloperTestSteps(comparison, metadata) {
+    const componentName = comparison.componentName || 'component';
+    const steps = [];
+
+    steps.push('1. Apply the CSS fix to the specified file');
+    steps.push('2. Refresh the browser or restart the dev server');
+
+    if (metadata.webUrl) {
+      steps.push(`3. Navigate to ${metadata.webUrl}`);
+    } else {
+      steps.push('3. Navigate to the page containing the component');
+    }
+
+    steps.push(`4. Locate the "${componentName}" component`);
+    steps.push('5. Verify the visual change matches the expected value');
+    steps.push('6. Test component in different browser sizes');
+    steps.push('7. Ensure no regression in other components');
+
+    return steps.join('\\n');
+  }
+
+  /**
+   * Generate screenshot URLs for comparison
+   */
+  generateScreenshotUrls(comparison, metadata) {
+    // Generate relative URLs for before/after screenshots
+    const baseUrl = metadata.webUrl ? new URL(metadata.webUrl).origin : 'http://localhost:3000';
+    const comparisonId = comparison.id || Date.now();
+
+    return [
+      `${baseUrl}/api/screenshots/comparison-${comparisonId}-before.png`,
+      `${baseUrl}/api/screenshots/comparison-${comparisonId}-after.png`
+    ].join(', ');
+  }
+
+  /**
+   * Map CSS properties to design system tokens
+   */
+  mapToDesignToken(property, value) {
+    if (!property) return '';
+
+    const tokenMaps = {
+      'color': this.mapColorToToken(value),
+      'background-color': this.mapColorToToken(value),
+      'font-size': this.mapFontSizeToToken(value),
+      'font-weight': this.mapFontWeightToToken(value),
+      'padding': this.mapSpacingToToken(value),
+      'margin': this.mapSpacingToToken(value)
+    };
+
+    const normalizedProperty = this.normalizePropertyName(property);
+    return tokenMaps[normalizedProperty] || '';
+  }
+
+  mapColorToToken(value) {
+    const colorTokens = {
+      '#007bff': 'colors.primary.500',
+      '#6c757d': 'colors.gray.500',
+      '#28a745': 'colors.success.500',
+      '#dc3545': 'colors.error.500',
+      '#ffc107': 'colors.warning.500',
+      '#17a2b8': 'colors.info.500',
+      '#ffffff': 'colors.white',
+      '#000000': 'colors.black'
+    };
+
+    return colorTokens[value?.toLowerCase()] || 'colors.custom';
+  }
+
+  mapFontSizeToToken(value) {
+    const sizeTokens = {
+      '12px': 'typography.size.xs',
+      '14px': 'typography.size.sm',
+      '16px': 'typography.size.base',
+      '18px': 'typography.size.lg',
+      '20px': 'typography.size.xl',
+      '24px': 'typography.size.2xl'
+    };
+
+    return sizeTokens[value] || 'typography.size.custom';
+  }
+
+  mapFontWeightToToken(value) {
+    const weightTokens = {
+      '300': 'typography.weight.light',
+      '400': 'typography.weight.normal',
+      '500': 'typography.weight.medium',
+      '600': 'typography.weight.semibold',
+      '700': 'typography.weight.bold'
+    };
+
+    return weightTokens[value] || 'typography.weight.custom';
+  }
+
+  mapSpacingToToken(value) {
+    const spacingTokens = {
+      '4px': 'spacing.1',
+      '8px': 'spacing.2',
+      '12px': 'spacing.3',
+      '16px': 'spacing.4',
+      '24px': 'spacing.6',
+      '32px': 'spacing.8'
+    };
+
+    return spacingTokens[value] || 'spacing.custom';
+  }
+
+  /**
+   * Generate acceptance criteria for the fix
+   */
+  generateAcceptanceCriteria(property, expectedValue, comparison) {
+    const componentName = comparison.componentName || 'component';
+    const normalizedProperty = this.normalizePropertyName(property);
+
+    return `${componentName} ${normalizedProperty} matches design specification (${expectedValue}) across all supported browser sizes`;
+  }
+
+  /**
+   * Estimate time required to fix the issue
+   */
+  estimateFixTime(deviation, property) {
+    const severity = deviation.severity?.toLowerCase();
+    const propertyType = this.detectDeviationType(deviation);
+
+    // Base time estimates
+    const timeMap = {
+      'color': '5min',
+      'typography': '10min',
+      'spacing': '15min',
+      'existence': '1hr',
+      'generic': '30min'
+    };
+
+    let baseTime = timeMap[propertyType] || '30min';
+
+    // Adjust based on severity
+    if (severity === 'critical' || severity === 'high') {
+      // Critical issues might need more investigation
+      const timeValue = parseInt(baseTime);
+      const unit = baseTime.replace(/\d+/, '');
+      baseTime = `${Math.ceil(timeValue * 1.5)}${unit}`;
+    }
+
+    return baseTime;
+  }
+
+  /**
+   * Convert RGB color to hex
+   */
+  rgbToHex(rgb) {
+    const matches = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (!matches) return rgb;
+
+    const [, r, g, b] = matches;
+    return '#' + [r, g, b].map(x => {
+      const hex = parseInt(x).toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
   }
 }
 

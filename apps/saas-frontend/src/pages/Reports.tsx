@@ -10,7 +10,8 @@ import {
   MagnifyingGlassIcon,
   CalendarIcon,
   ClockIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  CodeBracketIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import { getApiBaseUrl } from '@/utils/environment';
@@ -47,7 +48,7 @@ export default function Reports() {
 
       // Fix: Backend returns { success: true, data: [...] }
       if (data.success && Array.isArray(data.data)) {
-        console.log(`✅ Loaded ${data.data.length} real reports from backend`);
+        // Removed: console.log(`✅ Loaded ${data.data.length} real reports from backend`);
         setReports(data.data);
       } else if (data.reports) {
         // Fallback for legacy format if any
@@ -138,6 +139,36 @@ export default function Reports() {
     } catch (error) {
       console.error('Failed to export report:', error);
       alert('Failed to export report. Please try again.');
+    }
+  };
+
+  const handleExportDeveloperCSV = async (report: ComparisonReport) => {
+    try {
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/reports/${report.id}/export-dev-csv`);
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const totalIssues = response.headers.get('X-Total-Issues') || 'unknown';
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `developer_fixes_${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${report.id}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Show success message
+      alert(`Developer CSV exported successfully! ${totalIssues} actionable fixes included.`);
+    } catch (error) {
+      console.error('Failed to export developer CSV:', error);
+      alert('Failed to export developer CSV. Please try again.');
     }
   };
 
@@ -306,6 +337,16 @@ export default function Reports() {
                       >
                         <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                         Export
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleExportDeveloperCSV(report)}
+                        title="Download developer-friendly CSV with actionable fixes"
+                        className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                      >
+                        <CodeBracketIcon className="h-4 w-4 mr-1" />
+                        Dev CSV
                       </Button>
                       <Button
                         variant="outline"

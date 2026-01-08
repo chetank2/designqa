@@ -39,6 +39,7 @@ for (const envPath of envPaths) {
 import { startServer } from './src/core/server/index.js';
 import { shutdownBrowserPool } from './src/browser/BrowserPool.js';
 import { shutdownResourceManager } from './src/utils/ResourceManager.js';
+import { validateEnvironment } from './src/config/environmentValidator.js';
 
 // Use Railway's PORT or default to 3847
 const PORT = process.env.PORT || 3847;
@@ -49,24 +50,27 @@ const PORT = process.env.PORT || 3847;
 async function main() {
   try {
     console.log('🚀 Starting DesignQA Server (SaaS Mode)...');
-    console.log(`📡 Port: ${PORT}`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    
-    // Check for required environment variables
-    const encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || process.env.LOCAL_CREDENTIAL_KEY;
-    if (!encryptionKey) {
-      console.warn('');
-      console.warn('⚠️  WARNING: CREDENTIAL_ENCRYPTION_KEY is not set!');
-      console.warn('⚠️  Figma OAuth credentials cannot be stored/retrieved without this key.');
-      console.warn('⚠️  Set CREDENTIAL_ENCRYPTION_KEY in your environment variables.');
-      console.warn('⚠️  Generate a secure key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"');
-      console.warn('');
-    } else {
-      console.log('✅ Credential encryption key configured');
+
+    // Validate environment configuration
+    console.log('🔍 Validating environment configuration...');
+    let config;
+    try {
+      config = validateEnvironment();
+      console.log('✅ Environment validation passed');
+    } catch (error) {
+      console.error('❌ Environment validation failed:', error.message);
+      console.error('\n📋 To create an environment template:');
+      console.error('  npm run generate-env-template');
+      process.exit(1);
     }
 
+    console.log(`📡 Port: ${config.port}`);
+    console.log(`🌐 Environment: ${config.nodeEnv}`);
+    console.log(`🗄️  Database: ${config.database.mode}`);
+    console.log(`☁️  Cloud deployment: ${config.isCloud ? 'Yes' : 'No'}`);
+
     // Start the server
-    const server = await startServer(PORT);
+    const server = await startServer(config.port, config);
 
     // Store server reference for graceful shutdown
     global.serverInstance = server;

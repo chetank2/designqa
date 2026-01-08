@@ -17,26 +17,6 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
 
-  // #region agent log
-  useEffect(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
-    const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
-    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'N/A';
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:18', message: 'AppContent mount - window location', data: { origin, href, protocol, pathname: location.pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-  }, [location.pathname]);
-  // #endregion
-
-  // #region agent log
-  useEffect(() => {
-    const handlePopState = () => {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
-      const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'App.tsx:25', message: 'PopState event', data: { origin, href, pathname: location.pathname }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [location.pathname]);
-  // #endregion
 
   const pageVariants = {
     initial: { opacity: 0, scale: 0.98, y: 10 },

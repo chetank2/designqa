@@ -90,8 +90,8 @@ export class DesktopMCPClient implements IMCPClient {
       const port = await this.discoverPort();
       const wsUrl = `ws://127.0.0.1:${port}`;
 
-      console.log(`🔄 Connecting to Desktop MCP at ${wsUrl}...`);
-      console.log(`[MCP] Mode: Desktop (Local), Port: ${port}, URL: ${wsUrl}`);
+      // Removed: console.log(`🔄 Connecting to Desktop MCP at ${wsUrl}...`);
+      // Removed: console.log(`[MCP] Mode: Desktop (Local), Port: ${port}, URL: ${wsUrl}`);
 
       // Add small delay to ensure Figma MCP server is ready
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -102,7 +102,7 @@ export class DesktopMCPClient implements IMCPClient {
 
           this.ws.on('open', () => {
             console.log('✅ Desktop MCP WebSocket connected');
-            console.log('✅ Connected to Figma Desktop MCP on 3845');
+            // Removed: console.log('✅ Connected to Figma Desktop MCP on 3845');
             this.connectionState = MCPConnectionState.CONNECTED;
             this.reconnectAttempts = 0;
             this.initialized = false; // Will be set after initialize()
@@ -120,7 +120,7 @@ export class DesktopMCPClient implements IMCPClient {
           });
 
           this.ws.on('close', (code: number, reason: Buffer) => {
-            console.log(`🔌 Desktop MCP WebSocket closed: ${code} ${reason.toString()}`);
+            // Removed: console.log(`🔌 Desktop MCP WebSocket closed: ${code} ${reason.toString()}`);
             this.connectionState = MCPConnectionState.DISCONNECTED;
             this.initialized = false;
             this.ws = null;
@@ -162,7 +162,7 @@ export class DesktopMCPClient implements IMCPClient {
     
     const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
     
-    console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+    // Removed: console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
     
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null;
@@ -209,7 +209,7 @@ export class DesktopMCPClient implements IMCPClient {
    * Handle MCP notifications
    */
   private handleNotification(message: any): void {
-    console.log('🔔 Desktop MCP notification:', message.method);
+    // Removed: console.log('🔔 Desktop MCP notification:', message.method);
     // Handle notifications as needed
   }
 
@@ -363,7 +363,7 @@ export class DesktopMCPClient implements IMCPClient {
 
     this.connectionState = MCPConnectionState.DISCONNECTED;
     this.initialized = false;
-    console.log('🔌 Desktop MCP disconnected');
+    // Removed: console.log('🔌 Desktop MCP disconnected');
   }
 
   /**
@@ -396,29 +396,29 @@ export class DesktopMCPClient implements IMCPClient {
     return new Promise((resolve) => {
       try {
         const wsUrl = `ws://127.0.0.1:${port}`;
-        console.log(`[MCP Smoke Test] Testing connection to ${wsUrl}...`);
+        // Removed: console.log(`[MCP Smoke Test] Testing connection to ${wsUrl}...`);
         
         const testWs = new WebSocket(wsUrl);
         const timeout = setTimeout(() => {
           testWs.close();
-          console.log(`[MCP Smoke Test] ❌ Timeout - port ${port} not accessible`);
+          // Removed: console.log(`[MCP Smoke Test] ❌ Timeout - port ${port} not accessible`);
           resolve(false);
         }, 2000);
 
         testWs.on('open', () => {
           clearTimeout(timeout);
-          console.log(`[MCP Smoke Test] ✅ Port ${port} is accessible`);
+          // Removed: console.log(`[MCP Smoke Test] ✅ Port ${port} is accessible`);
           testWs.close();
           resolve(true);
         });
 
         testWs.on('error', (error) => {
           clearTimeout(timeout);
-          console.log(`[MCP Smoke Test] ❌ Port ${port} error:`, error.message);
+          // Removed: console.log(`[MCP Smoke Test] ❌ Port ${port} error:`, error.message);
           resolve(false);
         });
       } catch (error) {
-        console.log(`[MCP Smoke Test] ❌ Failed:`, error);
+        // Removed: console.log(`[MCP Smoke Test] ❌ Failed:`, error);
         resolve(false);
       }
     });

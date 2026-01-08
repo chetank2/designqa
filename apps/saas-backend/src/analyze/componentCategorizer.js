@@ -230,12 +230,13 @@ export class ComponentCategorizer {
       borderRadius: this.sortTokensByUsage(tokens.borderRadius)
     };
 
-      colors: sortedTokens.colors.length,
-      typography: sortedTokens.typography.length,
-      spacing: sortedTokens.spacing.length,
-      shadows: sortedTokens.shadows.length,
-      borderRadius: sortedTokens.borderRadius.length
-    });
+    // console.log('Design tokens extracted:', {
+    //   colors: sortedTokens.colors.length,
+    //   typography: sortedTokens.typography.length,
+    //   spacing: sortedTokens.spacing.length,
+    //   shadows: sortedTokens.shadows.length,
+    //   borderRadius: sortedTokens.borderRadius.length
+    // });
 
     return sortedTokens;
   }

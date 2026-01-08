@@ -43,9 +43,9 @@ export async function navigateToPage(page, url, options = {}, config = {}) {
     const strategy = strategies[attempt] || strategies[strategies.length - 1];
     
     try {
-      console.log(`🔗 Navigation attempt ${attempt + 1}/${maxRetries} with ${strategy.waitUntil}`);
+      // Removed: console.log(`🔗 Navigation attempt ${attempt + 1}/${maxRetries} with ${strategy.waitUntil}`);
       await page.goto(url, strategy);
-      console.log(`✅ Navigation successful with ${strategy.waitUntil}`);
+      // Removed: console.log(`✅ Navigation successful with ${strategy.waitUntil}`);
       return;
     } catch (error) {
       lastError = error;
@@ -71,7 +71,7 @@ export async function waitForPageStability(page, options = {}) {
   const defaultStabilityTimeout = isFreightTiger ? 30000 : 5000;
   const stabilityTimeout = isFreightTiger ? 30000 : (options.stabilityTimeout || defaultStabilityTimeout);
   
-  console.log(`⏱️ Using stability timeout: ${stabilityTimeout}ms (FreightTiger: ${isFreightTiger})`);
+  // Removed: console.log(`⏱️ Using stability timeout: ${stabilityTimeout}ms (FreightTiger: ${isFreightTiger})`);
   
   try {
     // Check if this looks like a JavaScript-heavy site
@@ -82,7 +82,7 @@ export async function waitForPageStability(page, options = {}) {
     });
 
     if (isJSHeavy) {
-      console.log('🔍 Detected JS-heavy site, waiting for stability...');
+      // Removed: console.log('🔍 Detected JS-heavy site, waiting for stability...');
       
       // Wait for loading indicators to disappear
       try {
@@ -109,7 +109,7 @@ export async function waitForPageStability(page, options = {}) {
           return meaningfulElements.length > 3;
         }, { timeout: stabilityTimeout });
       } catch (e) {
-        console.log('⚠️ Content detection timed out');
+        // Removed: console.log('⚠️ Content detection timed out');
       }
 
       // Final fallback: ensure there is a reasonable number of nodes in DOM

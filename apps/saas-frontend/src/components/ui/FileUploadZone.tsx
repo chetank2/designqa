@@ -27,14 +27,14 @@ export default function FileUploadZone({
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
-      console.log('📁 FileUploadZone: File selected:', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        isFile: file instanceof File,
-        constructor: file.constructor.name,
-        file: file
-      });
+        // console.log('📁 FileUploadZone: File selected:', {
+        //   name: file.name,
+        //   type: file.type,
+        //   size: file.size,
+        //   isFile: file instanceof File,
+        //   constructor: file.constructor.name,
+        //   file: file
+      // });
       onFileSelect(file);
     }
   }, [onFileSelect]);

@@ -54,6 +54,7 @@
       "saas-backend/src/**/*",
       "saas-backend/package.json",
       "saas-backend/node_modules/**/*",
+      "saas-backend/packages/**/*",
       "src/preload/**/*",
       "preload/**/*",
       "dist/renderer/**/*"
@@ -102,7 +103,9 @@
       {
         "from": "saas-backend/node_modules",
         "to": "app.asar.unpacked/saas-backend/node_modules",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "saas-backend/package.json",

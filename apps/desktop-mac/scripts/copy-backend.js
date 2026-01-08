@@ -44,7 +44,7 @@ export async function copyBackendFiles() {
       for (const [depName, depVersion] of Object.entries(packageJson.dependencies)) {
         if (depVersion === 'workspace:*') {
           const packageName = depName.split('/').pop();
-          const relativePath = `file:../../../packages/${packageName}`;
+          const relativePath = `file:./packages/${packageName}`;
           packageJson.dependencies[depName] = relativePath;
           modified = true;
         }
@@ -55,7 +55,7 @@ export async function copyBackendFiles() {
       for (const [depName, depVersion] of Object.entries(packageJson.devDependencies)) {
         if (depVersion === 'workspace:*') {
           const packageName = depName.split('/').pop();
-          const relativePath = `file:../../../packages/${packageName}`;
+          const relativePath = `file:./packages/${packageName}`;
           packageJson.devDependencies[depName] = relativePath;
           modified = true;
         }
@@ -87,6 +87,14 @@ export async function copyBackendFiles() {
     console.log('✅ Copied frontend dist to backend frontend/dist');
   } else {
     console.warn('⚠️ Frontend dist not found, backend may not be able to serve frontend');
+  }
+
+  // Copy workspace packages to fix dependency resolution
+  const packagesDir = join(desktopMacDir, '../../packages');
+  if (existsSync(packagesDir)) {
+    const targetPackagesDir = join(targetBackendDir, 'packages');
+    await cp(packagesDir, targetPackagesDir, { recursive: true });
+    console.log('✅ Copied workspace packages to backend/packages');
   }
 }
 

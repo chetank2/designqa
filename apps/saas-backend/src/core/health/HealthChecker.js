@@ -389,6 +389,91 @@ export class HealthChecker {
       };
     };
   }
+
+  /**
+   * Create a health check for database connection
+   */
+  static createDatabaseCheck(databaseAdapter) {
+    return async () => {
+      try {
+        // Try a simple query to test connectivity
+        const testResult = await databaseAdapter._executeWithReconnection(
+          () => Promise.resolve({ test: 'connection' }),
+          'health check'
+        );
+
+        return {
+          status: 'healthy',
+          connected: databaseAdapter.connected,
+          type: databaseAdapter.getType(),
+          message: 'Database connection is healthy'
+        };
+      } catch (error) {
+        throw new Error(`Database health check failed: ${error.message}`);
+      }
+    };
+  }
+
+  /**
+   * Create a health check for circuit breakers
+   */
+  static createCircuitBreakerCheck(circuitBreakerRegistry) {
+    return async () => {
+      const stats = circuitBreakerRegistry.getAllStats();
+      const healthStatus = circuitBreakerRegistry.getHealthStatus();
+
+      if (!healthStatus.healthy) {
+        throw new Error(`Circuit breakers unhealthy: ${healthStatus.open} open, ${healthStatus.halfOpen} half-open`);
+      }
+
+      return {
+        status: 'healthy',
+        totalBreakers: healthStatus.total,
+        openBreakers: healthStatus.open,
+        halfOpenBreakers: healthStatus.halfOpen,
+        closedBreakers: healthStatus.closed,
+        message: 'All circuit breakers are healthy'
+      };
+    };
+  }
+
+  /**
+   * Create a health check for external service connectivity
+   */
+  static createExternalServiceCheck(serviceName, url, timeout = 5000) {
+    return async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(url, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'DesignQA-HealthCheck/1.0'
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Service returned ${response.status}: ${response.statusText}`);
+        }
+
+        return {
+          status: 'healthy',
+          responseStatus: response.status,
+          responseTime: Date.now(),
+          message: `${serviceName} is reachable`
+        };
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`${serviceName} health check timeout after ${timeout}ms`);
+        }
+        throw new Error(`${serviceName} unreachable: ${error.message}`);
+      }
+    };
+  }
 }
 
 // Export singleton instance

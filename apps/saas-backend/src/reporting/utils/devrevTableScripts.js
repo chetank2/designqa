@@ -13,13 +13,90 @@ function exportDevRevTableToCSV() {
     alert('Table not found!');
     return;
   }
-  
+
   const csv = tableToCSV(table);
   const timestamp = new Date().toISOString().split('T')[0];
   downloadCSV(csv, `comparison-issues-${timestamp}.csv`);
-  
+
   // Show success message
   showNotification('✅ CSV exported successfully!', 'success');
+}
+
+/**
+ * Export enhanced developer CSV with actionable fixes
+ */
+function exportDeveloperCSV() {
+  try {
+    // Get the report ID from the URL or a data attribute
+    const reportId = getReportIdFromPage();
+    if (!reportId) {
+      showNotification('❌ Report ID not found', 'error');
+      return;
+    }
+
+    // Fetch developer CSV from the backend
+    const apiUrl = `/api/reports/${reportId}/export-dev-csv`;
+
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) throw new Error('Export failed');
+        return response.blob();
+      })
+      .then(blob => {
+        const timestamp = new Date().toISOString().split('T')[0];
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `developer-fixes-${timestamp}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        showNotification('✅ Developer CSV exported successfully!', 'success');
+      })
+      .catch(error => {
+        console.error('Failed to export developer CSV:', error);
+        showNotification('❌ Failed to export developer CSV', 'error');
+      });
+
+  } catch (error) {
+    console.error('Export error:', error);
+    showNotification('❌ Export failed', 'error');
+  }
+}
+
+/**
+ * Get report ID from current page
+ * @returns {string|null} Report ID or null if not found
+ */
+function getReportIdFromPage() {
+  // Try to get from URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('reportId')) {
+    return urlParams.get('reportId');
+  }
+
+  // Try to get from page title or meta tags
+  const pageTitle = document.title;
+  const reportIdMatch = pageTitle.match(/Report\s+([a-zA-Z0-9-]+)/);
+  if (reportIdMatch) {
+    return reportIdMatch[1];
+  }
+
+  // Try to get from data attribute on body
+  const body = document.body;
+  if (body.dataset.reportId) {
+    return body.dataset.reportId;
+  }
+
+  // Try to extract from URL path
+  const pathMatch = window.location.pathname.match(/\/reports\/([a-zA-Z0-9-]+)/);
+  if (pathMatch) {
+    return pathMatch[1];
+  }
+
+  return null;
 }
 
 /**
@@ -210,9 +287,19 @@ function updateTableStats(visibleCount, totalCount) {
   if (!statsCounter) return;
 
   if (visibleCount === totalCount) {
-    statsCounter.innerHTML = `<strong>${totalCount}</strong> issues`;
+    // Use textContent for security - prevent XSS
+    const strongEl = document.createElement('strong');
+    strongEl.textContent = totalCount;
+    statsCounter.innerHTML = '';
+    statsCounter.appendChild(strongEl);
+    statsCounter.appendChild(document.createTextNode(' issues'));
   } else {
-    statsCounter.innerHTML = `<strong>${visibleCount}</strong> / ${totalCount}`;
+    // Use textContent for security - prevent XSS
+    const strongEl = document.createElement('strong');
+    strongEl.textContent = visibleCount;
+    statsCounter.innerHTML = '';
+    statsCounter.appendChild(strongEl);
+    statsCounter.appendChild(document.createTextNode(` / ${totalCount}`));
   }
 }
 

@@ -32,7 +32,7 @@ export class MockMCPServer {
         this.wss = new WebSocket.Server({ port: this.port });
 
         this.wss.on('connection', (ws) => {
-          console.log(`[Mock MCP] Client connected`);
+          // Removed: console.log(`[Mock MCP] Client connected`);
 
           ws.on('message', async (data: WebSocket.Data) => {
             const message = JSON.parse(data.toString());
@@ -40,7 +40,7 @@ export class MockMCPServer {
           });
 
           ws.on('close', () => {
-            console.log(`[Mock MCP] Client disconnected`);
+            // Removed: console.log(`[Mock MCP] Client disconnected`);
           });
 
           ws.on('error', (error) => {
@@ -49,7 +49,7 @@ export class MockMCPServer {
         });
 
         this.wss.on('listening', () => {
-          console.log(`[Mock MCP] Server listening on port ${this.port}`);
+          // Removed: console.log(`[Mock MCP] Server listening on port ${this.port}`);
           resolve(this.port);
         });
 
@@ -216,7 +216,7 @@ export class MockMCPServer {
     return new Promise((resolve) => {
       if (this.wss) {
         this.wss.close(() => {
-          console.log(`[Mock MCP] Server stopped`);
+          // Removed: console.log(`[Mock MCP] Server stopped`);
           resolve();
         });
       } else {

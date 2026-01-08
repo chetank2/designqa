@@ -1,0 +1,5374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzE0NjBfNjExMDkpIj4KPGcgZmlsdGVyPSJ1cmwoI2ZpbHRlcjBfaV8xNDYwXzYxMTA5KSI+CjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzAwOEZGMCIvPgo8cGF0aCBkPSJNNC44NzE5MSAxMy45MjA5QzUuMDUzNTUgMTMuOTAwMiA1LjIzNzU1IDEzLjkyNjggNS40MDcwNyAxMy45OTdMMTYuMDc0MSAxOC4zMjk2QzE2LjI1ODQgMTguNDA0NyAxNi40MTg2IDE4LjUyOTQgMTYuNTM2NSAxOC42ODg1TDE2LjU4NDggMTguNzU4OEwxNi42MjY4IDE4LjgzM0MxNi43MTgzIDE5LjAwODYgMTYuNzYwMSAxOS4yMDY2IDE2Ljc0NjkgMTkuNDA1MkMxNi43MzE4IDE5LjYzMjMgMTYuNjQ1NSAxOS44NDkxIDE2LjUwMDMgMjAuMDI0NEMxNi4zNTUyIDIwLjE5OTYgMTYuMTU4NSAyMC4zMjQ2IDE1LjkzODMgMjAuMzgxOEwxNS45MzczIDIwLjM4MjNMMTEuODU0MyAyMS40MzU1QzExLjc1MzQgMjEuNDYxNSAxMS42NjEgMjEuNTE0MyAxMS41ODcyIDIxLjU4NzlDMTEuNTEzOSAyMS42NjExIDExLjQ2MDcgMjEuNzUyMyAxMS40MzQ0IDIxLjg1MjVMMTAuMzgyMiAyNS45MzdMMTAuMzgxNyAyNS45Mzg1QzEwLjMyNDUgMjYuMTU4NyAxMC4xOTk1IDI2LjM1NTMgMTAuMDI0MyAyNi41MDA1QzkuODQ4OTYgMjYuNjQ1NiA5LjYzMjIgMjYuNzMxOSA5LjQwNTEyIDI2Ljc0N0M5LjE3ODAxIDI2Ljc2MjIgOC45NTE2MyAyNi43MDU2IDguNzU4NjMgMjYuNTg0OUM4LjU2NTY2IDI2LjQ2NDMgOC40MTU3OSAyNi4yODU1IDguMzI5OTIgMjYuMDc0N0wzLjk5NjQzIDE1LjQwNzdDMy45MTU4MiAxNS4yMTMyIDMuODkzNTEgMTQuOTk5IDMuOTMyOTUgMTQuNzkyTDMuOTUxMDIgMTQuNzEyOUM0LjAwMDA5IDE0LjUzMDggNC4wOTYzMyAxNC4zNjQ0IDQuMjMwMzEgMTQuMjMwNEM0LjM4MzQ2IDE0LjA3NzMgNC41NzkwOCAxMy45NzM2IDQuNzkxODQgMTMuOTMzMUw0Ljg3MTkxIDEzLjkyMDlaTTkuMjQzOTggMjQuMzQwOEw5Ljk4MjI3IDIxLjQ3ODVDMTAuMDc1NyAyMS4xMTgzIDEwLjI2NDMgMjAuNzg4NyAxMC41Mjc3IDIwLjUyNTlDMTAuNzkxIDIwLjI2MzIgMTEuMTE5NyAyMC4wNzU2IDExLjQ3OTggMTkuOTgyOUwxNC4zNDEyIDE5LjI0NDZMNS43NTc2NiAxNS43NTc4TDkuMjQzOTggMjQuMzQwOFoiIGZpbGw9IndoaXRlIi8+CjwvZz4KPGcgZmlsdGVyPSJ1cmwoI2ZpbHRlcjFfaV8xNDYwXzYxMTA5KSI+CjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSI0MCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjApIiBmaWxsPSJibGFjayIvPgo8cGF0aCBkPSJNMzAuOTUwNyAxNC40NDI1QzMxLjA3NDIgMTQuMDQ3MiAzMS40OTQ4IDEzLjgyNjggMzEuODkwMSAxMy45NTA0QzMyLjI4NTQgMTQuMDczOSAzMi41MDU4IDE0LjQ5NDUgMzIuMzgyMyAxNC44ODk4TDI5LjA0ODggMjUuNTU2M0MyOC45MjUzIDI1Ljk1MTcgMjguNTA0NyAyNi4xNzIgMjguMTA5NCAyNi4wNDg1QzI3LjcxNCAyNS45MjQ5IDI3LjQ5MzYgMjUuNTA0NCAyNy42MTcyIDI1LjEwOUwzMC45NTA3IDE0LjQ0MjVaTTI1LjQ2OTIgMTYuODAyNEMyNS43NjIxIDE2LjUwOTYgMjYuMjM2OSAxNi41MDk3IDI2LjUyOTggMTYuODAyNEMyNi44MjI3IDE3LjA5NTMgMjYuODIyNyAxNy41NzAxIDI2LjUyOTggMTcuODYzTDI0LjM5MzEgMTkuOTk5MkwyNi41Mjk4IDIyLjEzNTlDMjYuODIyNyAyMi40Mjg4IDI2LjgyMjcgMjIuOTAzNiAyNi41Mjk4IDIzLjE5NjRDMjYuMjM2OSAyMy40ODkzIDI1Ljc2MjEgMjMuNDg5MyAyNS40NjkyIDIzLjE5NjRMMjIuODAyNyAyMC41Mjk5QzIyLjY2MjEgMjAuMzg5MyAyMi41ODMxIDIwLjE5ODUgMjIuNTgzIDE5Ljk5OTdDMjIuNTgzIDE5LjgwMDggMjIuNjYyMSAxOS42MSAyMi44MDI3IDE5LjQ2OTRMMjUuNDY5MiAxNi44MDI0Wk0zMy40NjkyIDE2LjgwMjRDMzMuNzYyMSAxNi41MDk2IDM0LjIzNjkgMTYuNTA5NyAzNC41Mjk4IDE2LjgwMjRMMzcuMTk2OCAxOS40Njk0QzM3LjMzNzMgMTkuNjEgMzcuNDE2NSAxOS44MDA4IDM3LjQxNjUgMTkuOTk5N0MzNy40MTY1IDIwLjE5ODUgMzcuMzM3NCAyMC4zODkzIDM3LjE5NjggMjAuNTI5OUwzNC41Mjk4IDIzLjE5NjRDMzQuMjM2OSAyMy40ODkzIDMzLjc2MjEgMjMuNDg5MyAzMy40NjkyIDIzLjE5NjRDMzMuMTc2NSAyMi45MDM2IDMzLjE3NjUgMjIuNDI4OCAzMy40NjkyIDIyLjEzNTlMMzUuNjA1NSAxOS45OTkyTDMzLjQ2OTIgMTcuODYzQzMzLjE3NjUgMTcuNTcgMzMuMTc2NCAxNy4wOTUyIDMzLjQ2OTIgMTYuODAyNFoiIGZpbGw9IndoaXRlIi8+CjwvZz4KPC9nPgo8ZGVmcz4KPGZpbHRlciBpZD0iZmlsdGVyMF9pXzE0NjBfNjExMDkiIHg9Ii0xIiB5PSIwIiB3aWR0aD0iMjEiIGhlaWdodD0iNDAiIGZpbHRlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIj4KPGZlRmxvb2QgZmxvb2Qtb3BhY2l0eT0iMCIgcmVzdWx0PSJCYWNrZ3JvdW5kSW1hZ2VGaXgiLz4KPGZlQmxlbmQgbW9kZT0ibm9ybWFsIiBpbj0iU291cmNlR3JhcGhpYyIgaW4yPSJCYWNrZ3JvdW5kSW1hZ2VGaXgiIHJlc3VsdD0ic2hhcGUiLz4KPGZlQ29sb3JNYXRyaXggaW49IlNvdXJjZUFscGhhIiB0eXBlPSJtYXRyaXgiIHZhbHVlcz0iMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMTI3IDAiIHJlc3VsdD0iaGFyZEFscGhhIi8+CjxmZU9mZnNldCBkeD0iLTEiLz4KPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iMSIvPgo8ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIG9wZXJhdG9yPSJhcml0aG1ldGljIiBrMj0iLTEiIGszPSIxIi8+CjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDEgMCAwIDAgMCAxIDAgMCAwIDAgMSAwIDAgMCAwLjIgMCIvPgo8ZmVCbGVuZCBtb2RlPSJub3JtYWwiIGluMj0ic2hhcGUiIHJlc3VsdD0iZWZmZWN0MV9pbm5lclNoYWRvd18xNDYwXzYxMTA5Ii8+CjwvZmlsdGVyPgo8ZmlsdGVyIGlkPSJmaWx0ZXIxX2lfMTQ2MF82MTEwOSIgeD0iMjAiIHk9IjAiIHdpZHRoPSIyMSIgaGVpZ2h0PSI0MCIgZmlsdGVyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiBjb2xvci1pbnRlcnBvbGF0aW9uLWZpbHRlcnM9InNSR0IiPgo8ZmVGbG9vZCBmbG9vZC1vcGFjaXR5PSIwIiByZXN1bHQ9IkJhY2tncm91bmRJbWFnZUZpeCIvPgo8ZmVCbGVuZCBtb2RlPSJub3JtYWwiIGluPSJTb3VyY2VHcmFwaGljIiBpbjI9IkJhY2tncm91bmRJbWFnZUZpeCIgcmVzdWx0PSJzaGFwZSIvPgo8ZmVDb2xvck1hdHJpeCBpbj0iU291cmNlQWxwaGEiIHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAxMjcgMCIgcmVzdWx0PSJoYXJkQWxwaGEiLz4KPGZlT2Zmc2V0IGR4PSIxIi8+CjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz4KPGZlQ29tcG9zaXRlIGluMj0iaGFyZEFscGhhIiBvcGVyYXRvcj0iYXJpdGhtZXRpYyIgazI9Ii0xIiBrMz0iMSIvPgo8ZmVDb2xvck1hdHJpeCB0eXBlPSJtYXRyaXgiIHZhbHVlcz0iMCAwIDAgMCAwLjk5OTAwNSAwIDAgMCAwIDAuOTk5MDA1IDAgMCAwIDAgMC45OTkwMDUgMCAwIDAgMC4xNyAwIi8+CjxmZUJsZW5kIG1vZGU9Im5vcm1hbCIgaW4yPSJzaGFwZSIgcmVzdWx0PSJlZmZlY3QxX2lubmVyU2hhZG93XzE0NjBfNjExMDkiLz4KPC9maWx0ZXI+CjxjbGlwUGF0aCBpZD0iY2xpcDBfMTQ2MF82MTEwOSI+CjxyZWN0IHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcng9IjQiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg==" />
+  <title>Figma Extraction Report - 1/7/2026, 9:48:17 PM</title>
+  <style>
+/* Base Design System for HTML Reports */
+
+:root {
+  /* Color Palette */
+  --color-primary: #4f46e5;
+  --color-secondary: #6366f1;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  
+  /* Spacing System */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  --spacing-2xl: 2rem;
+  
+  /* Typography */
+  --font-family-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Reset and Base Styles */
+body {
+  font-family: var(--font-family-system);
+  line-height: 1.5;
+  color: var(--theme-text-primary, var(--color-gray-800));
+  background-color: var(--theme-bg-secondary, var(--color-gray-50));
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Layout */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl);
+}
+
+/* Typography */
+h1 {
+  margin: 0;
+  color: var(--color-gray-900);
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+h3 {
+  color: var(--color-gray-700);
+  font-size: 1.25rem;
+}
+
+h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-gray-800);
+}
+
+h5 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-gray-700);
+  font-size: 1rem;
+}
+
+/* Utility Classes */
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.text-gray-600 {
+  color: var(--color-gray-600);
+}
+
+.text-gray-500 {
+  color: var(--color-gray-500);
+}
+
+/* Header */
+header {
+  background-color: var(--theme-bg-primary, white);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px var(--theme-shadow, rgba(0, 0, 0, 0.1));
+  margin-bottom: var(--spacing-2xl);
+  border: 1px solid var(--theme-border-primary, transparent);
+}
+
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xl);
+  margin-top: var(--spacing-lg);
+  color: var(--color-gray-600);
+}
+
+.metadata-item {
+  display: flex;
+  align-items: center;
+}
+
+.metadata-item strong {
+  margin-right: var(--spacing-sm);
+}
+
+/* Footer */
+footer {
+  margin-top: 3rem;
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--color-gray-200);
+  text-align: center;
+  color: var(--color-gray-500);
+  font-size: 0.875rem;
+}
+
+/* No Data State */
+.no-data {
+  padding: var(--spacing-2xl);
+  text-align: center;
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  color: var(--color-gray-500);
+} 
+
+/* Component Styles for HTML Reports */
+
+/* Summary Cards */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.summary-card {
+  background-color: var(--theme-bg-primary, white);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px var(--theme-shadow, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--theme-border-primary, transparent);
+  transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--theme-shadow, rgba(0, 0, 0, 0.1));
+}
+
+.summary-card h3 {
+  margin-top: 0;
+  color: var(--color-gray-700);
+  font-size: 1.25rem;
+}
+
+.summary-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: var(--spacing-sm) 0;
+}
+
+/* Severity Indicators */
+.severity-counts {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-lg);
+}
+
+.severity-count {
+  text-align: center;
+  flex: 1;
+}
+
+.severity-count-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.severity-count-label {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.severity-high .severity-count-value {
+  color: var(--color-danger);
+}
+
+.severity-medium .severity-count-value {
+  color: var(--color-warning);
+}
+
+.severity-low .severity-count-value {
+  color: var(--color-success);
+}
+
+/* Severity Groups */
+.severity-group {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.severity-group h3 {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-md);
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-xl);
+}
+
+.severity-high h3 {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+}
+
+.severity-medium h3 {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning);
+}
+
+.severity-low h3 {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+/* Comparison Items */
+.comparison-item {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-xl);
+  overflow: hidden;
+}
+
+.comparison-header {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.comparison-meta {
+  display: flex;
+  gap: var(--spacing-xl);
+  font-size: 0.875rem;
+}
+
+.match-score, .match-percentage {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-gray-700);
+}
+
+.comparison-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
+  background-color: var(--color-gray-50);
+}
+
+/* Component and Element Info */
+.component-info, .element-info {
+  background-color: white;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-200);
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+.info-row span {
+  font-weight: 600;
+  min-width: 80px;
+  color: var(--color-gray-600);
+}
+
+/* Tables */
+.property-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.property-table th {
+  background-color: var(--color-gray-100);
+  text-align: left;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-bottom: 2px solid var(--color-gray-300);
+  color: var(--color-gray-700);
+}
+
+.property-table td {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-gray-200);
+  vertical-align: top;
+}
+
+.property-table tr:last-child td {
+  border-bottom: none;
+}
+
+.property-table tr.match {
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.property-table tr.mismatch {
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.status-cell {
+  font-weight: 600;
+}
+
+.status-cell.match {
+  color: var(--color-success);
+}
+
+.status-cell.mismatch {
+  color: var(--color-danger);
+}
+
+/* Sections */
+.section {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-2xl);
+  overflow: hidden;
+}
+
+.section-header {
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-gray-200);
+  background-color: var(--color-gray-50);
+}
+
+.section-header h3 {
+  margin: 0;
+  color: var(--color-gray-800);
+  font-size: 1.25rem;
+}
+
+.section-content {
+  padding: var(--spacing-xl);
+}
+
+/* Color Components */
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-gray-300);
+}
+
+.color-value {
+  font-family: var(--font-family-mono);
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+/* Typography Components */
+.typography-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.typography-item {
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background-color: var(--color-gray-50);
+}
+
+.typography-item h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-gray-700);
+  font-size: 1rem;
+}
+
+.typography-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.typography-tag {
+  background-color: var(--color-primary);
+  color: white;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+/* Element Breakdown */
+.element-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.element-type {
+  text-align: center;
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+.element-count {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.element-label {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  text-transform: uppercase;
+  margin-top: var(--spacing-xs);
+} 
+
+/* Themes and Enhanced Color System */
+
+/* Light Theme (Default) */
+:root {
+  --theme-bg-primary: #ffffff;
+  --theme-bg-secondary: #f9fafb;
+  --theme-bg-tertiary: #f3f4f6;
+  --theme-text-primary: #1f2937;
+  --theme-text-secondary: #4b5563;
+  --theme-text-tertiary: #6b7280;
+  --theme-border-primary: #e5e7eb;
+  --theme-border-secondary: #d1d5db;
+  --theme-shadow: rgba(0, 0, 0, 0.1);
+  --theme-shadow-light: rgba(0, 0, 0, 0.05);
+  
+  /* Enhanced Semantic Colors */
+  --color-info: #3b82f6;
+  --color-info-light: rgba(59, 130, 246, 0.1);
+  --color-success-light: rgba(16, 185, 129, 0.1);
+  --color-warning-light: rgba(245, 158, 11, 0.1);
+  --color-danger-light: rgba(239, 68, 68, 0.1);
+  
+  /* Interactive States */
+  --color-hover: rgba(79, 70, 229, 0.05);
+  --color-active: rgba(79, 70, 229, 0.1);
+  --color-focus: rgba(79, 70, 229, 0.2);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  --gradient-success: linear-gradient(135deg, var(--color-success), #059669);
+  --gradient-warning: linear-gradient(135deg, var(--color-warning), #d97706);
+  --gradient-danger: linear-gradient(135deg, var(--color-danger), #dc2626);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --theme-bg-primary: #1f2937;
+  --theme-bg-secondary: #111827;
+  --theme-bg-tertiary: #374151;
+  --theme-text-primary: #f9fafb;
+  --theme-text-secondary: #d1d5db;
+  --theme-text-tertiary: #9ca3af;
+  --theme-border-primary: #374151;
+  --theme-border-secondary: #4b5563;
+  --theme-shadow: rgba(0, 0, 0, 0.3);
+  --theme-shadow-light: rgba(0, 0, 0, 0.2);
+  
+  /* Adjust colors for dark theme */
+  --color-primary: #6366f1;
+  --color-secondary: #8b5cf6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  
+  /* Dark mode specific overrides */
+  --color-gray-50: #374151;
+  --color-gray-100: #4b5563;
+  --color-gray-200: #6b7280;
+  --color-gray-800: #f9fafb;
+  --color-gray-900: #ffffff;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--theme-bg-primary);
+  border: 2px solid var(--theme-border-primary);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--theme-shadow);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px var(--theme-shadow);
+}
+
+.theme-toggle:before {
+  content: "🌙";
+  font-size: 20px;
+}
+
+[data-theme="dark"] .theme-toggle:before {
+  content: "☀️";
+}
+
+/* Enhanced Color Swatches */
+.color-swatch {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.05);
+}
+
+.color-swatch:after {
+  content: attr(data-color);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 10px;
+  padding: 2px 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.color-swatch:hover:after {
+  opacity: 1;
+}
+
+/* Status Indicators */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator.success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.status-indicator.warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.status-indicator.danger {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.status-indicator.info {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.status-indicator:before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Enhanced Cards with Hover Effects */
+.enhanced-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.enhanced-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--theme-shadow);
+}
+
+/* Gradient Backgrounds */
+.gradient-bg {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.gradient-bg.success {
+  background: var(--gradient-success);
+}
+
+.gradient-bg.warning {
+  background: var(--gradient-warning);
+}
+
+.gradient-bg.danger {
+  background: var(--gradient-danger);
+}
+
+/* Print Styles */
+@media print {
+  .theme-toggle,
+  .interactive-only {
+    display: none !important;
+  }
+  
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+  
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+  
+  .summary {
+    display: block;
+  }
+  
+  .summary-card {
+    margin-bottom: 1rem;
+    page-break-inside: avoid;
+  }
+} 
+
+/* Interactive Components - CSS Only */
+
+/* Progress Bars */
+.progress-bar {
+  background: var(--color-gray-200);
+  border-radius: 9999px;
+  overflow: hidden;
+  height: 8px;
+  position: relative;
+}
+
+.progress-bar.large {
+  height: 12px;
+}
+
+.progress-fill {
+  background: var(--gradient-primary);
+  height: 100%;
+  border-radius: inherit;
+  transition: width 1s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill.success {
+  background: var(--gradient-success);
+}
+
+.progress-fill.warning {
+  background: var(--gradient-warning);
+}
+
+.progress-fill.danger {
+  background: var(--gradient-danger);
+}
+
+/* Animated shine effect */
+.progress-fill:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shine 2s infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Circular Progress */
+.circular-progress {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-primary) calc(var(--progress) * 1%),
+    var(--color-gray-200) 0
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circular-progress:before {
+  content: '';
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  background: var(--theme-bg-primary);
+  border-radius: 50%;
+}
+
+.circular-progress .percentage {
+  position: relative;
+  z-index: 1;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* CSS-Only Charts */
+.bar-chart {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+  height: 100px;
+  padding: 1rem 0;
+}
+
+.bar {
+  background: var(--gradient-primary);
+  border-radius: 4px 4px 0 0;
+  min-width: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.bar:hover {
+  transform: scale(1.05);
+}
+
+.bar:after {
+  content: attr(data-value);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--theme-text-primary);
+  color: var(--theme-bg-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.bar:hover:after {
+  opacity: 1;
+}
+
+/* Donut Chart */
+.donut-chart {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-success) 0deg calc(var(--success) * 3.6deg),
+    var(--color-warning) calc(var(--success) * 3.6deg) calc((var(--success) + var(--warning)) * 3.6deg),
+    var(--color-danger) calc((var(--success) + var(--warning)) * 3.6deg) calc((var(--success) + var(--warning) + var(--danger)) * 3.6deg),
+    var(--color-gray-200) calc((var(--success) + var(--warning) + var(--danger)) * 3.6deg)
+  );
+}
+
+.donut-chart:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  background: var(--theme-bg-primary);
+  border-radius: 50%;
+}
+
+.donut-chart .center-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1;
+}
+
+/* Collapsible Sections */
+.collapsible {
+  border: 1px solid var(--theme-border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.collapsible-header {
+  background: var(--theme-bg-tertiary);
+  padding: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background: var(--color-hover);
+}
+
+.collapsible-toggle {
+  transition: transform 0.3s ease;
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: var(--theme-bg-primary);
+}
+
+.collapsible-inner {
+  padding: 0 1rem;
+  transition: padding 0.3s ease;
+}
+
+/* Checkbox hack for pure CSS interaction */
+.collapsible-checkbox {
+  display: none;
+}
+
+.collapsible-checkbox:checked + .collapsible .collapsible-content {
+  max-height: 1000px;
+}
+
+.collapsible-checkbox:checked + .collapsible .collapsible-toggle {
+  transform: rotate(180deg);
+}
+
+.collapsible-checkbox:checked + .collapsible .collapsible-inner {
+  padding: 1rem;
+}
+
+/* Tabs */
+.tabs {
+  border-bottom: 1px solid var(--theme-border-primary);
+}
+
+.tab-list {
+  display: flex;
+  gap: 0;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  color: var(--theme-text-secondary);
+}
+
+.tab-button:hover {
+  background: var(--color-hover);
+  color: var(--theme-text-primary);
+}
+
+.tab-button.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--theme-bg-primary);
+}
+
+.tab-content {
+  display: none;
+  padding: 1.5rem 0;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tooltips */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.tooltip:before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--theme-text-primary);
+  color: var(--theme-bg-primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.tooltip:after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(1px);
+  border: 4px solid transparent;
+  border-top-color: var(--theme-text-primary);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.tooltip:hover:before,
+.tooltip:hover:after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* Loading Animations */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-200) 25%,
+    var(--color-gray-100) 50%,
+    var(--color-gray-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Sticky Elements */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background: var(--theme-bg-primary);
+  z-index: 100;
+  border-bottom: 1px solid var(--theme-border-primary);
+  box-shadow: 0 1px 3px var(--theme-shadow-light);
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus Styles */
+*:focus {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  :root {
+    --theme-shadow: rgba(0, 0, 0, 0.5);
+    --theme-border-primary: #000000;
+  }
+  
+  [data-theme="dark"] {
+    --theme-border-primary: #ffffff;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+} 
+</style>
+  <style>
+    :root {
+      --color-primary: #4f46e5;
+      --color-secondary: #6366f1;
+      --color-success: #10b981;
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-300: #d1d5db;
+      --color-gray-500: #6b7280;
+      --color-gray-600: #4b5563;
+      --color-gray-700: #374151;
+      --color-gray-800: #1f2937;
+      --color-gray-900: #111827;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.5;
+      color: var(--color-gray-800);
+      background-color: var(--color-gray-50);
+      margin: 0;
+      padding: 0;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    header {
+      background-color: white;
+      padding: 1.5rem 2rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+    
+    h1 {
+      margin: 0;
+      color: var(--color-gray-900);
+      font-size: 1.875rem;
+      font-weight: 700;
+    }
+    
+    .metadata {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-top: 1rem;
+      color: var(--color-gray-600);
+    }
+    
+    .metadata-item {
+      display: flex;
+      align-items: center;
+    }
+    
+    .metadata-item strong {
+      margin-right: 0.5rem;
+    }
+    
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .summary-card h3 {
+      margin-top: 0;
+      color: var(--color-gray-700);
+      font-size: 1.25rem;
+    }
+    
+    .summary-value {
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 0.5rem 0;
+    }
+    
+    .text-sm {
+      font-size: 0.875rem;
+    }
+    
+    .text-gray-600 {
+      color: var(--color-gray-600);
+    }
+    
+    .section {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+    
+    .section-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--color-gray-200);
+      background-color: var(--color-gray-50);
+    }
+    
+    .section-header h3 {
+      margin: 0;
+      color: var(--color-gray-800);
+      font-size: 1.25rem;
+    }
+    
+    .section-content {
+      padding: 1.5rem;
+    }
+    
+    .component-list {
+      display: grid;
+      gap: 1rem;
+    }
+    
+    .component-item {
+      padding: 1rem;
+      border: 1px solid var(--color-gray-200);
+      border-radius: 0.375rem;
+      background-color: var(--color-gray-50);
+    }
+    
+    .component-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .component-name {
+      font-weight: 600;
+      color: var(--color-gray-800);
+    }
+    
+    .component-type {
+      background-color: var(--color-primary);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+    }
+    
+    .component-details {
+      font-size: 0.875rem;
+      color: var(--color-gray-600);
+    }
+    
+    .design-tokens {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    
+    .token-group {
+      padding: 1rem;
+      border: 1px solid var(--color-gray-200);
+      border-radius: 0.375rem;
+      background-color: var(--color-gray-50);
+    }
+    
+    .token-group h4 {
+      margin: 0 0 0.5rem 0;
+      color: var(--color-gray-700);
+      font-size: 1rem;
+    }
+    
+    .token-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .token-tag {
+      background-color: var(--color-primary);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+    }
+    
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--color-gray-200);
+      text-align: center;
+      color: var(--color-gray-500);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Figma Extraction Report - 1/7/2026, 9:48:17 PM</h1>
+      <div class="metadata">
+        <div class="metadata-item">
+          <strong>Figma File:</strong> MCP Figma File
+        </div>
+        <div class="metadata-item">
+          <strong>Extracted:</strong> 2026-01-07T16:18:17.077Z
+        </div>
+      </div>
+    </header>
+    
+    <div class="summary">
+      <div class="summary-card">
+        <h3>Total Components</h3>
+        <div class="summary-value">402</div>
+        <div class="text-sm text-gray-600">Figma components extracted</div>
+      </div>
+      
+      <div class="summary-card">
+        <h3>Design Tokens</h3>
+        <div class="summary-value">402</div>
+        <div class="text-sm text-gray-600">Colors, typography, spacing</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-header">
+        <h3>Components</h3>
+      </div>
+      <div class="section-content">
+        <div class="component-list">
+          
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60064
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60104
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60111
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60155
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60162
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60211
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60257
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60298
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60305
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60350
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60391
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Frame</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60398
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">In Transit</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59962
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Filter Bar</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59970
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59978
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59985
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59989
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59992
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59996
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60001
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60005
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60008
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60011
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60016
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60019
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60022
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60027
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60031
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Toggle Container</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60034
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Action Buttons</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60037
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Content</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60047
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Content</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60060
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60066
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60069
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60074
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60079
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60084
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60088
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60092
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60094
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60098
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60101
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60104
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60108
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60113
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60116
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60121
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60126
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60132
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60135
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60139
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60143
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60145
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60149
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60152
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60155
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60159
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60164
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60167
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60170
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60173
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60179
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60182
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60186
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60190
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60192
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60196
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60199
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60202
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60205
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60208
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60213
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60216
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60219
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60222
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60225
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60228
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60232
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60236
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60238
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60242
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60245
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60248
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60251
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60254
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60259
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60262
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60265
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60268
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60275
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60278
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60282
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60286
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60288
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60292
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60295
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60298
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60302
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60307
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60310
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60313
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60316
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60319
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60322
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60326
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60331
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60335
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60338
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60341
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60344
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60347
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60352
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60355
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60358
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60361
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60368
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60371
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60375
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60379
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60381
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60385
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60388
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60391
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Row</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60395
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60400
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60403
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60406
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60409
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60412
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60415
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60419
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60424
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">At Drop</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60428
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60431
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60434
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table Cell</div>
+          <div class="component-type">FRAME</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60437
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">App header</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59964
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59968
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Dropdown</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59972
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Filter Option</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59973
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Dropdown</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59974
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Input field</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59975
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59976
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Tabs</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59979
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Segmented Tab</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 8473:89979
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Spacer</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 8472:89882
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Spacer</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 8472:89886
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60041
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 8472:89890
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60042
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60043
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60044
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60045
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Input body</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60046
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Spacer</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 8472:89888
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table header item</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60050
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table header item</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60051
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table header item</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60052
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Table header item</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60053
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Component 242</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60054
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Component 239</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60055
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Component 244</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60056
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Component 220</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60057
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Component 222</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60058
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Component 243</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60059
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60063
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60068
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60072
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60077
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60083
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60086
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60090
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60093
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60096
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60099
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60106
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60107
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60110
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60115
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60119
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60124
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60131
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60134
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60137
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60141
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60144
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60147
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60150
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60157
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60158
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60161
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60166
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60178
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60181
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60184
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60188
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60191
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60194
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60197
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60203
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60206
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60207
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60210
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60215
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60227
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60230
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60234
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60237
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60240
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60243
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60249
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60252
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60253
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60256
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60261
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60274
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60277
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60280
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60284
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60287
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60290
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60293
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60300
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60301
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60304
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60309
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60321
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60324
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60327
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60330
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60333
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60336
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60342
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60345
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60346
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60349
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60367
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60370
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60373
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60377
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60380
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60383
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60386
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60393
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60394
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Checkbox</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60397
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60414
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60417
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60420
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60423
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60426
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Icon</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60429
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Badges</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60435
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60438
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Button</div>
+          <div class="component-type">INSTANCE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60439
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Title</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59969
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59987
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59988
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59990
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59991
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59994
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59995
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59998
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:59999
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60002
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60003
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60006
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60007
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60010
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60013
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60014
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60017
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60018
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60021
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60024
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60025
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60028
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60029
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60032
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60033
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60036
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60067
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60071
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60073
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60076
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60078
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60080
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60082
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60087
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60091
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60097
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60100
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">On time</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60102
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60103
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60114
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60118
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60120
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60123
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60125
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60128
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60133
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60138
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60142
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60148
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60151
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">On time</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60153
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60154
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60165
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60168
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60169
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60171
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60172
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60175
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60180
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60185
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60189
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60195
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60198
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Delayed by 13 hr</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60200
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60201
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60204
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60214
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60217
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60218
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60220
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60221
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60224
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60226
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60231
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60235
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60241
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60244
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Delayed by 13 hr</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60246
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60247
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60250
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60260
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60263
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60264
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60266
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60267
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60270
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60276
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60281
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60285
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60291
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60294
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">On time</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60296
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60297
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60308
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60311
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60312
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60314
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60315
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60318
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60320
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60325
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60328
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60334
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60337
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Delayed by 13 hr</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60339
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60340
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60343
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60353
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60354
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60356
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60357
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60359
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60360
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60363
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60369
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60374
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60378
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60384
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60387
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">On time</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60389
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60390
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60401
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60402
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60404
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60405
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60407
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60408
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60411
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60413
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60418
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60421
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60427
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60430
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Delayed by 13 hr</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60432
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60433
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Text</div>
+          <div class="component-type">TEXT</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60436
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector 65</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60000
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector 64</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60004
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector 65</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60015
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector 65</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60026
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector 64</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60030
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60273
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Vector</div>
+          <div class="component-type">VECTOR</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60366
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Ellipse 1406</div>
+          <div class="component-type">ELLIPSE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60130
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Ellipse 1406</div>
+          <div class="component-type">ELLIPSE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60177
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Ellipse 1406</div>
+          <div class="component-type">ELLIPSE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60272
+        </div>
+      </div>
+    
+      <div class="component-item">
+        <div class="component-header">
+          <div class="component-name">Ellipse 1406</div>
+          <div class="component-type">ELLIPSE</div>
+        </div>
+        <div class="component-details">
+          ID: 7359:60365
+        </div>
+      </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-header">
+        <h3>Design Tokens</h3>
+      </div>
+      <div class="section-content">
+        <div class="design-tokens">
+          
+      <div class="token-group">
+        <h4>Colors</h4>
+        <div class="token-values">
+          <span class="token-tag">Extract from Figma</span>
+        </div>
+      </div>
+      <div class="token-group">
+        <h4>Typography</h4>
+        <div class="token-values">
+          <span class="token-tag">Extract from Figma</span>
+        </div>
+      </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <p>Generated by Figma-Web Comparison Tool - Figma Extraction</p>
+    </footer>
+  </div>
+</body>
+</html> 

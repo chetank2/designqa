@@ -177,7 +177,10 @@ export function extractDOMElements(pageUrl) {
                 try {
                     const nodeList = root.querySelectorAll ? root.querySelectorAll(selector) : [];
                     nodeList.forEach((el, idx) => addElement(el, selectorIndex, idx));
-                } catch (_) { }
+                } catch (error) {
+                    console.warn(`Failed to process selector "${selector}":`, error.message);
+                    // Continue with other selectors
+                }
             });
 
             // Handle shadow DOM
@@ -188,7 +191,10 @@ export function extractDOMElements(pageUrl) {
                     visitNode(node.shadowRoot, selectorIndex + 1);
                 }
             }
-        } catch (_) { }
+        } catch (error) {
+            console.warn('Failed to visit DOM node:', error.message);
+            // Continue with extraction even if some nodes fail
+        }
     };
 
     /**
@@ -290,7 +296,7 @@ export async function captureScreenshot(page, options = {}) {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-            console.log(`📸 Capturing screenshot (attempt ${attempt + 1}/${maxRetries})...`);
+            // Removed: console.log(`📸 Capturing screenshot (attempt ${attempt + 1}/${maxRetries})...`);
 
             const screenshot = await page.screenshot({
                 fullPage: options.fullPage !== false,

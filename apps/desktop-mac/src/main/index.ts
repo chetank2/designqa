@@ -161,7 +161,7 @@ function saveMode(mode: 'cloud' | 'local'): void {
   const configPath = path.join(app.getPath('userData'), 'app-mode.json');
   try {
     writeFileSync(configPath, JSON.stringify({ mode }), 'utf-8');
-    console.log(`✅ Saved mode preference: ${mode}`);
+    // Removed: console.log(`✅ Saved mode preference: ${mode}`);
   } catch (error) {
     console.error('❌ Could not save mode preference:', error);
   }
@@ -253,7 +253,7 @@ function compareVersions(a: string, b: string): number {
 async function checkForUpdates(): Promise<void> {
   const repo = getUpdateRepo();
   if (!repo) {
-    console.log('ℹ️ Update check skipped (DESIGNQA_GITHUB_REPO not set).');
+    // Removed: console.log('ℹ️ Update check skipped (DESIGNQA_GITHUB_REPO not set).');
     return;
   }
 
@@ -284,7 +284,7 @@ async function checkForUpdates(): Promise<void> {
 
     const latestVersion = normalizeVersion(latestTag);
     if (compareVersions(latestVersion, currentVersion) <= 0) {
-      console.log(`✅ App is up to date (v${currentVersion}).`);
+      // Removed: console.log(`✅ App is up to date (v${currentVersion}).`);
       return;
     }
 
@@ -336,7 +336,7 @@ function loadMainWindowContent() {
   if (isDev) {
     // In dev, always use Vite dev server
     // #region agent log
-    console.log('[DEBUG] loadMainWindowContent: Dev mode, loading http://localhost:5173');
+    // Removed: console.log('[DEBUG] loadMainWindowContent: Dev mode, loading http://localhost:5173');
     // #endregion
     mainWindow.loadURL('http://localhost:5173');
     if (!mainWindow.webContents.isDevToolsOpened()) {
@@ -351,12 +351,12 @@ function loadMainWindowContent() {
   if (isServerRunning) {
     const localServerUrl = `http://localhost:${serverPort}`;
     // #region agent log
-    console.log(`[DEBUG] loadMainWindowContent: Server running, loading ${localServerUrl}, isServerRunning=${isServerRunning}, serverPort=${serverPort}`);
+    // Removed: console.log(`[DEBUG] loadMainWindowContent: Server running, loading ${localServerUrl}, isServerRunning=${isServerRunning}, serverPort=${serverPort}`);
     // #endregion
     console.log('📦 Loading frontend from backend server:', localServerUrl);
     mainWindow.loadURL(localServerUrl).catch((error) => {
       // #region agent log
-      console.log(`[DEBUG] loadMainWindowContent: Failed to load from server, error:`, error);
+      // Removed: console.log(`[DEBUG] loadMainWindowContent: Failed to load from server, error:`, error);
       // #endregion
       console.error('❌ Failed to load from backend server:', error);
       if (!mainWindow) return;
@@ -364,14 +364,14 @@ function loadMainWindowContent() {
       const rendererPath = path.join(__dirname, '../renderer/index.html');
       if (existsSync(rendererPath)) {
         // #region agent log
-        console.log(`[DEBUG] loadMainWindowContent: Falling back to loadFile: ${rendererPath}`);
+        // Removed: console.log(`[DEBUG] loadMainWindowContent: Falling back to loadFile: ${rendererPath}`);
         // #endregion
         console.log('📦 Falling back to loading file directly:', rendererPath);
         mainWindow.loadFile(rendererPath);
       } else {
         // Final fallback to cloud URL
         // #region agent log
-        console.log(`[DEBUG] loadMainWindowContent: Final fallback to cloud URL`);
+        // Removed: console.log(`[DEBUG] loadMainWindowContent: Final fallback to cloud URL`);
         // #endregion
         console.warn('⚠️ Falling back to cloud URL');
         const cloudUrl = getCloudAppUrl();
@@ -385,18 +385,18 @@ function loadMainWindowContent() {
   const rendererPath = path.join(__dirname, '../renderer/index.html');
   if (existsSync(rendererPath)) {
     // #region agent log
-    console.log(`[DEBUG] loadMainWindowContent: Server not running, loading file: ${rendererPath}, isServerRunning=${isServerRunning}`);
+    // Removed: console.log(`[DEBUG] loadMainWindowContent: Server not running, loading file: ${rendererPath}, isServerRunning=${isServerRunning}`);
     // #endregion
     console.log('📦 Loading local renderer from file:', rendererPath);
     mainWindow.loadFile(rendererPath);
   } else {
     // Fallback to cloud URL
     // #region agent log
-    console.log(`[DEBUG] loadMainWindowContent: Renderer not found, falling back to cloud`);
+    // Removed: console.log(`[DEBUG] loadMainWindowContent: Renderer not found, falling back to cloud`);
     // #endregion
     console.warn('⚠️ Local renderer not found, falling back to cloud URL');
     const cloudUrl = getCloudAppUrl();
-    console.log('☁️ Loading from cloud:', cloudUrl);
+    // Removed: console.log('☁️ Loading from cloud:', cloudUrl);
     mainWindow.loadURL(cloudUrl);
   }
 }
@@ -437,7 +437,7 @@ function createWindow() {
     try {
       // #region agent log
       const origin = mainWindow?.webContents?.getURL() || 'N/A';
-      console.log(`[DEBUG] will-navigate: ${url}, current: ${origin}`);
+      // Removed: console.log(`[DEBUG] will-navigate: ${url}, current: ${origin}`);
       // #endregion
       const parsed = new URL(url);
       const isLocal =
@@ -447,12 +447,12 @@ function createWindow() {
       const isFileProtocol = parsed.protocol === 'file:';
       
       // #region agent log
-      console.log(`[DEBUG] will-navigate check: isLocal=${isLocal}, isFileProtocol=${isFileProtocol}, protocol=${parsed.protocol}`);
+      // Removed: console.log(`[DEBUG] will-navigate check: isLocal=${isLocal}, isFileProtocol=${isFileProtocol}, protocol=${parsed.protocol}`);
       // #endregion
       
       if (isFileProtocol) {
         // #region agent log
-        console.log(`[DEBUG] will-navigate: Blocking file:// navigation to ${url}`);
+        // Removed: console.log(`[DEBUG] will-navigate: Blocking file:// navigation to ${url}`);
         // #endregion
         event.preventDefault();
         return;
@@ -460,14 +460,14 @@ function createWindow() {
       
       if (!isLocal && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
         // #region agent log
-        console.log(`[DEBUG] will-navigate: Opening external URL ${url}`);
+        // Removed: console.log(`[DEBUG] will-navigate: Opening external URL ${url}`);
         // #endregion
         event.preventDefault();
         shell.openExternal(url);
       }
     } catch (error) {
       // #region agent log
-      console.log(`[DEBUG] will-navigate error:`, error);
+      // Removed: console.log(`[DEBUG] will-navigate error:`, error);
       // #endregion
       // ignore
     }
@@ -500,22 +500,22 @@ function setupIpcHandlers() {
   // Start local server
   ipcMain.handle('mode:start-local-server', async () => {
     try {
-      console.log('═'.repeat(80));
-      console.log('🚀 IPC: mode:start-local-server called');
-      console.log('═'.repeat(80));
+      // Removed: console.log('═'.repeat(80));
+      // Removed: console.log('🚀 IPC: mode:start-local-server called');
+      // Removed: console.log('═'.repeat(80));
 
       if (isServerRunning) {
         const status = getServerStatus();
-        console.log('ℹ️ Server already running:', status);
+        // Removed: console.log('ℹ️ Server already running:', status);
         return { success: true, port: status.port, alreadyRunning: true };
       }
 
-      console.log('Starting embedded server...');
+      // Removed: console.log('Starting embedded server...');
       const result = await startEmbeddedServer();
       serverPort = result.port;
       isServerRunning = true;
 
-      console.log(`✅ Server started successfully on port ${serverPort}`);
+      // Removed: console.log(`✅ Server started successfully on port ${serverPort}`);
 
       // Verify server is actually listening
       const status = getServerStatus();
@@ -523,16 +523,16 @@ function setupIpcHandlers() {
         throw new Error('Server startup returned success but getServerStatus() shows not running');
       }
 
-      console.log('Server status check passed:', status);
+      // Removed: console.log('Server status check passed:', status);
 
       // Initialize MCP bridge when server starts
-      console.log('Initializing MCP bridge...');
+      // Removed: console.log('Initializing MCP bridge...');
       await initializeMCPBridge();
       console.log('✅ MCP bridge initialized');
 
-      console.log('═'.repeat(80));
+      // Removed: console.log('═'.repeat(80));
       console.log('✅ Local server startup complete');
-      console.log('═'.repeat(80));
+      // Removed: console.log('═'.repeat(80));
 
       return { success: true, port: result.port };
     } catch (error: any) {
@@ -649,6 +649,24 @@ function setupIpcHandlers() {
       return { success: false, error: error.message || 'Failed to check API key' };
     }
   });
+
+  // App version handler
+  ipcMain.handle('app:version', async () => {
+    try {
+      return {
+        success: true,
+        version: app.getVersion(),
+        name: app.getName(),
+        isDevMode: process.env.NODE_ENV === 'development'
+      };
+    } catch (error: any) {
+      console.error('Failed to get app version:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get app version'
+      };
+    }
+  });
 }
 
 /**
@@ -656,7 +674,7 @@ function setupIpcHandlers() {
  */
 async function initialize() {
   try {
-    console.log('🚀 Starting DesignQA Desktop App...');
+    // Removed: console.log('🚀 Starting DesignQA Desktop App...');
 
     // Setup IPC handlers first
     setupIpcHandlers();
@@ -670,7 +688,7 @@ async function initialize() {
 
       if (savedApiKey) {
         process.env.FIGMA_API_KEY = savedApiKey;
-        console.log('🔑 Loaded Figma API key from storage');
+        // Removed: console.log('🔑 Loaded Figma API key from storage');
       }
 
       // Check if we have a saved mode preference
@@ -678,57 +696,112 @@ async function initialize() {
       const hasSavedMode = existsSync(path.join(app.getPath('userData'), 'app-mode.json'));
 
       if (hasSavedMode) {
-        console.log(`ℹ️ Using startup mode preference: ${startupMode}`);
+        // Removed: console.log(`ℹ️ Using startup mode preference: ${startupMode}`);
         if (startupMode === 'local') {
-          console.log('🚀 Starting in Local Mode (User Preference)...');
+          // Removed: console.log('🚀 Starting in Local Mode (User Preference)...');
           try {
             const result = await startEmbeddedServer();
             serverPort = result.port;
             isServerRunning = true;
-            console.log(`✅ Embedded server started on port ${serverPort}`);
+            // Removed: console.log(`✅ Embedded server started on port ${serverPort}`);
+
+            // Verify server is actually listening
+            const status = getServerStatus();
+            if (!status.running) {
+              throw new Error('Server startup returned success but getServerStatus() shows not running');
+            }
 
             // Initialize MCP bridge for Desktop Figma MCP
             await initializeMCPBridge();
             console.log('✅ MCP bridge initialized');
           } catch (error) {
-            console.error('❌ Failed to start embedded server:', error);
-            // TODO: Notify user regarding failure? For now fallback to cloud is risky if they wanted local.
-            // We will just log error, and maybe let window load.
+            console.error('═'.repeat(80));
+            console.error('❌ Failed to start embedded server during initialization');
+            console.error('═'.repeat(80));
+            console.error('Error:', error);
+            if (error instanceof Error) {
+              console.error('Error message:', error.message);
+              console.error('Error stack:', error.stack);
+            }
+            console.error('═'.repeat(80));
+            // Set state to allow manual server start via UI
+            isServerRunning = false;
+            serverPort = 3847;
+            // Don't change mode - user wanted local, let them try to start manually
           }
         } else {
-          console.log('☁️ Starting in Cloud Mode (User Preference)...');
-          // We can still check cloud availability just to log warning, but we respect the choice
-          isServerRunning = false;
+          // Cloud mode preference - but still need server for UI
+          // Start server even in cloud mode (server is required for desktop app)
+          console.log('🚀 Starting embedded server (Cloud Mode preference)...');
+          try {
+            const result = await startEmbeddedServer();
+            serverPort = result.port;
+            isServerRunning = true;
+
+            // Verify server is actually listening
+            const status = getServerStatus();
+            if (!status.running) {
+              throw new Error('Server startup returned success but getServerStatus() shows not running');
+            }
+
+            // Initialize MCP bridge
+            await initializeMCPBridge();
+            console.log('✅ MCP bridge initialized');
+          } catch (error) {
+            console.error('═'.repeat(80));
+            console.error('❌ FATAL: Failed to start embedded server');
+            console.error('═'.repeat(80));
+            console.error('Error:', error);
+            if (error instanceof Error) {
+              console.error('Error message:', error.message);
+              console.error('Error stack:', error.stack);
+            }
+            console.error('═'.repeat(80));
+            // Server is required - show error and quit
+            app.quit();
+          }
         }
       } else {
-        // First run: Auto-detect
-        console.log('🔍 First run: Auto-detecting cloud backend availability...');
+        // First run: Always start embedded server (required for desktop app to function)
+        // Cloud check only determines data storage preference, not server startup
+        console.log('🚀 Starting embedded server...');
+        try {
+          const result = await startEmbeddedServer();
+          serverPort = result.port;
+          isServerRunning = true;
 
-        // Increased timeout to 15s to handle Render.com cold starts
-        const cloudAvailable = await checkCloudBackend('https://designqa.onrender.com/api/health', 15000);
-
-        if (cloudAvailable) {
-          console.log('☁️ Cloud backend is available - defaulting to Cloud Mode');
-          saveMode('cloud');
-          isServerRunning = false;
-        } else {
-          console.log('⚠️ Cloud backend not reachable - defaulting to Local Mode');
-          try {
-            const result = await startEmbeddedServer();
-            serverPort = result.port;
-            isServerRunning = true;
-            console.log(`✅ Embedded server started on port ${serverPort}`);
-
-            // Initialize MCP bridge for Desktop Figma MCP
-            await initializeMCPBridge();
-            console.log('✅ MCP bridge initialized');
-
-            saveMode('local');
-          } catch (error) {
-            console.error('❌ Failed to start embedded server:', error);
-            console.log('⚠️ Falling back to Cloud Mode without server');
-            saveMode('cloud');
+          // Verify server is actually listening
+          const status = getServerStatus();
+          if (!status.running) {
+            throw new Error('Server startup returned success but getServerStatus() shows not running');
           }
+
+          // Initialize MCP bridge for Desktop Figma MCP
+          await initializeMCPBridge();
+          console.log('✅ MCP bridge initialized');
+
+          // Check cloud availability for mode preference (non-blocking)
+          checkCloudBackend('https://designqa.onrender.com/api/health', 5000).then((cloudAvailable) => {
+            if (cloudAvailable) {
+              saveMode('cloud');
+            } else {
+              saveMode('local');
+            }
+          }).catch(() => {
+            saveMode('local');
+          });
+        } catch (error) {
+          console.error('═'.repeat(80));
+          console.error('❌ FATAL: Failed to start embedded server');
+          console.error('═'.repeat(80));
+          console.error('Error:', error);
+          if (error instanceof Error) {
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+          }
+          console.error('═'.repeat(80));
+          // Server is required - show error and quit
+          app.quit();
         }
       }
 
@@ -750,7 +823,7 @@ async function initialize() {
     });
 
     app.on('before-quit', async () => {
-      console.log('🛑 Shutting down...');
+      // Removed: console.log('🛑 Shutting down...');
       if (isServerRunning) {
         try {
           await stopEmbeddedServer();

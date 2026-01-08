@@ -43,7 +43,7 @@ export class ResourceManager extends EventEmitter {
     this.resources.set(resourceId, resourceInfo);
     this.emit('resourceTracked', { resourceId, type, metadata });
     
-    console.log(`📝 Tracking ${type} resource: ${resourceId}`);
+    // Removed: console.log(`📝 Tracking ${type} resource: ${resourceId}`);
     return true;
   }
 
@@ -72,7 +72,7 @@ export class ResourceManager extends EventEmitter {
     const { resource, type, metadata } = resourceInfo;
     
     try {
-      console.log(`🧹 Cleaning up ${type} resource: ${resourceId}`);
+      // Removed: console.log(`🧹 Cleaning up ${type} resource: ${resourceId}`);
       
       switch (type) {
         case 'page':
@@ -105,7 +105,7 @@ export class ResourceManager extends EventEmitter {
       this.resources.delete(resourceId);
       this.emit('resourceCleaned', { resourceId, type, metadata });
       
-      console.log(`✅ Successfully cleaned up ${type} resource: ${resourceId}`);
+      // Removed: console.log(`✅ Successfully cleaned up ${type} resource: ${resourceId}`);
       return true;
       
     } catch (error) {
@@ -160,7 +160,7 @@ export class ResourceManager extends EventEmitter {
    * Clean up all resources
    */
   async cleanupAll() {
-    console.log(`🧹 Cleaning up all ${this.resources.size} tracked resources...`);
+    // Removed: console.log(`🧹 Cleaning up all ${this.resources.size} tracked resources...`);
     
     const cleanupPromises = Array.from(this.resources.keys()).map(
       resourceId => this.cleanup(resourceId)
@@ -170,7 +170,7 @@ export class ResourceManager extends EventEmitter {
     const successful = results.filter(r => r.status === 'fulfilled' && r.value).length;
     const failed = results.length - successful;
     
-    console.log(`✅ Cleanup complete: ${successful} successful, ${failed} failed`);
+    // Removed: console.log(`✅ Cleanup complete: ${successful} successful, ${failed} failed`);
     
     return { successful, failed, total: results.length };
   }
@@ -190,7 +190,7 @@ export class ResourceManager extends EventEmitter {
     }
     
     if (staleResources.length > 0) {
-      console.log(`🧹 Cleaning up ${staleResources.length} stale resources...`);
+      // Removed: console.log(`🧹 Cleaning up ${staleResources.length} stale resources...`);
       
       const cleanupPromises = staleResources.map(id => this.cleanup(id));
       await Promise.allSettled(cleanupPromises);
@@ -250,7 +250,7 @@ export class ResourceManager extends EventEmitter {
       }
     }, interval);
     
-    console.log(`🔄 Started periodic resource cleanup (${interval}ms interval)`);
+    // Removed: console.log(`🔄 Started periodic resource cleanup (${interval}ms interval)`);
   }
 
   /**
@@ -260,7 +260,7 @@ export class ResourceManager extends EventEmitter {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
-      console.log('⏹️ Stopped periodic resource cleanup');
+      // Removed: console.log('⏹️ Stopped periodic resource cleanup');
     }
   }
 
@@ -269,7 +269,7 @@ export class ResourceManager extends EventEmitter {
    */
   setupGracefulShutdown() {
     const shutdownHandler = async (signal) => {
-      console.log(`📤 Received ${signal}, starting graceful resource cleanup...`);
+      // Removed: console.log(`📤 Received ${signal}, starting graceful resource cleanup...`);
       this.isShuttingDown = true;
       
       this.stopPeriodicCleanup();

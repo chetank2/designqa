@@ -560,7 +560,7 @@ class ComparisonAnalyzer {
       
       // Check if LLM integration is enabled
       if (config.nextVersion?.enabled && config.nextVersion?.features?.llmIntegration) {
-        console.log('🤖 Generating enhanced AI summary with LLM...');
+        // Removed: console.log('🤖 Generating enhanced AI summary with LLM...');
         
         const llmIntegrator = getLLMIntegrator();
         const llmSummary = await llmIntegrator.getLLMSummary(comparisonData);
@@ -731,6 +731,481 @@ ${traditionalSummary}`;
 
     return suggestions;
   }
+
+  /**
+   * Generate developer-specific recommendations with actionable code fixes
+   */
+  async generateDeveloperRecommendations(comparisonData) {
+    try {
+      const recommendations = {
+        cssSelectors: await this.generateOptimalSelectors(comparisonData),
+        fileLocations: await this.predictFileLocations(comparisonData),
+        designTokens: await this.mapToDesignTokens(comparisonData),
+        timeEstimates: this.estimateEffort(comparisonData),
+        quickFixes: this.generateAutomatedFixes(comparisonData),
+        testingStrategy: this.generateTestingStrategy(comparisonData),
+        codeRefactoring: this.suggestCodeRefactoring(comparisonData)
+      };
+
+      return recommendations;
+    } catch (error) {
+      console.error('Failed to generate developer recommendations:', error);
+      return {
+        error: error.message,
+        fallback: this.generateBasicDeveloperRecommendations(comparisonData)
+      };
+    }
+  }
+
+  /**
+   * Generate optimal CSS selectors for targeting issues
+   */
+  async generateOptimalSelectors(comparisonData) {
+    const selectors = [];
+
+    if (comparisonData.comparisons) {
+      comparisonData.comparisons.forEach(comparison => {
+        if (comparison.deviations) {
+          comparison.deviations.forEach(deviation => {
+            const webElement = comparison.webElement || {};
+            const selector = this.buildOptimalSelector(webElement, comparison);
+
+            selectors.push({
+              issue: deviation.property || 'unknown',
+              selector,
+              specificity: this.calculateSpecificity(selector),
+              recommendation: this.getSelectedRecommendation(selector, deviation)
+            });
+          });
+        }
+      });
+    }
+
+    return selectors;
+  }
+
+  /**
+   * Build optimal CSS selector for targeting
+   */
+  buildOptimalSelector(webElement, comparison) {
+    const componentName = comparison.componentName || '';
+    const tag = webElement.tag || webElement.tagName || 'div';
+    const className = webElement.className || webElement.class || '';
+    const id = webElement.id || '';
+
+    // Build specificity-optimized selector
+    if (id) {
+      return `#${id}`;
+    }
+
+    if (className) {
+      const classes = className.split(' ').filter(Boolean);
+      if (classes.length > 0) {
+        // Use component-specific classes if available
+        const componentClass = classes.find(cls =>
+          cls.toLowerCase().includes(componentName.toLowerCase().replace(/\s+/g, '-'))
+        );
+
+        if (componentClass) {
+          return `.${componentClass}`;
+        }
+
+        // Use first meaningful class
+        return `.${classes[0]}`;
+      }
+    }
+
+    // Fallback to tag with component context
+    if (componentName) {
+      const componentClass = componentName.toLowerCase().replace(/\s+/g, '-');
+      return `.${componentClass} ${tag}`;
+    }
+
+    return tag;
+  }
+
+  /**
+   * Calculate CSS selector specificity
+   */
+  calculateSpecificity(selector) {
+    const ids = (selector.match(/#/g) || []).length;
+    const classes = (selector.match(/\./g) || []).length;
+    const elements = (selector.match(/[a-z]/g) || []).length - classes;
+
+    return ids * 100 + classes * 10 + elements;
+  }
+
+  /**
+   * Get selector-specific recommendations
+   */
+  getSelectedRecommendation(selector, deviation) {
+    const property = deviation.property || 'unknown';
+
+    const recommendations = {
+      'color': `Apply color fix with ${selector} { color: ${deviation.figmaValue}; }`,
+      'background-color': `Update background with ${selector} { background-color: ${deviation.figmaValue}; }`,
+      'font-size': `Adjust font size with ${selector} { font-size: ${deviation.figmaValue}; }`,
+      'padding': `Fix spacing with ${selector} { padding: ${deviation.figmaValue}; }`,
+      'margin': `Adjust margins with ${selector} { margin: ${deviation.figmaValue}; }`
+    };
+
+    return recommendations[property] || `Update ${property} for ${selector}`;
+  }
+
+  /**
+   * Predict likely file locations for CSS fixes
+   */
+  async predictFileLocations(comparisonData) {
+    const locations = [];
+
+    if (comparisonData.comparisons) {
+      comparisonData.comparisons.forEach(comparison => {
+        const componentName = comparison.componentName || 'Component';
+        const webElement = comparison.webElement || {};
+
+        const predictedPaths = this.generateFilePaths(componentName, webElement);
+
+        locations.push({
+          component: componentName,
+          likelyPaths: predictedPaths,
+          confidence: this.calculatePathConfidence(predictedPaths, componentName)
+        });
+      });
+    }
+
+    return locations;
+  }
+
+  /**
+   * Generate possible file paths for components
+   */
+  generateFilePaths(componentName, webElement) {
+    const sanitizedName = componentName.replace(/\s+/g, '');
+    const kebabName = componentName.toLowerCase().replace(/\s+/g, '-');
+    const className = webElement.className || '';
+
+    const paths = [
+      // Component-specific paths
+      `src/components/${sanitizedName}/${sanitizedName}.css`,
+      `src/components/${sanitizedName}/styles.css`,
+      `src/components/${sanitizedName}/index.css`,
+
+      // Framework-specific paths
+      `src/components/${sanitizedName}/${sanitizedName}.module.css`,
+      `src/components/${sanitizedName}/${sanitizedName}.styled.js`,
+
+      // Global style paths
+      `src/styles/components/${kebabName}.css`,
+      `src/styles/${kebabName}.scss`,
+      `styles/${kebabName}.css`,
+
+      // Class-specific paths
+      ...(className ? [`src/styles/${className.split(' ')[0]}.css`] : []),
+
+      // Global fallbacks
+      'src/styles/global.css',
+      'src/styles/main.scss',
+      'styles/index.css'
+    ];
+
+    return paths;
+  }
+
+  /**
+   * Calculate confidence for file path predictions
+   */
+  calculatePathConfidence(paths, componentName) {
+    // Higher confidence for component-specific paths
+    if (componentName && componentName !== 'Unknown Component') {
+      return 0.8;
+    }
+    return 0.5;
+  }
+
+  /**
+   * Map issues to design system tokens
+   */
+  async mapToDesignTokens(comparisonData) {
+    const tokenMappings = [];
+
+    if (comparisonData.comparisons) {
+      comparisonData.comparisons.forEach(comparison => {
+        if (comparison.deviations) {
+          comparison.deviations.forEach(deviation => {
+            const token = this.inferDesignToken(deviation);
+
+            if (token) {
+              tokenMappings.push({
+                issue: deviation.property,
+                currentValue: deviation.webValue || deviation.actual,
+                expectedValue: deviation.figmaValue || deviation.expected,
+                designToken: token,
+                usage: this.generateTokenUsage(token, deviation)
+              });
+            }
+          });
+        }
+      });
+    }
+
+    return tokenMappings;
+  }
+
+  /**
+   * Infer design token from deviation
+   */
+  inferDesignToken(deviation) {
+    const property = deviation.property || '';
+    const value = deviation.figmaValue || deviation.expected || '';
+
+    const tokenMaps = {
+      color: this.mapColorToken(value),
+      'background-color': this.mapColorToken(value),
+      'font-size': this.mapFontSizeToken(value),
+      'font-weight': this.mapFontWeightToken(value),
+      'line-height': this.mapLineHeightToken(value),
+      padding: this.mapSpacingToken(value),
+      margin: this.mapSpacingToken(value),
+      'border-radius': this.mapBorderRadiusToken(value)
+    };
+
+    return tokenMaps[property] || null;
+  }
+
+  /**
+   * Generate token usage example
+   */
+  generateTokenUsage(token, deviation) {
+    const property = deviation.property || 'property';
+    return `${property}: var(--${token});`;
+  }
+
+  /**
+   * Estimate development effort for fixes
+   */
+  estimateEffort(comparisonData) {
+    const estimates = [];
+
+    if (comparisonData.comparisons) {
+      comparisonData.comparisons.forEach(comparison => {
+        if (comparison.deviations) {
+          comparison.deviations.forEach(deviation => {
+            const effort = this.calculateFixEffort(deviation);
+            estimates.push({
+              issue: deviation.property,
+              component: comparison.componentName,
+              effort,
+              complexity: this.assessComplexity(deviation),
+              dependencies: this.identifyDependencies(deviation, comparison)
+            });
+          });
+        }
+      });
+    }
+
+    return estimates;
+  }
+
+  /**
+   * Calculate effort required to fix issue
+   */
+  calculateFixEffort(deviation) {
+    const effortMap = {
+      'color': 5,           // minutes
+      'background-color': 5,
+      'font-size': 10,
+      'font-weight': 10,
+      'padding': 15,
+      'margin': 15,
+      'border': 20,
+      'layout': 60,         // hours in minutes
+      'responsive': 120
+    };
+
+    const property = deviation.property || 'unknown';
+    const baseEffort = effortMap[property] || 30;
+
+    // Adjust for severity
+    const severityMultiplier = {
+      critical: 2.0,
+      high: 1.5,
+      medium: 1.0,
+      low: 0.5
+    };
+
+    const multiplier = severityMultiplier[deviation.severity] || 1.0;
+    return Math.ceil(baseEffort * multiplier);
+  }
+
+  /**
+   * Assess fix complexity
+   */
+  assessComplexity(deviation) {
+    const complexityFactors = {
+      'layout': 'high',
+      'responsive': 'high',
+      'color': 'low',
+      'font-size': 'low',
+      'spacing': 'medium'
+    };
+
+    const property = deviation.property || 'unknown';
+    return complexityFactors[property] || 'medium';
+  }
+
+  /**
+   * Identify dependencies that might be affected
+   */
+  identifyDependencies(deviation, comparison) {
+    const dependencies = [];
+
+    // Layout changes affect more components
+    if (deviation.property?.includes('layout') || deviation.property?.includes('position')) {
+      dependencies.push('sibling-components', 'parent-layout');
+    }
+
+    // Color changes might affect theme consistency
+    if (deviation.property?.includes('color')) {
+      dependencies.push('color-theme', 'accessibility-contrast');
+    }
+
+    // Typography changes affect hierarchy
+    if (deviation.property?.includes('font')) {
+      dependencies.push('typography-scale', 'visual-hierarchy');
+    }
+
+    return dependencies;
+  }
+
+  /**
+   * Generate automated fix scripts
+   */
+  generateAutomatedFixes(comparisonData) {
+    const fixes = [];
+
+    if (comparisonData.comparisons) {
+      comparisonData.comparisons.forEach(comparison => {
+        if (comparison.deviations) {
+          comparison.deviations.forEach(deviation => {
+            const script = this.generateFixScript(deviation, comparison);
+            if (script) {
+              fixes.push(script);
+            }
+          });
+        }
+      });
+    }
+
+    return fixes;
+  }
+
+  /**
+   * Generate fix script for specific issue
+   */
+  generateFixScript(deviation, comparison) {
+    const property = deviation.property || 'unknown';
+    const expectedValue = deviation.figmaValue || deviation.expected || '';
+    const webElement = comparison.webElement || {};
+
+    if (!property || !expectedValue) return null;
+
+    // Generate different types of fix scripts
+    const scripts = {
+      'find-replace': this.generateFindReplaceScript(property, expectedValue),
+      'css-injection': this.generateCSSInjectionScript(property, expectedValue, webElement),
+      'sed-command': this.generateSedCommand(property, expectedValue)
+    };
+
+    return {
+      issue: `${property} in ${comparison.componentName}`,
+      scripts,
+      recommendation: 'Use find-replace for safest application'
+    };
+  }
+
+  /**
+   * Generate testing strategy for fixes
+   */
+  generateTestingStrategy(comparisonData) {
+    return {
+      visualRegression: this.generateVisualRegressionTests(comparisonData),
+      responsiveTesting: this.generateResponsiveTestPlan(comparisonData),
+      crossBrowser: this.generateCrossBrowserTestPlan(comparisonData),
+      accessibility: this.generateAccessibilityTestPlan(comparisonData)
+    };
+  }
+
+  /**
+   * Suggest code refactoring opportunities
+   */
+  suggestCodeRefactoring(comparisonData) {
+    const suggestions = [];
+
+    // Identify repeated issues that suggest systematic problems
+    const issueCounts = this.countIssueTypes(comparisonData);
+
+    Object.entries(issueCounts).forEach(([issueType, count]) => {
+      if (count > 3) {
+        suggestions.push({
+          type: 'systematic-fix',
+          issue: issueType,
+          occurrences: count,
+          suggestion: this.getSystematicFixSuggestion(issueType),
+          priority: 'high'
+        });
+      }
+    });
+
+    return suggestions;
+  }
+
+  // Helper methods for token mapping
+  mapColorToken(value) {
+    const colorMap = {
+      '#007bff': 'primary-500',
+      '#6c757d': 'gray-500',
+      '#28a745': 'success-500',
+      '#dc3545': 'error-500'
+    };
+    return colorMap[value?.toLowerCase()] || 'custom-color';
+  }
+
+  mapFontSizeToken(value) {
+    const sizeMap = {
+      '12px': 'text-xs',
+      '14px': 'text-sm',
+      '16px': 'text-base',
+      '18px': 'text-lg',
+      '20px': 'text-xl',
+      '24px': 'text-2xl'
+    };
+    return sizeMap[value] || 'text-custom';
+  }
+
+  mapFontWeightToken(value) {
+    const weightMap = {
+      '300': 'font-light',
+      '400': 'font-normal',
+      '500': 'font-medium',
+      '600': 'font-semibold',
+      '700': 'font-bold'
+    };
+    return weightMap[value] || 'font-custom';
+  }
+
+  mapSpacingToken(value) {
+    const spacingMap = {
+      '4px': 'space-1',
+      '8px': 'space-2',
+      '12px': 'space-3',
+      '16px': 'space-4',
+      '24px': 'space-6',
+      '32px': 'space-8'
+    };
+    return spacingMap[value] || 'space-custom';
+  }
+
+  // Additional helper methods would go here...
 }
 
 export default ComparisonAnalyzer; 

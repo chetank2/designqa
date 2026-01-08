@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import crypto from 'crypto';
 import { readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,19 +51,27 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 const testUsers = [
   {
     email: 'admin@test.com',
-    password: 'test123456',
+    password: process.env.TEST_USER_PASSWORD || crypto.randomBytes(16).toString('hex'),
     user_metadata: {
       full_name: 'Test Admin'
     }
   },
   {
     email: 'user@test.com',
-    password: 'test123456',
+    password: process.env.TEST_USER_PASSWORD || crypto.randomBytes(16).toString('hex'),
     user_metadata: {
       full_name: 'Test User'
     }
   }
 ];
+
+// Log generated passwords for development use
+if (!process.env.TEST_USER_PASSWORD) {
+  console.log('Generated test passwords - set TEST_USER_PASSWORD env var to use custom password');
+  testUsers.forEach(user => {
+    console.log(`${user.email}: ${user.password}`);
+  });
+}
 
 async function createTestUsers() {
   console.log('🔧 Creating test users in Supabase...\n');

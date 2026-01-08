@@ -18,7 +18,7 @@ interface ToastOptions {
 export const toast = (options: ToastOptions) => {
   const { title, description, status, duration = 3000 } = options;
   
-  console.log(`[TOAST - ${status.toUpperCase()}] ${title}${description ? ': ' + description : ''}`);
+  // Removed: console.log(`[TOAST - ${status.toUpperCase()}] ${title}${description ? ': ' + description : ''}`);
   
   // In a real app, this would show a UI toast
   // For now, we'll just log to console

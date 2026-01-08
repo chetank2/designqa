@@ -389,6 +389,13 @@ export class ReportGenerator {
                 </svg>
                 Export CSV
               </button>
+              <button onclick="exportDeveloperCSV()" class="btn btn-developer" title="Download enhanced CSV with actionable fixes for developers">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="16 18 22 12 16 6"/>
+                  <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                Dev CSV
+              </button>
               <button onclick="copyDevRevTableToClipboard()" class="btn btn-secondary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>

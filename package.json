@@ -1,18 +1,48 @@
 {
   "name": "my-product",
   "version": "2.0.1",
+  "type": "module",
   "private": true,
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "build:desktop:mac": "cd apps/desktop-mac && npm run build && npm run package",
-    "build:desktop:win": "cd apps/desktop-win && npm run build && npm run package",
-    "build:desktop:all": "npm run build:desktop:mac && npm run build:desktop:win",
-    "build:mcp-client": "cd packages/mcp-client && npm run build",
+    "build:shared-types": "cd packages/shared-types && pnpm run build",
+    "build:mcp-client": "cd packages/mcp-client && pnpm run build",
+    "build:compare-engine": "cd packages/compare-engine && pnpm run build",
+    "build:packages": "pnpm run build:shared-types && pnpm run build:mcp-client && pnpm run build:compare-engine",
+    "build:frontend": "cd apps/saas-frontend && pnpm run build:electron",
+    "build:backend": "cd apps/saas-backend && echo 'Backend runs from source'",
+    "build:desktop:mac": "pnpm run build:packages && cd apps/desktop-mac && npm run build && npm run package",
+    "build:desktop:win": "pnpm run build:packages && cd apps/desktop-win && npm run build && npm run package",
+    "build:desktop:all": "pnpm run build:desktop:mac && pnpm run build:desktop:win",
+    "validate:build": "node scripts/validate-build.js",
+    "lint": "eslint packages/*/src apps/*/src --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint packages/*/src apps/*/src --ext .ts,.tsx,.js,.jsx --fix",
+    "typecheck": "pnpm run typecheck:packages && pnpm run typecheck:apps",
+    "typecheck:packages": "cd packages/shared-types && tsc --noEmit && cd ../mcp-client && tsc --noEmit",
+    "typecheck:apps": "cd apps/saas-frontend && tsc --noEmit && cd ../saas-backend && tsc --noEmit",
+    "clean": "pnpm run clean:packages && pnpm run clean:apps",
+    "clean:packages": "rm -rf packages/*/dist packages/*/node_modules/.cache",
+    "clean:apps": "rm -rf apps/*/dist apps/*/build apps/saas-frontend/dist",
+    "dev:frontend": "cd apps/saas-frontend && pnpm run dev",
+    "dev:backend": "cd apps/saas-backend && node src/core/server/index.js",
+    "prebuild": "npm run validate:build",
     "version:sync": "node scripts/sync-version.js",
     "version:set": "node scripts/sync-version.js --set",
-    "version:check": "node scripts/sync-version.js --check"
+    "version:check": "node scripts/sync-version.js --check",
+    "postversion": "node scripts/post-version.js && git add . && git commit --amend --no-edit"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.52.0"
   }
 }

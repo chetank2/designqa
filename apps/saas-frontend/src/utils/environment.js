@@ -122,8 +122,8 @@ export const FEATURES = {
 export function logEnvironmentInfo() {
   if (isDevelopment) {
     console.log('🔧 Environment Configuration (Node.js fallback)');
-    console.log('NODE_ENV:', ENV.NODE_ENV);
-    console.log('API Base URL:', getApiBaseUrl());
-    console.log('WebSocket URL:', getWebSocketUrl());
+    // Removed: console.log('NODE_ENV:', ENV.NODE_ENV);
+    // Removed: console.log('API Base URL:', getApiBaseUrl());
+    // Removed: console.log('WebSocket URL:', getWebSocketUrl());
   }
 }

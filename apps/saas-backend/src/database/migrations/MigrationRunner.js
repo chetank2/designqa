@@ -94,7 +94,7 @@ export async function runMigrations(adapter) {
       continue; // Already applied
     }
 
-    console.log(`Running migration: ${migration.file}`);
+    // Removed: console.log(`Running migration: ${migration.file}`);
 
     try {
       const sql = migration.content;
@@ -117,7 +117,7 @@ export async function runMigrations(adapter) {
 
       await recordMigration(adapter, migration.version);
       newlyApplied.push(migration.version);
-      console.log(`✅ Applied migration: ${migration.version}`);
+      // Removed: console.log(`✅ Applied migration: ${migration.version}`);
     } catch (error) {
       console.error(`❌ Failed to apply migration ${migration.version}:`, error.message);
       throw error;
@@ -140,7 +140,7 @@ export async function initializeSchema(adapter) {
   
   // If no migrations applied, schema should be initialized via Supabase CLI
   if (applied.length === 0) {
-    console.log('ℹ️  No migrations found. Ensure database schema is initialized via Supabase CLI.');
+    // Removed: console.log('ℹ️  No migrations found. Ensure database schema is initialized via Supabase CLI.');
   }
 }
 

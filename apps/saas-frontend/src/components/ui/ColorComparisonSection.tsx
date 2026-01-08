@@ -144,7 +144,7 @@ const ColorComparisonSection: React.FC<ColorComparisonSectionProps> = ({
     try {
       const { getApiBaseUrl } = await import('@/config/ports');
       const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/colors/colors/${encodeURIComponent(color)}/elements`)
+      const response = await fetch(`${apiBaseUrl}/api/colors/${encodeURIComponent(color)}/elements`)
       if (response.ok) {
         const elements = await response.json()
         return elements

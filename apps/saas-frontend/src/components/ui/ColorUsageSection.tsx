@@ -50,7 +50,7 @@ const ColorUsageSection: React.FC<ColorUsageSectionProps> = ({ data, source, cla
       const apiBaseUrl = getApiBaseUrl();
       const colorUsagePromises = colors.map(async (color) => {
         try {
-          const response = await fetch(`${apiBaseUrl}/api/colors/colors/${encodeURIComponent(color)}/elements`)
+          const response = await fetch(`${apiBaseUrl}/api/colors/${encodeURIComponent(color)}/elements`)
           if (response.ok) {
             const elements = await response.json()
             return {

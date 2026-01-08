@@ -2,7 +2,8 @@ import React from 'react';
 import { GlassCard, GlassContent } from '../ui/GlassCard';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
-import { ExtractionDetails } from '../../services/api';
+import { ExtractionDetails } from '../../types';
+import { Typography } from '@designqa/shared-types';
 
 interface ExtractionDetailsViewProps {
   extractionDetails: ExtractionDetails;
@@ -13,6 +14,14 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
   const figma = extractionDetails?.figma || {};
   const web = extractionDetails?.web || {};
   const comparison = extractionDetails?.comparison || {};
+
+  // Helper function to safely access typography data
+  const getTypographyData = (typography: any): Typography => {
+    if (Array.isArray(typography)) {
+      return { fontFamilies: [], fontSizes: [], fontWeights: [] };
+    }
+    return typography || { fontFamilies: [], fontSizes: [], fontWeights: [] };
+  };
 
   return (
     <div className="space-y-6">
@@ -36,7 +45,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Typography:</span>
-                <Badge variant="outline">{((figma.typography as any)?.fontFamilies?.length || 0)}</Badge>
+                <Badge variant="outline">{getTypographyData(figma.typography).fontFamilies?.length || 0}</Badge>
               </div>
               <div className="text-xs text-muted-foreground mt-2 truncate" title={figma.fileInfo?.name || 'Unknown'}>
                 {figma.fileInfo?.name || 'Unknown'}
@@ -63,7 +72,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Fonts:</span>
-                <Badge variant="outline">{web.typography?.fontFamilies?.length || 0}</Badge>
+                <Badge variant="outline">{getTypographyData(web.typography).fontFamilies?.length || 0}</Badge>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Spacing:</span>
@@ -117,7 +126,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Colors ({figma.colors?.length || 0})</h4>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                  {(figma.colors || []).map((color, index) => (
+                  {(figma.colors || []).map((color: any, index: number) => (
                     <div key={index} className="flex items-center gap-2 group p-1 rounded hover:bg-muted/50 transition-colors">
                       <div
                         className="w-4 h-4 rounded-full border shadow-sm ring-1 ring-border"
@@ -134,11 +143,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
             <div className="mb-4">
               <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Typography</h4>
               <div className="space-y-3">
-                {((figma.typography as any)?.fontFamilies?.length || 0) > 0 && (
+                {(getTypographyData(figma.typography).fontFamilies?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Families:</span>
                     <div className="flex flex-wrap gap-1">
-                      {((figma.typography as any)?.fontFamilies || []).map((font: any, index: number) => (
+                      {(getTypographyData(figma.typography).fontFamilies || []).map((font: any, index: number) => (
                         <Badge key={index} variant="outline" className="text-xs bg-background/50">
                           {font}
                         </Badge>
@@ -147,11 +156,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                   </div>
                 )}
 
-                {((figma.typography as any)?.fontSizes?.length || 0) > 0 && (
+                {(getTypographyData(figma.typography).fontSizes?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Sizes:</span>
                     <div className="flex flex-wrap gap-1">
-                      {((figma.typography as any)?.fontSizes || []).map((size: any, index: number) => (
+                      {(getTypographyData(figma.typography).fontSizes || []).map((size: any, index: number) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {size}
                         </Badge>
@@ -221,7 +230,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Colors ({web.colors?.length || 0})</h4>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                  {(web.colors || []).map((color, index) => (
+                  {(web.colors || []).map((color: any, index: number) => (
                     <div key={index} className="flex items-center gap-2 group p-1 rounded hover:bg-muted/50 transition-colors">
                       <div
                         className="w-4 h-4 rounded-full border shadow-sm ring-1 ring-border"
@@ -238,11 +247,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
             <div className="mb-4">
               <h4 className="text-sm font-medium mb-2 text-muted-foreground uppercase tracking-wider text-[10px]">Typography</h4>
               <div className="space-y-3">
-                {(web.typography?.fontFamilies?.length || 0) > 0 && (
+                {(getTypographyData(web.typography).fontFamilies?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Families:</span>
                     <div className="flex flex-wrap gap-1">
-                      {(web.typography?.fontFamilies || []).map((font, index) => (
+                      {(getTypographyData(web.typography).fontFamilies || []).map((font, index) => (
                         <Badge key={index} variant="outline" className="text-xs bg-background/50">
                           {font}
                         </Badge>
@@ -250,11 +259,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                     </div>
                   </div>
                 )}
-                {(web.typography?.fontSizes?.length || 0) > 0 && (
+                {(getTypographyData(web.typography).fontSizes?.length || 0) > 0 && (
                   <div>
                     <span className="text-xs text-muted-foreground/70 block mb-1">Font Sizes:</span>
                     <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto custom-scrollbar">
-                      {(web.typography?.fontSizes || []).map((size, index) => (
+                      {(getTypographyData(web.typography).fontSizes || []).map((size: any, index: number) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {size}
                         </Badge>

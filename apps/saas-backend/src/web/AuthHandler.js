@@ -9,12 +9,12 @@
  * @param {Object} auth - Authentication credentials and options
  */
 export async function handleAuthentication(page, auth) {
-    console.log('🔐 Starting authentication process...');
+    // Removed: console.log('🔐 Starting authentication process...');
 
     try {
         // Detect login page type
         const loginType = await detectLoginPageType(page);
-        console.log(`📋 Detected login type: ${loginType}`);
+        // Removed: console.log(`📋 Detected login type: ${loginType}`);
 
         if (loginType === 'form') {
             await handleFormLogin(page, auth);
@@ -78,7 +78,7 @@ async function handleFormLogin(page, auth) {
     if (passwordField) {
         await page.click(passwordField);
         await page.type(passwordField, auth.password || auth.credentials?.password || '', { delay: 50 });
-        console.log('✅ Password filled');
+        // Removed: console.log('✅ Password filled');
     }
 
     // Submit the form
@@ -124,7 +124,7 @@ async function submitLoginForm(page) {
         try {
             await page.waitForSelector(selector, { timeout: 2000 });
             await page.click(selector);
-            console.log(`✅ Clicked submit button: ${selector}`);
+            // Removed: console.log(`✅ Clicked submit button: ${selector}`);
             return;
         } catch (_) {
             continue;
@@ -153,7 +153,7 @@ async function submitLoginForm(page) {
     // Fallback: press Enter on password field
     try {
         await page.keyboard.press('Enter');
-        console.log('✅ Submitted using Enter key');
+        // Removed: console.log('✅ Submitted using Enter key');
     } catch (_) {
         console.warn('⚠️ Could not submit form');
     }
@@ -164,7 +164,7 @@ async function submitLoginForm(page) {
  * @param {Object} page - Puppeteer page object
  */
 async function waitForAuthResult(page) {
-    console.log('⏳ Waiting for authentication result...');
+    // Removed: console.log('⏳ Waiting for authentication result...');
 
     try {
         await Promise.race([

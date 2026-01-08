@@ -31,7 +31,7 @@ export class DesignDiscrepancyAnalyzer {
     const discrepancies = [];
     
     try {
-      console.log('📝 Analyzing typography differences...');
+      // Removed: console.log('📝 Analyzing typography differences...');
       
       // Extract text regions and analyze font characteristics
       const figmaTypography = await this.extractTypographyData(figmaPath, 'figma');
@@ -430,7 +430,7 @@ export class DesignDiscrepancyAnalyzer {
    * Analyze screenshots for design discrepancies
    */
   async analyzeScreenshots(figmaPath, developedPath, settings) {
-    console.log('🔍 Starting design discrepancy analysis...');
+    // Removed: console.log('🔍 Starting design discrepancy analysis...');
     const discrepancies = [];
 
     try {
@@ -441,24 +441,24 @@ export class DesignDiscrepancyAnalyzer {
       }
 
       if (settings.colorAnalysis) {
-        console.log('🎨 Analyzing color differences...');
+        // Removed: console.log('🎨 Analyzing color differences...');
         const colorDiscrepancies = await this.analyzeColorDifferences(figmaPath, developedPath);
         discrepancies.push(...colorDiscrepancies);
       }
 
       if (settings.layoutAnalysis) {
-        console.log('📐 Analyzing layout differences...');
+        // Removed: console.log('📐 Analyzing layout differences...');
         const layoutDiscrepancies = await this.analyzeLayoutDifferences(figmaPath, developedPath);
         discrepancies.push(...layoutDiscrepancies);
       }
 
       if (settings.spacingAnalysis) {
-        console.log('📏 Analyzing spacing differences...');
+        // Removed: console.log('📏 Analyzing spacing differences...');
         const spacingDiscrepancies = await this.analyzeSpacingDifferences(figmaPath, developedPath);
         discrepancies.push(...spacingDiscrepancies);
       }
 
-      console.log(`✅ Found ${discrepancies.length} discrepancies`);
+      // Removed: console.log(`✅ Found ${discrepancies.length} discrepancies`);
       return discrepancies;
     } catch (error) {
       console.error('❌ Discrepancy analysis failed:', error);

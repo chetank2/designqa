@@ -179,7 +179,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
 
   const figmaMutation = useMutation({
     mutationFn: async (data: { figmaUrl: string, extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
-      console.log('Submitting Figma extraction request:', data.figmaUrl, 'Mode:', data.extractionMode);
+      // Removed: console.log('Submitting Figma extraction request:', data.figmaUrl, 'Mode:', data.extractionMode);
 
       return await extractFigmaOnly({
         figmaUrl: data.figmaUrl,
@@ -188,13 +188,13 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
       });
     },
     onSuccess: (data) => {
-      console.log('Figma extraction successful, data received:', {
-        componentCount: data.metadata?.totalComponents || data.components?.length || 0,
-        colorCount: data.metadata?.colorCount || data.colors?.length || 0,
-        typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
-        actualColorsCount: data.colors?.length || 0,
-        dataStructure: Object.keys(data || {})
-      });
+      // console.log('Figma extraction successful, data received:', {
+      //   componentCount: data.metadata?.totalComponents || data.components?.length || 0,
+      //   colorCount: data.metadata?.colorCount || data.colors?.length || 0,
+      //   typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
+      //   actualColorsCount: data.colors?.length || 0,
+      //   dataStructure: Object.keys(data || {})
+      // });
       setErrorMessage(null);
 
       // Validate data before passing to parent
@@ -239,9 +239,6 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
       authentication?: AuthenticationConfig,
       designSystemId?: string
     }) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SingleSourceForm.tsx:162', message: 'webMutation.mutationFn entry', data: { webUrl: data.webUrl, hasSelector: !!data.webSelector, hasAuth: !!data.authentication }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-      // #endregion
       try {
         const result = await extractWebOnly(
           data.webUrl,
@@ -249,28 +246,16 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
           data.authentication,
           data.designSystemId
         );
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SingleSourceForm.tsx:167', message: 'webMutation.mutationFn success', data: { resultType: typeof result, hasResult: !!result, resultKeys: result ? Object.keys(result).slice(0, 10) : [], elementsCount: result?.elements?.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-        // #endregion
         return result;
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SingleSourceForm.tsx:171', message: 'webMutation.mutationFn catch', data: { errorMessage: error instanceof Error ? error.message : String(error), errorName: error instanceof Error ? error.name : 'unknown', errorType: typeof error }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-        // #endregion
         throw error;
       }
     },
     onSuccess: (data) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SingleSourceForm.tsx:177', message: 'webMutation.onSuccess', data: { dataType: typeof data, hasData: !!data, dataKeys: data ? Object.keys(data).slice(0, 10) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-      // #endregion
       setErrorMessage(null);
       onWebSuccess?.(data);
     },
     onError: (error: any) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'SingleSourceForm.tsx:182', message: 'webMutation.onError', data: { errorMessage: error?.message || String(error), errorName: error?.name, errorType: typeof error, errorStatus: error?.status, errorCode: error?.code, errorKeys: error ? Object.keys(error).slice(0, 10) : [] }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'ALL' }) }).catch(() => { });
-      // #endregion
       console.error('Web extraction failed:', error);
       const friendlyMessage = describeRequestError(error);
       setErrorMessage(friendlyMessage);
@@ -371,7 +356,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
               control={control}
               render={({ field }) => (
                 <DesignSystemSelect
-                  value={field.value || ''}
+                  value={field.value}
                   onChange={field.onChange}
                   disabled={isLoading}
                 />

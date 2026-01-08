@@ -7,8 +7,11 @@ import {
 } from '@heroicons/react/24/outline'
 
 export interface ProgressStage {
+  id?: string
   stage: string
+  name?: string
   label?: string
+  status?: string
   progress: number
   currentChunk?: number
   totalChunks?: number

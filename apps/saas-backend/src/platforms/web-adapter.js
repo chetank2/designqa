@@ -88,7 +88,7 @@ export class WebAdapter {
    * Platform-specific initialization
    */
   async initialize() {
-    console.log('🌐 Initializing Web Platform Adapter');
+    // Removed: console.log('🌐 Initializing Web Platform Adapter');
     
     // Web-specific initialization
     // - Set up process handlers
@@ -106,7 +106,7 @@ export class WebAdapter {
    * Platform-specific cleanup
    */
   async cleanup() {
-    console.log('🧹 Cleaning up Web Platform Adapter');
+    // Removed: console.log('🧹 Cleaning up Web Platform Adapter');
     
     // Web-specific cleanup
     // - Close database connections

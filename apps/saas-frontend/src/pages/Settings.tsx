@@ -18,15 +18,6 @@ import { getApiBaseUrl } from '../config/ports';
 import { useBackendReachability } from '../hooks/useBackendReachability';
 
 export default function Settings() {
-  // #region agent log
-  useEffect(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'N/A';
-    const href = typeof window !== 'undefined' ? window.location.href : 'N/A';
-    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'N/A';
-    fetch('http://127.0.0.1:7242/ingest/49fa703a-56f7-4c75-b3dc-7ee1a4d36535', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Settings.tsx:20', message: 'Settings page mount', data: { origin, href, protocol }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
-  }, []);
-  // #endregion
-
   const {
     reachable: backendReachable,
     checking: backendChecking,
@@ -82,7 +73,7 @@ export default function Settings() {
           <Alert variant="destructive" className="mt-2">
             <AlertTitle>Local backend unreachable</AlertTitle>
             <AlertDescription>
-              The desktop server at <code>{getApiBaseUrl()}</code> is not responding. Start the embedded server to load credentials, design systems, and MCP status.
+              The desktop server at <code>{getApiBaseUrl()}</code> is not responding. Please restart the application.
             </AlertDescription>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button

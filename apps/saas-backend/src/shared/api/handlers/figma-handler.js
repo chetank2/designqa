@@ -87,7 +87,7 @@ export class FigmaHandler {
    * Test endpoint to verify backend connectivity
    */
   static async testEndpoint(req, res, config) {
-    console.log('🧪 Test endpoint called');
+    // Removed: console.log('🧪 Test endpoint called');
     return res.json({
       success: true,
       message: 'Backend is working!',
@@ -107,8 +107,8 @@ export class FigmaHandler {
     const startTime = Date.now();
     
     try {
-      console.log('🚀 Figma extract endpoint called');
-      console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
+      // Removed: console.log('🚀 Figma extract endpoint called');
+      // Removed: console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
       
       // Handle both web app format (figmaUrl) and direct format (url)
       const { 
@@ -132,14 +132,14 @@ export class FigmaHandler {
         });
       }
 
-      console.log(`🚀 Starting Figma extraction for: ${figmaUrlToUse}`);
+      // Removed: console.log(`🚀 Starting Figma extraction for: ${figmaUrlToUse}`);
 
       // Parse Figma URL to extract file ID and node ID
       const fileId = FigmaHandler.parseFileId(figmaUrlToUse);
       const parsedNodeId = nodeId || FigmaHandler.parseNodeId(figmaUrlToUse);
       
-      console.log(`📋 Parsed file ID: ${fileId}`);
-      console.log(`📋 Parsed node ID: ${parsedNodeId}`);
+      // Removed: console.log(`📋 Parsed file ID: ${fileId}`);
+      // Removed: console.log(`📋 Parsed node ID: ${parsedNodeId}`);
       
       if (!fileId) {
         console.error(`❌ Failed to parse file ID from URL: ${figmaUrlToUse}`);
@@ -164,23 +164,23 @@ export class FigmaHandler {
       // If we have a specific node, use the nodes endpoint for faster response
       if (parsedNodeId && lightMode) {
         apiUrl += `/nodes?ids=${parsedNodeId}`;
-        console.log(`⚡ Using optimized nodes endpoint for node: ${parsedNodeId}`);
+        // Removed: console.log(`⚡ Using optimized nodes endpoint for node: ${parsedNodeId}`);
       } else if (lightMode) {
         // Add query parameters to reduce response size
         apiUrl += '?depth=2&geometry=paths'; // Limit depth and geometry for faster response
-        console.log('⚡ Using light mode with limited depth');
+        // Removed: console.log('⚡ Using light mode with limited depth');
       }
 
-      console.log(`📡 Making Figma API request: ${apiUrl}`);
+      // Removed: console.log(`📡 Making Figma API request: ${apiUrl}`);
 
       // Make API request with robust timeout handling
       const timeout = lightMode ? 10000 : config.get('figmaTimeout', 20000); // Reduced timeouts
       
-      console.log(`⏰ Setting timeout to ${timeout}ms (lightMode: ${lightMode})`);
-      console.log(`🔑 API key configured: ${apiKey ? 'Yes (length: ' + apiKey.length + ')' : 'No'}`);
+      // Removed: console.log(`⏰ Setting timeout to ${timeout}ms (lightMode: ${lightMode})`);
+      // Removed: console.log(`🔑 API key configured: ${apiKey ? 'Yes (length: ' + apiKey.length + ')' : 'No'}`);
       
       // Test API key first with a simple request
-      console.log('🧪 Testing API key with /v1/me endpoint...');
+      // Removed: console.log('🧪 Testing API key with /v1/me endpoint...');
       
       try {
         const testResponse = await fetch('https://api.figma.com/v1/me', {
@@ -199,7 +199,7 @@ export class FigmaHandler {
         }
         
         const userData = await testResponse.json();
-        console.log(`✅ API key valid for user: ${userData.email}`);
+        // Removed: console.log(`✅ API key valid for user: ${userData.email}`);
         
       } catch (testError) {
         console.error('❌ API key test error:', testError.message);
@@ -210,7 +210,7 @@ export class FigmaHandler {
         });
       }
       
-      console.log(`📡 Making Figma API request to: ${apiUrl}`);
+      // Removed: console.log(`📡 Making Figma API request to: ${apiUrl}`);
       
       try {
         // Use AbortSignal.timeout for better reliability
@@ -221,7 +221,7 @@ export class FigmaHandler {
           signal: AbortSignal.timeout(timeout)
         });
 
-        console.log(`✅ Figma API response received (${Date.now() - startTime}ms)`);
+        // Removed: console.log(`✅ Figma API response received (${Date.now() - startTime}ms)`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -234,7 +234,7 @@ export class FigmaHandler {
         }
 
         const figmaData = await response.json();
-        console.log(`📊 Figma data received, processing...`);
+        // Removed: console.log(`📊 Figma data received, processing...`);
         
         // Process data with performance options
         const processedData = await FigmaHandler.processFigmaDataOptimized(
@@ -243,7 +243,7 @@ export class FigmaHandler {
         );
 
         const totalTime = Date.now() - startTime;
-        console.log(`🎉 Figma extraction completed in ${totalTime}ms`);
+        // Removed: console.log(`🎉 Figma extraction completed in ${totalTime}ms`);
 
         return res.json({
           success: true,
@@ -331,7 +331,7 @@ export class FigmaHandler {
       let nodeId = urlObj.searchParams.get('node-id');
       
       if (nodeId) {
-        console.log(`🔍 Raw node-id from URL: ${nodeId}`);
+        // Removed: console.log(`🔍 Raw node-id from URL: ${nodeId}`);
         
         // Handle different node ID formats:
         // 1. URL-encoded colons: "123%3A456" -> "123:456"
@@ -341,10 +341,10 @@ export class FigmaHandler {
         if (!nodeId.includes(':') && nodeId.includes('-')) {
           // Only convert first dash to colon, preserve other dashes
           nodeId = nodeId.replace('-', ':');
-          console.log(`🔄 Converted dash format to: ${nodeId}`);
+          // Removed: console.log(`🔄 Converted dash format to: ${nodeId}`);
         }
         
-        console.log(`✅ Final parsed node-id: ${nodeId}`);
+        // Removed: console.log(`✅ Final parsed node-id: ${nodeId}`);
         return nodeId;
       }
       
@@ -376,13 +376,13 @@ export class FigmaHandler {
 
       // Skip heavy analysis if requested
       if (skipAnalysis) {
-        console.log('⚡ Skipping analysis for faster response');
+        // Removed: console.log('⚡ Skipping analysis for faster response');
         return processed;
       }
 
       // Light analysis for better performance
       if (lightMode) {
-        console.log('⚡ Running light analysis...');
+        // Removed: console.log('⚡ Running light analysis...');
         
         // Quick analysis without deep traversal
         if (figmaData.document) {
@@ -404,7 +404,7 @@ export class FigmaHandler {
           processed.nodeAnalysis = nodeAnalysis; // Keep original field
         }
       } else {
-        console.log('🔍 Running full analysis...');
+        // Removed: console.log('🔍 Running full analysis...');
         
         // Full analysis (original behavior)
         if (figmaData.document) {
@@ -428,7 +428,7 @@ export class FigmaHandler {
 
       const processingTime = Date.now() - startTime;
       processed.metadata.dataProcessingTime = processingTime;
-      console.log(`✅ Data processing completed in ${processingTime}ms`);
+      // Removed: console.log(`✅ Data processing completed in ${processingTime}ms`);
 
       return processed;
     } catch (error) {

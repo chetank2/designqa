@@ -31,7 +31,7 @@ export async function getDatabaseAdapter(options = {}) {
   } else {
     // Create Local adapter
     if (forceLocal) {
-      console.log('configured for Local Mode (DB_MODE=local or FORCE_LOCAL_MODE=true).');
+      // Removed: console.log('configured for Local Mode (DB_MODE=local or FORCE_LOCAL_MODE=true).');
     } else {
       console.log('⚠️ SUPABASE_URL not set. Using LocalAdapter.');
     }
@@ -49,7 +49,7 @@ export async function getDatabaseAdapter(options = {}) {
       await initializeSchema(adapter);
       const applied = await runMigrations(adapter);
       if (applied.length > 0) {
-        console.log(`✅ Applied ${applied.length} migration(s)`);
+        // Removed: console.log(`✅ Applied ${applied.length} migration(s)`);
       }
     }
   } catch (error) {

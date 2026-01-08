@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
 import { classNames } from '../../utils/classNames';
-import { FigmaData } from '../../../../src/types/extractor';
+import { FigmaData } from '@designqa/shared-types';
 // import ColorUsageSection from '../ui/ColorUsageSection';
 
 interface DesignToken {
@@ -140,7 +140,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
   };
 
   const renderComponentProperties = (properties: any) => {
-    console.log('Rendering properties:', properties);
+    // Removed: console.log('Rendering properties:', properties);
     
     if (!properties || typeof properties !== 'object') {
       return (
@@ -383,7 +383,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
     const properties = (component as any).properties;
     
     // Debug logging
-    console.log('Component:', component.name, 'Properties:', properties);
+    // Removed: console.log('Component:', component.name, 'Properties:', properties);
     
     const hasProperties = properties && Object.keys(properties).length > 0;
     const propertyCount = hasProperties ? 
