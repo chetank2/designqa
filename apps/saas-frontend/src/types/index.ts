@@ -27,6 +27,23 @@ export interface AuthenticationConfig {
   figmaToken?: string
 }
 
+export interface SiteProfile {
+  id: string
+  name: string
+  domain: string
+  enabled: boolean
+  timeouts?: {
+    extraction?: number | null
+    stability?: number | null
+    navigation?: number | null
+  }
+  resourceBlocking?: 'auto' | 'block-heavy' | 'allow-all'
+  waitForSelector?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ExtractionDetails {
   figma?: {
     componentCount?: number;

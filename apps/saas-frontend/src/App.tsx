@@ -34,6 +34,14 @@ function AppContent() {
     return 'Design QA'
   }
 
+  // Redirect to backend if URL is for static report files
+  useEffect(() => {
+    if (location.pathname.startsWith('/reports/') && location.pathname.endsWith('.html')) {
+      // This is a static report file, redirect to backend
+      window.location.href = location.pathname + location.search
+    }
+  }, [location.pathname, location.search])
+
   const isAuthPage = ['/signin', '/signup'].includes(location.pathname)
 
   return (

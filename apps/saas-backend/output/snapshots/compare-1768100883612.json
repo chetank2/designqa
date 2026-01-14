@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "figma": {
+      "fileId": "test-file-id",
+      "totalComponents": 2
+    },
+    "web": {
+      "url": "https://example.com",
+      "totalElements": 0
+    },
+    "comparedAt": "2026-01-11T03:08:03.612Z",
+    "processingStats": {
+      "chunksProcessed": 1,
+      "componentsProcessed": 2,
+      "originalComponentCount": 2,
+      "originalElementCount": 0
+    }
+  },
+  "comparisons": [
+    {
+      "componentId": "figma-text-1",
+      "componentName": "Header Text",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "figma-button-1",
+      "componentName": "Primary Button",
+      "componentType": "RECTANGLE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    }
+  ],
+  "summary": {
+    "totalComponents": 2,
+    "totalDeviations": 2,
+    "totalMatches": 0,
+    "severity": {
+      "high": 2,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

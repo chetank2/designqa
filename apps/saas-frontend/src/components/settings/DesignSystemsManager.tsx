@@ -379,13 +379,13 @@ export default function DesignSystemsManager({ backendReachable }: DesignSystems
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tokens">Design Tokens (JSON) *</Label>
+                <Label htmlFor="tokens">Design Tokens (JSON) - Optional</Label>
                 <textarea
                   id="tokens"
                   className="w-full min-h-[200px] p-2 border rounded-md font-mono text-sm"
+                  placeholder='Optional: Add design tokens in JSON format, e.g., {"colors": {"primary": "#007bff"}}'
                   value={formData.tokens}
                   onChange={(e) => setFormData(prev => ({ ...prev, tokens: e.target.value }))}
-                  required
                 />
               </div>
 

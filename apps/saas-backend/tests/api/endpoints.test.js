@@ -92,7 +92,10 @@ const stopRealServer = () => {
   });
 };
 
-describe('Real API Endpoints Integration Tests', () => {
+const shouldSkip = process.env.SKIP_SERVER_TESTS === 'true';
+const describeMaybe = shouldSkip ? describe.skip : describe;
+
+describeMaybe('Real API Endpoints Integration Tests', () => {
   beforeAll(async () => {
     await startRealServer();
     // Wait a bit more for server to be fully ready

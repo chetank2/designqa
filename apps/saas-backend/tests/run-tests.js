@@ -13,27 +13,27 @@ import chalk from 'chalk';
 const TEST_CATEGORIES = {
   unit: {
     name: 'Unit Tests',
-    pattern: 'tests/unit/**/*.test.js',
+    pattern: 'tests/unit/.*\\.test\\.js$',
     description: 'Individual module tests'
   },
   integration: {
     name: 'Integration Tests', 
-    pattern: 'tests/integration/**/*.test.js',
+    pattern: 'tests/integration/.*\\.test\\.js$',
     description: 'Module interaction tests'
   },
   api: {
     name: 'API Tests',
-    pattern: 'tests/api/**/*.test.js', 
+    pattern: 'tests/api/.*\\.test\\.js$', 
     description: 'REST API endpoint tests'
   },
   e2e: {
     name: 'End-to-End Tests',
-    pattern: 'tests/e2e/**/*.test.js',
+    pattern: 'tests/e2e/.*\\.test\\.js$',
     description: 'Complete workflow tests'
   },
   performance: {
     name: 'Performance Tests',
-    pattern: 'tests/performance/**/*.test.js',
+    pattern: 'tests/performance/.*\\.test\\.js$',
     description: 'Load and performance tests'
   }
 };
@@ -51,6 +51,7 @@ class TestRunner {
     console.log(chalk.blue.bold('🧪 Figma-Web Comparison Tool Test Suite'));
     console.log(chalk.blue('=' .repeat(60)));
     console.log('');
+    this.runCoverage = categories.length === Object.keys(TEST_CATEGORIES).length;
 
     // Setup test environment
     await this.setupTestEnvironment();
@@ -72,12 +73,21 @@ class TestRunner {
     console.log(chalk.yellow('🔧 Setting up test environment...'));
     
     try {
+      // Use a writable local data dir for tests
+      this.testDataDir = path.resolve('output', 'test-data');
+      process.env.DESIGNQA_DATA_DIR = this.testDataDir;
+      await fs.mkdir(this.testDataDir, { recursive: true });
+
       // Ensure test directories exist
       const testDirs = [
         'tests/fixtures/screenshots',
         'tests/fixtures/reports',
         'output/screenshots',
-        'output/reports'
+        'output/reports',
+        path.join(this.testDataDir, 'credentials'),
+        path.join(this.testDataDir, 'design-systems'),
+        path.join(this.testDataDir, 'reports'),
+        path.join(this.testDataDir, 'sessions')
       ];
 
       for (const dir of testDirs) {
@@ -152,42 +162,39 @@ class TestRunner {
     console.log('');
   }
 
-  async executeJest(pattern) {
+  async executeJest(pattern, extraArgs = []) {
     return new Promise((resolve, reject) => {
+      const outputFile = path.resolve(
+        this.testDataDir || '.',
+        `jest-results-${Date.now()}.json`
+      );
       const jestArgs = [
         '--testPathPattern=' + pattern,
         '--verbose',
         '--json',
-        '--coverage=false' // Disable coverage for individual runs
+        '--outputFile=' + outputFile,
+        '--coverage=false', // Disable coverage for individual runs
+        '--runInBand',
+        ...extraArgs
       ];
 
       const jest = spawn('npx', ['jest', ...jestArgs], {
-        stdio: ['inherit', 'pipe', 'pipe']
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      jest.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      jest.stderr.on('data', (data) => {
-        stderr += data.toString();
-        // Show real-time output for errors
-        if (data.toString().includes('FAIL') || data.toString().includes('Error')) {
-          process.stderr.write(data);
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          NODE_ENV: 'test',
+          DESIGNQA_DATA_DIR: this.testDataDir || process.env.DESIGNQA_DATA_DIR,
+          SKIP_PUPPETEER: 'true',
+          SKIP_SERVER_TESTS: 'true',
+          SKIP_WEB_EXTRACTOR_TESTS: 'true',
+          NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --experimental-vm-modules`.trim()
         }
       });
 
       jest.on('close', (code) => {
-        try {
-          // Parse Jest JSON output
-          const lines = stdout.split('\n');
-          const jsonLine = lines.find(line => line.startsWith('{') && line.includes('numTotalTests'));
-          
-          if (jsonLine) {
-            const result = JSON.parse(jsonLine);
+        fs.readFile(outputFile, 'utf-8')
+          .then((resultRaw) => {
+            const result = JSON.parse(resultRaw);
             resolve({
               success: code === 0,
               numTotalTests: result.numTotalTests || 0,
@@ -195,18 +202,10 @@ class TestRunner {
               numFailedTests: result.numFailedTests || 0,
               testResults: result.testResults || []
             });
-          } else {
-            resolve({
-              success: code === 0,
-              numTotalTests: 0,
-              numPassedTests: 0,
-              numFailedTests: 0,
-              testResults: []
-            });
-          }
-        } catch (error) {
-          reject(new Error(`Failed to parse Jest output: ${error.message}`));
-        }
+          })
+          .catch((error) => {
+            reject(new Error(`Failed to parse Jest output: ${error.message}`));
+          });
       });
 
       jest.on('error', (error) => {
@@ -246,7 +245,7 @@ class TestRunner {
     console.log('');
 
     // Generate coverage report if all tests passed
-    if (this.failedTests === 0 && this.totalTests > 0) {
+    if (this.failedTests === 0 && this.totalTests > 0 && this.runCoverage) {
       console.log(chalk.yellow('📈 Generating coverage report...'));
       await this.generateCoverageReport();
     }
@@ -264,7 +263,7 @@ class TestRunner {
 
   async generateCoverageReport() {
     try {
-      const coverageResult = await this.executeJest('tests/**/*.test.js --coverage');
+      await this.executeJest('tests/.*\\.test\\.js$', ['--coverage']);
       console.log(chalk.green('✅ Coverage report generated in ./coverage/'));
     } catch (error) {
       console.log(chalk.yellow('⚠️ Failed to generate coverage report:', error.message));

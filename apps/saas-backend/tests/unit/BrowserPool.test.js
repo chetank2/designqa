@@ -5,7 +5,10 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { getBrowserPool, shutdownBrowserPool } from '../../src/browser/BrowserPool.js';
 
-describe('BrowserPool', () => {
+const shouldSkip = process.env.SKIP_PUPPETEER === 'true';
+const describeMaybe = shouldSkip ? describe.skip : describe;
+
+describeMaybe('BrowserPool', () => {
   let browserPool;
 
   beforeEach(async () => {

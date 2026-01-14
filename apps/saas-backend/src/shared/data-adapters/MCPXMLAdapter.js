@@ -522,13 +522,30 @@ export class MCPXMLAdapter extends BaseDataAdapter {
               }
             });
           } else {
-            // Create component from metadata structure itself
+            // Create component from metadata structure itself with better defaults
+            const componentId = parsedMetadata.id || `mcp-component-${Date.now()}`;
+            const componentName = parsedMetadata.name ||
+                                parsedMetadata.componentName ||
+                                parsedMetadata.frameName ||
+                                'Component';
+            const componentType = parsedMetadata.type ||
+                                 parsedMetadata.nodeType ||
+                                 'FRAME';
+
             components.push({
-              id: parsedMetadata.id || 'mcp-metadata-component',
-              name: parsedMetadata.name || 'MCP Component',
-              type: parsedMetadata.type || 'COMPONENT',
+              id: componentId,
+              name: componentName,
+              type: componentType,
               properties: {
                 source: 'mcp-metadata-direct',
+                // Extract visual properties for comparison
+                width: parsedMetadata.width || parsedMetadata.bounds?.width,
+                height: parsedMetadata.height || parsedMetadata.bounds?.height,
+                x: parsedMetadata.x || parsedMetadata.bounds?.x || 0,
+                y: parsedMetadata.y || parsedMetadata.bounds?.y || 0,
+                backgroundColor: parsedMetadata.backgroundColor || parsedMetadata.fills?.[0]?.color,
+                borderRadius: parsedMetadata.borderRadius || parsedMetadata.cornerRadius,
+                // Include all original metadata
                 ...parsedMetadata
               }
             });
@@ -536,35 +553,107 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         }
       } catch (error) {
         console.warn('Failed to parse metadata content:', error);
-        // Fallback: create a single component
+        // Fallback: create a single component with better error context
         components.push({
-          id: 'mcp-fallback-component',
-          name: 'MCP Component',
-          type: 'COMPONENT',
+          id: `mcp-error-component-${Date.now()}`,
+          name: 'Component (Parse Error)',
+          type: 'UNKNOWN',
           properties: {
             source: 'mcp-fallback',
-            error: error.message
+            parseError: error.message,
+            rawMetadata: metadata
           }
         });
       }
     }
 
-    // If no components from metadata, create from code
+    // If no components from metadata, create from code with property extraction
     if (components.length === 0 && code && code.content) {
       const codeLength = typeof code.content === 'string' ? code.content.length : JSON.stringify(code.content).length;
+      const codeString = typeof code.content === 'string' ? code.content : JSON.stringify(code.content);
+
+      // Extract properties from code content
+      const extractedProps = this.extractPropertiesFromCode(codeString);
+
       components.push({
         id: 'mcp-code-component',
-        name: 'MCP Component',
-        type: 'COMPONENT',
+        name: extractedProps.name || 'Component',
+        type: extractedProps.type || 'COMPONENT',
         properties: {
           source: 'mcp-code',
           hasCode: true,
-          codeLength
+          codeLength,
+          ...extractedProps.properties
         }
       });
     }
 
     return components;
+  }
+
+  /**
+   * Extract properties from code content for better component analysis
+   * @param {string} codeString - Code content to analyze
+   * @returns {Object} Extracted properties
+   */
+  extractPropertiesFromCode(codeString) {
+    const properties = {};
+
+    // Extract CSS properties for visual comparison
+    const cssProps = {
+      backgroundColor: /background(?:-color)?:\s*([^;}\n]+)/i,
+      color: /color:\s*([^;}\n]+)/i,
+      fontSize: /font-size:\s*([^;}\n]+)/i,
+      fontFamily: /font-family:\s*([^;}\n]+)/i,
+      fontWeight: /font-weight:\s*([^;}\n]+)/i,
+      borderRadius: /border-radius:\s*([^;}\n]+)/i,
+      border: /border:\s*([^;}\n]+)/i,
+      width: /width:\s*([^;}\n]+)/i,
+      height: /height:\s*([^;}\n]+)/i,
+      margin: /margin:\s*([^;}\n]+)/i,
+      padding: /padding:\s*([^;}\n]+)/i
+    };
+
+    for (const [prop, regex] of Object.entries(cssProps)) {
+      const match = codeString.match(regex);
+      if (match) {
+        properties[prop] = match[1].trim().replace(/['"]/g, '');
+      }
+    }
+
+    // Extract component name from code if available
+    let name = null;
+    const nameMatches = [
+      /class\s+(\w+)/,
+      /function\s+(\w+)/,
+      /const\s+(\w+)\s*=/,
+      /\.(\w+)\s*\{/,
+      /#(\w+)\s*\{/
+    ];
+
+    for (const regex of nameMatches) {
+      const match = codeString.match(regex);
+      if (match) {
+        name = match[1];
+        break;
+      }
+    }
+
+    // Determine component type based on content
+    let type = 'COMPONENT';
+    if (codeString.includes('frame') || codeString.includes('Frame')) {
+      type = 'FRAME';
+    } else if (codeString.includes('button') || codeString.includes('Button')) {
+      type = 'BUTTON';
+    } else if (codeString.includes('text') || codeString.includes('Text')) {
+      type = 'TEXT';
+    }
+
+    return {
+      name,
+      type,
+      properties
+    };
   }
 
   /**

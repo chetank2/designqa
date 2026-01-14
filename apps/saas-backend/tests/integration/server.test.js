@@ -6,7 +6,10 @@ import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
 import { startServer } from '../../src/core/server/index.js';
 
-describe('Server Integration Tests', () => {
+const shouldSkip = process.env.SKIP_SERVER_TESTS === 'true';
+const describeMaybe = shouldSkip ? describe.skip : describe;
+
+describeMaybe('Server Integration Tests', () => {
   let server;
   let app;
 

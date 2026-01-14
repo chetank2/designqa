@@ -121,6 +121,11 @@ Run the server in development mode:
 npm run dev
 ```
 
+## Local Server Launcher
+
+If you want a standalone local server without the full desktop UI, use the launcher build.
+See `docs/guides/LOCAL_SERVER_LAUNCHER.md` for build and packaging details.
+
 ## License
 
 MIT

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { generateCSSIncludes } from './utils/cssIncludes.js';
 import { IssueFormatter } from '../services/reports/IssueFormatter.js';
+import { getReportsDir } from '../utils/outputPaths.js';
 import {
   generateProgressBar,
   generateCircularProgress,
@@ -30,7 +31,7 @@ export class ReportGenerator {
       templatePath: path.join(__dirname, 'templates/report.html'),
       webTemplatePath: path.join(__dirname, 'templates/web-extraction-report.html'),
       figmaTemplatePath: path.join(__dirname, 'templates/figma-extraction-report.html'),
-      outputDir: path.join(rootDir, 'output/reports'),
+      outputDir: getReportsDir(),
       ...config
     };
   }
@@ -156,6 +157,10 @@ export class ReportGenerator {
     const issueCount = summary.componentsAnalyzed || comparisonResults.comparisons?.length || 0;
     html = html.replaceAll('{{totalIssues}}', issueCount);
 
+    // Total comparisons count for tab badges
+    const comparisonCount = comparisonResults.comparisons?.length || 0;
+    html = html.replaceAll('{{totalComparisons}}', comparisonCount);
+
     // Generate Sections
     html = html.replaceAll('{{designSystemValidation}}', this.generateDesignSystemValidationHtml(comparisonResults));
     html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
@@ -269,50 +274,103 @@ export class ReportGenerator {
    * @returns {string} HTML content
    */
   generateComparisonTable(comparison) {
-    const component = comparison.component || {};
-    const element = comparison.element || {};
+    const component = this.resolveComponent(comparison);
+    const element = this.resolveElement(comparison);
     const matchScore = comparison.matchScore?.toFixed(2) || '0.00';
     const matchPercentage = comparison.overallDeviation?.matchPercentage?.toFixed(2) || '0.00';
+    const severity = comparison.overallDeviation?.severity || 'low';
+    const componentName = component.name || (component.id ? `Component ${component.id}` : 'Component');
+    const componentId = component.id || 'N/A';
+    const componentType = component.type || 'Component';
+    const elementFallback = comparison.status === 'no_match' ? 'Not matched' : 'Not available';
+    const elementTag = element.tagName || elementFallback;
+    const elementId = element.id || (comparison.status === 'no_match' ? 'Not matched' : 'N/A');
+    const elementClasses = element.classes?.length
+      ? element.classes
+      : element.className
+        ? element.className.split(/\s+/).filter(Boolean)
+        : [];
+    const elementPath = element.path || element.selector || (comparison.status === 'no_match' ? 'Not matched' : 'N/A');
+
+    // Generate progress bar for match percentage
+    const progressClass = matchPercentage >= 80 ? 'success' : matchPercentage >= 60 ? 'warning' : 'danger';
+    const progressBar = `
+      <div class="progress-bar">
+        <div class="progress-fill ${progressClass}" style="width: ${matchPercentage}%"></div>
+      </div>
+    `;
+
+    const propertyComparisons = comparison.propertyComparisons || this.buildPropertyComparisons(comparison);
 
     return `
-      <div class="comparison-item severity-${comparison.overallDeviation?.severity || 'low'}">
+      <div class="comparison-item severity-${severity}">
         <div class="comparison-header">
-          <h4>${component.name || 'Unnamed Component'} (${component.type || 'Unknown Type'})</h4>
+          <h4>${this.escapeHtml(componentName)}
+              <span class="badge badge-${severity}">${severity.toUpperCase()}</span></h4>
           <div class="comparison-meta">
-            <span class="match-score">Match Score: ${matchScore}</span>
-            <span class="match-percentage">Match Percentage: ${matchPercentage}%</span>
+            <span class="match-score">
+              📊 Match Score: <strong>${matchScore}</strong>
+            </span>
+            <span class="match-percentage">
+              📈 Match: <strong>${matchPercentage}%</strong>
+            </span>
           </div>
+          ${progressBar}
         </div>
-        
+
         <div class="comparison-details">
           <div class="component-info">
             <h5>Figma Component</h5>
-            <div class="info-row"><span>ID:</span> ${component.id || 'Unknown'}</div>
-            <div class="info-row"><span>Name:</span> ${component.name || 'Unnamed'}</div>
-            <div class="info-row"><span>Type:</span> ${component.type || 'Unknown'}</div>
+            <div class="info-row">
+              <span>ID:</span>
+              <code>${this.escapeHtml(componentId)}</code>
+            </div>
+            <div class="info-row">
+              <span>Name:</span>
+              ${this.escapeHtml(componentName)}
+            </div>
+            <div class="info-row">
+              <span>Type:</span>
+              <span class="badge badge-info">${this.escapeHtml(componentType)}</span>
+            </div>
           </div>
-          
+
           <div class="element-info">
             <h5>Web Element</h5>
-            <div class="info-row"><span>Tag:</span> ${element.tagName || 'Unknown'}</div>
-            <div class="info-row"><span>ID:</span> ${element.id || 'None'}</div>
-            <div class="info-row"><span>Classes:</span> ${element.classes?.join(', ') || 'None'}</div>
-            <div class="info-row"><span>Path:</span> ${element.path || 'Unknown'}</div>
+            <div class="info-row">
+              <span>Tag:</span>
+              <code>${this.escapeHtml(elementTag)}</code>
+            </div>
+            <div class="info-row">
+              <span>ID:</span>
+              ${elementId ? `<code>${this.escapeHtml(elementId)}</code>` : 'None'}
+            </div>
+            <div class="info-row">
+              <span>Classes:</span>
+              ${elementClasses.length
+                ? elementClasses.map(cls => `<code>${this.escapeHtml(cls)}</code>`).join(' ')
+                : 'None'
+              }
+            </div>
+            <div class="info-row">
+              <span>Path:</span>
+              <code>${this.escapeHtml(elementPath)}</code>
+            </div>
           </div>
         </div>
-        
+
         <table class="property-table">
           <thead>
             <tr>
               <th>Property</th>
-              <th>Figma Value</th>
-              <th>Web Value</th>
+              <th>Expected (Figma)</th>
+              <th>Actual (Web)</th>
               <th>Status</th>
               <th>Deviation</th>
             </tr>
           </thead>
           <tbody>
-            ${this.generatePropertyRows(comparison.propertyComparisons || [])}
+            ${this.generatePropertyRows(propertyComparisons)}
           </tbody>
         </table>
       </div>
@@ -326,25 +384,150 @@ export class ReportGenerator {
    */
   generatePropertyRows(propertyComparisons) {
     if (!propertyComparisons || propertyComparisons.length === 0) {
-      return '<tr><td colspan="5">No property comparisons available</td></tr>';
+      return `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 2rem; color: #6b7280;">
+            <strong>No property comparisons available</strong>
+            <br><small>This comparison may be missing detailed property analysis.</small>
+          </td>
+        </tr>
+      `;
     }
 
     return propertyComparisons.map(prop => {
       const statusClass = prop.matches ? 'match' : 'mismatch';
       const deviation = typeof prop.deviation === 'number'
-        ? prop.deviation.toFixed(2)
+        ? `${prop.deviation.toFixed(2)}${typeof prop.deviation === 'number' && prop.property?.includes('color') ? ' ΔE' : ''}`
         : prop.deviation || 'N/A';
+
+      // Format property values with appropriate styling
+      const figmaValue = this.formatPropertyValueEnhanced(prop.figmaValue, prop.property);
+      const webValue = this.formatPropertyValueEnhanced(prop.webValue, prop.property);
+
+      // Add severity indicator based on deviation
+      let severityIndicator = '';
+      if (typeof prop.deviation === 'number' && !prop.matches) {
+        if (prop.deviation > 10) severityIndicator = ' <span class="badge badge-danger">High</span>';
+        else if (prop.deviation > 5) severityIndicator = ' <span class="badge badge-warning">Medium</span>';
+        else severityIndicator = ' <span class="badge badge-info">Low</span>';
+      }
 
       return `
         <tr class="${statusClass}">
-          <td>${this.formatPropertyName(prop.property)}</td>
-          <td>${this.formatPropertyValue(prop.figmaValue)}</td>
-          <td>${this.formatPropertyValue(prop.webValue)}</td>
+          <td><strong>${this.formatPropertyName(prop.property)}</strong></td>
+          <td>${figmaValue}</td>
+          <td>${webValue}</td>
           <td class="status-cell ${statusClass}">${prop.matches ? 'Match' : 'Mismatch'}</td>
-          <td>${deviation}</td>
+          <td>${deviation}${severityIndicator}</td>
         </tr>
       `;
     }).join('');
+  }
+
+  buildPropertyComparisons(comparison) {
+    const propertyComparisons = [];
+    const deviations = Array.isArray(comparison.deviations) ? comparison.deviations : [];
+    const matches = Array.isArray(comparison.matches) ? comparison.matches : [];
+
+    deviations.forEach(deviation => {
+      propertyComparisons.push({
+        property: deviation.property,
+        figmaValue: deviation.figmaValue ?? deviation.expected,
+        webValue: deviation.webValue ?? deviation.actual,
+        deviation: deviation.difference ?? deviation.diff ?? deviation.delta,
+        matches: false
+      });
+    });
+
+    matches.forEach(match => {
+      propertyComparisons.push({
+        property: match.property,
+        figmaValue: match.figmaValue ?? match.expected ?? match.value,
+        webValue: match.webValue ?? match.actual ?? match.value,
+        deviation: 0,
+        matches: true
+      });
+    });
+
+    return propertyComparisons;
+  }
+
+  resolveComponent(comparison) {
+    const base = comparison.component || comparison.figmaComponent || {};
+    return {
+      id: base.id || comparison.componentId || comparison.figmaComponent?.id,
+      name: base.name || comparison.componentName || comparison.figmaComponent?.name,
+      type: base.type || comparison.componentType || comparison.figmaComponent?.type
+    };
+  }
+
+  resolveElement(comparison) {
+    const base = comparison.element || comparison.webElement || {};
+    const selector = base.selector || comparison.selector || base.path;
+    const className = base.className || base.class || '';
+    const classes = Array.isArray(base.classes)
+      ? base.classes
+      : className
+        ? className.split(/\s+/).filter(Boolean)
+        : [];
+    const tagName = base.tagName || base.tag || base.type || this.inferTagFromSelector(selector);
+    const id = base.id || base.domId || base.attributes?.id;
+    const path = base.path || selector;
+
+    return {
+      tagName,
+      id,
+      classes,
+      className,
+      selector,
+      path
+    };
+  }
+
+  inferTagFromSelector(selector) {
+    if (!selector || typeof selector !== 'string') return null;
+    return selector.split(/[#.]/)[0] || null;
+  }
+
+  /**
+   * Enhanced property value formatting with visual indicators
+   * @param {*} value - Property value
+   * @param {string} property - Property name for context
+   * @returns {string} Formatted property value
+   */
+  formatPropertyValueEnhanced(value, property) {
+    if (value === undefined || value === null) {
+      return '<span style="color: #9ca3af; font-style: italic;">N/A</span>';
+    }
+
+    if (typeof value === 'object') {
+      return `<code>${JSON.stringify(value)}</code>`;
+    }
+
+    const valueStr = value.toString();
+
+    // Color values
+    if (property?.toLowerCase().includes('color') && valueStr.match(/^#[0-9A-Fa-f]{6}$/)) {
+      return `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 20px; height: 20px; border-radius: 4px; background-color: ${valueStr}; border: 1px solid #e5e7eb;"></div>
+          <code>${valueStr}</code>
+        </div>
+      `;
+    }
+
+    // Font family values
+    if (property?.toLowerCase().includes('font') && property?.toLowerCase().includes('family')) {
+      return `<span style="font-family: ${valueStr}; font-weight: 600;">${valueStr}</span>`;
+    }
+
+    // Size values
+    if (property?.toLowerCase().includes('size') || property?.toLowerCase().includes('width') || property?.toLowerCase().includes('height')) {
+      return `<code>${valueStr}</code>`;
+    }
+
+    // Default formatting
+    return `<code>${this.escapeHtml(valueStr)}</code>`;
   }
 
   /**
@@ -779,6 +962,7 @@ export class ReportGenerator {
     
     .severity-group {
       margin-bottom: 2rem;
+      width: 100%;
     }
     
     .severity-group h3 {
@@ -803,12 +987,17 @@ export class ReportGenerator {
       color: var(--color-success);
     }
     
+    .comparison-results {
+      width: 100%;
+    }
+    
     .comparison-item {
       background-color: white;
       border-radius: 0.5rem;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       margin-bottom: 1.5rem;
       overflow: hidden;
+      width: 100%;
     }
     
     .comparison-header {

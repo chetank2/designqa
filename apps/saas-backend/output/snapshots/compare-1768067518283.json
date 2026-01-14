@@ -1,0 +1,113 @@
+{
+  "metadata": {
+    "figma": {
+      "fileId": "test-file-id",
+      "totalComponents": 2
+    },
+    "web": {
+      "url": "https://example.com",
+      "totalElements": 2
+    },
+    "comparedAt": "2026-01-10T17:51:58.283Z",
+    "processingStats": {
+      "chunksProcessed": 1,
+      "componentsProcessed": 2,
+      "originalComponentCount": 2,
+      "originalElementCount": 2
+    }
+  },
+  "comparisons": [
+    {
+      "componentId": "figma-text-1",
+      "componentName": "Header Text",
+      "componentType": "TEXT",
+      "selector": "h1",
+      "status": "has_deviations",
+      "deviations": [
+        {
+          "property": "color:color",
+          "figmaValue": "rgba(0, 0, 0, 1)",
+          "difference": 9007199254740991,
+          "severity": "high",
+          "message": "color:color differs by 9007199254740991.00 units"
+        },
+        {
+          "property": "color:text",
+          "webValue": "rgba(0, 0, 0, 1)",
+          "difference": 9007199254740991,
+          "severity": "high",
+          "message": "color:text differs by 9007199254740991.00 units"
+        },
+        {
+          "property": "typography:fontSize",
+          "webValue": 24,
+          "difference": 9007199254740991,
+          "severity": "high",
+          "message": "typography:fontSize differs by 9007199254740991.00 units"
+        },
+        {
+          "property": "typography:fontWeight",
+          "webValue": 600,
+          "difference": 9007199254740991,
+          "severity": "high",
+          "message": "typography:fontWeight differs by 9007199254740991.00 units"
+        },
+        {
+          "property": "typography:fontFamily",
+          "webValue": "Inter, sans-serif",
+          "difference": 100,
+          "severity": "high",
+          "message": "typography:fontFamily differs by 100.00 units"
+        }
+      ],
+      "matches": [],
+      "matchScore": 1,
+      "designSystemResults": null
+    },
+    {
+      "componentId": "figma-button-1",
+      "componentName": "Primary Button",
+      "componentType": "RECTANGLE",
+      "selector": ".btn-primary",
+      "status": "has_deviations",
+      "deviations": [
+        {
+          "property": "radius:borderRadius",
+          "webValue": 8,
+          "difference": 9007199254740991,
+          "severity": "high",
+          "message": "radius:borderRadius differs by 9007199254740991.00 units"
+        }
+      ],
+      "matches": [
+        {
+          "property": "color:background",
+          "value": "rgba(51, 102, 255, 1)",
+          "message": "color:background matches within tolerance"
+        }
+      ],
+      "matchScore": 0.65,
+      "designSystemResults": null
+    }
+  ],
+  "summary": {
+    "totalComponents": 2,
+    "totalDeviations": 6,
+    "totalMatches": 1,
+    "severity": {
+      "high": 6,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

@@ -3,12 +3,12 @@ import fs from 'fs';
 import path from 'path';
 import { logger } from '../../../src/utils/logger.js';
 
-// Mock fs to test file operations
-jest.mock('fs');
-
 describe('Logger', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalLogToFile = process.env.LOG_TO_FILE;
+  let existsSyncSpy;
+  let mkdirSyncSpy;
+  let appendFileSyncSpy;
 
   beforeEach(() => {
     // Reset mocks
@@ -18,9 +18,9 @@ describe('Logger', () => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     
     // Mock fs methods
-    fs.existsSync.mockReturnValue(true);
-    fs.mkdirSync.mockImplementation(() => {});
-    fs.appendFileSync.mockImplementation(() => {});
+    existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    mkdirSyncSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
+    appendFileSyncSpy = jest.spyOn(fs, 'appendFileSync').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -30,6 +30,9 @@ describe('Logger', () => {
     
     // Restore console.log
     console.log.mockRestore();
+    existsSyncSpy.mockRestore();
+    mkdirSyncSpy.mockRestore();
+    appendFileSyncSpy.mockRestore();
   });
 
   describe('Logging Levels', () => {
@@ -102,7 +105,7 @@ describe('Logger', () => {
       const prodLogger = new (logger.constructor)();
       prodLogger.info('Test message');
       
-      expect(fs.appendFileSync).toHaveBeenCalled();
+      expect(appendFileSyncSpy).toHaveBeenCalled();
     });
 
     it('should write errors to separate error log', () => {
@@ -112,9 +115,9 @@ describe('Logger', () => {
       prodLogger.error('Test error');
       
       // Should write to both general log and error log
-      expect(fs.appendFileSync).toHaveBeenCalledTimes(2);
+      expect(appendFileSyncSpy).toHaveBeenCalledTimes(2);
       
-      const calls = fs.appendFileSync.mock.calls;
+      const calls = appendFileSyncSpy.mock.calls;
       expect(calls[0][0]).toMatch(/app-\d{4}-\d{2}-\d{2}\.log$/);
       expect(calls[1][0]).toMatch(/error-\d{4}-\d{2}-\d{2}\.log$/);
     });
@@ -124,7 +127,7 @@ describe('Logger', () => {
       
       logger.info('Test message');
       
-      expect(fs.appendFileSync).toHaveBeenCalled();
+      expect(appendFileSyncSpy).toHaveBeenCalled();
     });
   });
 

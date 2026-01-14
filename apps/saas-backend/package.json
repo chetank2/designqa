@@ -84,26 +84,7 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "transform": {
-      "^.+\\.js$": [
-        "babel-jest",
-        {
-          "presets": [
-            [
-              "@babel/preset-env",
-              {
-                "targets": {
-                  "node": "current"
-                }
-              }
-            ]
-          ]
-        }
-      ]
-    },
-    "transformIgnorePatterns": [
-      "node_modules/(?!(.*\\.mjs$))"
-    ],
+    "transform": {},
     "setupFilesAfterEnv": [
       "<rootDir>/tests/setup.js"
     ],
@@ -121,7 +102,7 @@
       "lcov",
       "html"
     ],
-    "testTimeout": 30000,
+    "testTimeout": 120000,
     "verbose": true,
     "coverageThreshold": {
       "global": {

@@ -1,0 +1,23 @@
+{
+  "figma": {
+    "accessToken": "test-token",
+    "fileId": "test-file-id",
+    "nodeId": "test-node-id"
+  },
+  "comparison": {
+    "thresholds": {
+      "fontSize": 2,
+      "spacing": 4,
+      "borderRadius": 2,
+      "colorTolerance": 5
+    }
+  },
+  "puppeteer": {
+    "headless": "new",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "timeout": 30000
+  }
+}

@@ -8,7 +8,10 @@ import request from 'supertest';
 import { startServer } from '../../src/core/server/index.js';
 import { shutdownBrowserPool } from '../../src/browser/BrowserPool.js';
 
-describe('Enhanced Server Integration Tests', () => {
+const shouldSkip = process.env.SKIP_SERVER_TESTS === 'true' || process.env.SKIP_PUPPETEER === 'true';
+const describeMaybe = shouldSkip ? describe.skip : describe;
+
+describeMaybe('Enhanced Server Integration Tests', () => {
   let server;
   let app;
 

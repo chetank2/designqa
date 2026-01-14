@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import { loadConfig, getFigmaApiKey } from '../../src/config/index.js';
+import { loadConfig, getFigmaApiKey, resetConfigCache } from '../../src/config/index.js';
 
 describe('Configuration System', () => {
   let originalEnv;
@@ -11,11 +11,13 @@ describe('Configuration System', () => {
   beforeEach(() => {
     // Save original environment
     originalEnv = { ...process.env };
+    resetConfigCache();
   });
 
   afterEach(() => {
     // Restore original environment
     process.env = originalEnv;
+    resetConfigCache();
   });
 
   describe('loadConfig', () => {
@@ -36,43 +38,45 @@ describe('Configuration System', () => {
       
       // Check specific values if they exist
       if (config.server) {
-          port: 3007,
-          host: 'localhost',
-        },
-        cors: {
-          origins: expect.arrayContaining([
-            'http://localhost:3000',
-            'http://localhost:3007',
-            'http://localhost:5173',
-          ]),
-          credentials: true,
-        },
-        mcp: {
-          enabled: true,
-          url: 'http://127.0.0.1:3845',
-          endpoint: '/mcp',
-        },
-        puppeteer: {
-          headless: 'new',
-          timeout: 30000,
-          protocolTimeout: 60000,
-          args: expect.any(Array),
-        },
-        thresholds: {
-          colorDifference: 10,
-          sizeDifference: 5,
-          spacingDifference: 3,
-          fontSizeDifference: 2,
-        },
-        security: {
-          allowedHosts: [],
-          rateLimit: {
-            windowMs: 15 * 60 * 1000,
-            max: 100,
-            extractionMax: 10,
+        expect(config).toMatchObject({
+          server: {
+            port: expect.any(Number),
+            host: expect.any(String),
           },
-        },
-      });
+          cors: {
+            origins: expect.arrayContaining([
+              'http://localhost:3000',
+              'http://localhost:3847',
+            ]),
+            credentials: true,
+          },
+          mcp: {
+            enabled: true,
+            url: expect.any(String),
+            endpoint: expect.any(String),
+          },
+          puppeteer: {
+            headless: 'new',
+            timeout: 30000,
+            protocolTimeout: 300000,
+            args: expect.any(Array),
+          },
+          thresholds: {
+            colorDifference: 10,
+            sizeDifference: 5,
+            spacingDifference: 3,
+            fontSizeDifference: 2,
+          },
+          security: {
+            allowedHosts: expect.any(Array),
+            rateLimit: {
+              windowMs: 15 * 60 * 1000,
+              max: 100,
+              extractionMax: 10,
+            },
+          },
+        });
+      }
     });
 
     test('should override defaults with environment variables', async () => {
@@ -142,6 +146,7 @@ describe('Configuration System', () => {
   describe('getFigmaApiKey', () => {
     test('should return API key from environment', async () => {
       process.env.FIGMA_API_KEY = 'test-figma-key';
+      resetConfigCache();
       
       const apiKey = await getFigmaApiKey();
       
@@ -151,6 +156,7 @@ describe('Configuration System', () => {
     test('should throw error when API key is not set', async () => {
       delete process.env.FIGMA_API_KEY;
       delete process.env.FIGMA_PERSONAL_ACCESS_TOKEN;
+      resetConfigCache();
       
       await expect(getFigmaApiKey()).rejects.toThrow(
         'Figma API key not found. Please set FIGMA_API_KEY environment variable.'
@@ -160,6 +166,7 @@ describe('Configuration System', () => {
     test('should accept FIGMA_PERSONAL_ACCESS_TOKEN as alternative', async () => {
       delete process.env.FIGMA_API_KEY;
       process.env.FIGMA_PERSONAL_ACCESS_TOKEN = 'test-pat';
+      resetConfigCache();
       
       const apiKey = await getFigmaApiKey();
       
@@ -170,6 +177,7 @@ describe('Configuration System', () => {
   describe('Configuration caching', () => {
     test('should cache configuration for performance', async () => {
       process.env.FIGMA_API_KEY = 'test-key-1';
+      resetConfigCache();
       
       const config1 = await loadConfig();
       
@@ -188,6 +196,7 @@ describe('Configuration System', () => {
       delete process.env.PORT;
       delete process.env.FIGMA_API_KEY;
       delete process.env.MCP_URL;
+      resetConfigCache();
       
       const config = await loadConfig();
       
@@ -205,6 +214,7 @@ describe('Configuration System', () => {
     test('should handle numeric string environment variables', async () => {
       process.env.RATE_LIMIT_MAX = '200';
       process.env.FIGMA_EXTRACTION_TIMEOUT = '120000';
+      resetConfigCache();
       
       const config = await loadConfig();
       

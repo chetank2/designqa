@@ -14,6 +14,7 @@ import CredentialsManager from '../components/settings/CredentialsManager';
 import DesignSystemsManager from '../components/settings/DesignSystemsManager';
 import DesktopMCPSettings from '../components/settings/DesktopMCPSettings';
 import ModeToggle from '../components/settings/ModeToggle';
+import SiteProfilesManager from '../components/settings/SiteProfilesManager';
 import { getApiBaseUrl } from '../config/ports';
 import { useBackendReachability } from '../hooks/useBackendReachability';
 
@@ -65,6 +66,7 @@ export default function Settings() {
         <TabsList className="inline-flex flex-wrap gap-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="credentials">Credentials</TabsTrigger>
+          <TabsTrigger value="site-profiles">Site Profiles</TabsTrigger>
           <TabsTrigger value="design-systems">Design Systems</TabsTrigger>
           <TabsTrigger value="desktop-mode">Desktop Mode</TabsTrigger>
         </TabsList>
@@ -150,6 +152,10 @@ export default function Settings() {
 
         <TabsContent value="credentials">
           <CredentialsManager backendReachable={backendReachable} />
+        </TabsContent>
+
+        <TabsContent value="site-profiles">
+          <SiteProfilesManager backendReachable={backendReachable} />
         </TabsContent>
 
         <TabsContent value="design-systems">

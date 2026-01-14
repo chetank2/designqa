@@ -45,19 +45,40 @@ jobs:
           cd packages/mcp-client && pnpm build
           cd ../compare-engine && pnpm build
 
+      - name: Setup code signing (macOS)
+        if: env.CSC_LINK != ''
+        run: |
+          echo "🔐 Setting up macOS code signing..."
+          # Import signing certificate
+          echo $CSC_LINK | base64 --decode > certificate.p12
+          security create-keychain -p "${{ secrets.CSC_KEY_PASSWORD }}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${{ secrets.CSC_KEY_PASSWORD }}" build.keychain
+          security import certificate.p12 -k build.keychain -P "${{ secrets.CSC_KEY_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.CSC_KEY_PASSWORD }}" build.keychain
+          rm certificate.p12
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+
       - name: Install app dependencies
         run: |
           echo "📦 Installing Mac app dependencies..."
           cd apps/desktop-mac
           CI=true pnpm install --no-frozen-lockfile
 
-      - name: Build mac app
+      - name: Build and sign mac app
         run: |
           echo "🍎 Building Mac desktop app..."
           cd apps/desktop-mac
           CI=true pnpm run build
-          echo "📦 Packaging Mac app..."
+          echo "📦 Packaging and signing Mac app..."
           CI=true pnpm run package
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: true
 
       - name: List build artifacts
         run: |
@@ -118,19 +139,40 @@ jobs:
           cd packages/mcp-client && pnpm build
           cd ../compare-engine && pnpm build
 
+      - name: Setup code signing (Windows)
+        if: env.WIN_CSC_LINK != ''
+        shell: bash
+        run: |
+          echo "🔐 Setting up Windows code signing..."
+          # Decode and save certificate
+          echo "$WIN_CSC_LINK" | base64 --decode > certificate.p12
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+
       - name: Install app dependencies
         run: |
           echo "📦 Installing Windows app dependencies..."
           cd apps/desktop-win
           CI=true pnpm install --no-frozen-lockfile
 
-      - name: Build windows app
+      - name: Build and sign windows app
         run: |
           echo "🪟 Building Windows desktop app..."
           cd apps/desktop-win
           CI=true pnpm run build
-          echo "📦 Packaging Windows app..."
+          echo "📦 Packaging and signing Windows app..."
           CI=true pnpm run package
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: true
+
+      - name: Cleanup certificates
+        if: always()
+        shell: bash
+        run: |
+          # Clean up certificate files
+          rm -f certificate.p12
 
       - name: List build artifacts
         shell: bash

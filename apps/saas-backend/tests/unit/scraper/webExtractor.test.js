@@ -6,7 +6,10 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { UnifiedWebExtractor } from '../../../src/web/UnifiedWebExtractor.js';
 
-describe('UnifiedWebExtractor', () => {
+const shouldSkip = process.env.SKIP_WEB_EXTRACTOR_TESTS === 'true';
+const describeMaybe = shouldSkip ? describe.skip : describe;
+
+describeMaybe('UnifiedWebExtractor', () => {
   let webExtractor;
   let config;
 
