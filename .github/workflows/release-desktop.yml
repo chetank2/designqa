@@ -87,12 +87,12 @@ jobs:
           cd apps/desktop-mac
           pnpm run build
           echo "📦 Packaging Mac app..."
-          if [ -n "$CSC_LINK" ]; then
+          if [ -n "$CSC_LINK" ] && [ "$CSC_LINK" != "" ] && [[ "$CSC_LINK" =~ ^[A-Za-z0-9+/=]+$ ]]; then
             echo "🔐 Code signing enabled"
             pnpm run package
           else
             echo "⚠️ Code signing disabled (no certificate provided)"
-            CSC_IDENTITY_AUTO_DISCOVERY=false pnpm run package
+            CSC_LINK="" CSC_KEY_PASSWORD="" CSC_IDENTITY_AUTO_DISCOVERY=false pnpm run package
           fi
         env:
           CI: true
@@ -178,6 +178,7 @@ jobs:
           CI: true
 
       - name: Build windows app
+        shell: bash
         run: |
           echo "🪟 Building Windows desktop app..."
           cd apps/desktop-win
