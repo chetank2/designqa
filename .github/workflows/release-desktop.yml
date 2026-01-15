@@ -114,12 +114,8 @@ jobs:
           else
             echo "⚠️ Code signing disabled (no certificate provided)"
             echo "📧 Unsetting all certificate environment variables"
-            unset CSC_LINK
-            unset CSC_KEY_PASSWORD
-            unset APPLE_ID
-            unset APPLE_ID_PASSWORD
             export CSC_IDENTITY_AUTO_DISCOVERY=false
-            pnpm run package
+            env -u CSC_LINK -u CSC_KEY_PASSWORD -u APPLE_ID -u APPLE_ID_PASSWORD pnpm run package
           fi
         env:
           CI: true
@@ -236,7 +232,7 @@ jobs:
             pnpm run package
           else
             echo "⚠️ Code signing disabled (no certificate provided)"
-            WIN_CSC_LINK="" WIN_CSC_KEY_PASSWORD="" pnpm run package
+            env -u WIN_CSC_LINK -u WIN_CSC_KEY_PASSWORD pnpm run package
           fi
         env:
           CI: true
