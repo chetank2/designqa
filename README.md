@@ -4,11 +4,22 @@ A tool for comparing Figma designs with web implementations.
 
 ## 📥 Download Desktop App
 
-**Direct download links (no source code):**
+**Latest Release: v2.0.2 - Enhanced Component Extraction & Automated Distribution**
 
-- **macOS (Apple Silicon):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA-2.0.1-arm64.dmg)
-- **macOS (Intel):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA-2.0.1.dmg)
-- **Windows:** [Download EXE](https://github.com/chetank2/designqa/releases/download/v2.0.1/DesignQA%20Setup%202.0.1.exe)
+**Direct download links:**
+
+- **macOS (Apple Silicon M1/M2/M3):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.2/DesignQA-2.0.1-arm64.dmg)
+- **macOS (Intel):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.2/DesignQA-2.0.1.dmg)
+- **Windows:** [Download EXE](https://github.com/chetank2/designqa/releases/download/v2.0.2/DesignQA%20Setup%202.0.1.exe)
+
+**What's New in v2.0.2:**
+- 🎯 Enhanced component extraction with better MCP metadata parsing
+- 📊 Professional tabbed reports interface with keyboard shortcuts
+- 🚀 Automated distribution system with GitHub Actions
+- 🔧 Improved build process and desktop app packaging
+- 🎨 Better visual properties extraction (colors, typography, spacing)
+
+**Full Release Notes:** [View on GitHub](https://github.com/chetank2/designqa/releases/tag/v2.0.2)
 
 **Or visit:** [download.html](download.html) for a simple download page
 
