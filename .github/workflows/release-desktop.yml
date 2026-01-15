@@ -54,7 +54,7 @@ jobs:
           cd ../compare-engine && pnpm build
 
       - name: Setup code signing (macOS)
-        if: ${{ env.CSC_LINK != '' }}
+        if: ${{ secrets.CSC_LINK != '' }}
         run: |
           echo "🔐 Setting up macOS code signing..."
           # Import signing certificate
@@ -142,7 +142,7 @@ jobs:
           cd ../compare-engine && pnpm build
 
       - name: Setup code signing (Windows)
-        if: ${{ env.WIN_CSC_LINK != '' }}
+        if: ${{ secrets.WIN_CSC_LINK != '' }}
         shell: bash
         run: |
           echo "🔐 Setting up Windows code signing..."
