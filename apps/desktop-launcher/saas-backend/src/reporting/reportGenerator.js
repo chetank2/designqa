@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
@@ -1400,7 +1400,7 @@ export class ReportGenerator {
     try {
       const stylesPath = path.join(__dirname, 'utils/devrevTableStyles.css');
       logger.info(`Loading DevRev table styles from: ${stylesPath}`);
-      const styles = fs.readFileSync(stylesPath, 'utf8');
+      const styles = readFileSync(stylesPath, 'utf8');
       logger.info(`Loaded DevRev table styles: ${styles.length} characters`);
       return `<style>${styles}</style>`;
     } catch (error) {
@@ -1417,7 +1417,7 @@ export class ReportGenerator {
     try {
       const scriptsPath = path.join(__dirname, 'utils/devrevTableScripts.js');
       logger.info(`Loading DevRev table scripts from: ${scriptsPath}`);
-      const scripts = fs.readFileSync(scriptsPath, 'utf8');
+      const scripts = readFileSync(scriptsPath, 'utf8');
       logger.info(`Loaded DevRev table scripts: ${scripts.length} characters`);
       return `<script>${scripts}</script>`;
     } catch (error) {

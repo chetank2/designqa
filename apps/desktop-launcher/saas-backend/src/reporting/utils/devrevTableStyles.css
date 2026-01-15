@@ -121,15 +121,22 @@
 
 /* Enhanced Table Controls */
 .table-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
   align-items: center;
   gap: var(--spacing-lg, 1rem);
-  flex-wrap: wrap;
   padding: var(--spacing-2xl, 2rem);
   background: var(--bg-subtle, rgba(255, 255, 255, 0.95));
   border-radius: var(--radius-xl, 1rem);
   border: 1px solid var(--card-border, #e1e5e9);
   box-shadow: var(--card-shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 0.5rem);
 }
 
 .btn {
@@ -146,6 +153,7 @@
   text-decoration: none;
   white-space: nowrap;
   box-shadow: none;
+  min-height: 40px;
 }
 
 .btn-primary {
@@ -183,8 +191,8 @@
 }
 
 .table-filter {
-  flex: 1;
-  min-width: 280px;
+  width: 100%;
+  min-width: 220px;
   padding: var(--spacing-md, 0.75rem) var(--spacing-xl, 1.5rem);
   font-size: 0.875rem;
   border: 1px solid var(--card-border, #e1e5e9);
@@ -193,6 +201,7 @@
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: var(--transition, all 0.15s ease-in-out);
   font-family: var(--font-sans);
+  min-height: 40px;
 }
 
 .table-filter:focus {
@@ -209,7 +218,7 @@
 .issue-stats {
   display: flex;
   gap: var(--spacing-lg, 1rem);
-  margin-left: auto;
+  justify-content: flex-end;
   flex-wrap: wrap;
 }
 
@@ -518,14 +527,13 @@
 /* Enhanced Responsive Design */
 @media (max-width: 1200px) {
   .table-controls {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
     gap: var(--spacing-lg, 1rem);
   }
 
   .issue-stats {
-    margin-left: 0;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .table-filter {

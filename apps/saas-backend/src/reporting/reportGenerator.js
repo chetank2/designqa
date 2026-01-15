@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
@@ -320,44 +320,52 @@ export class ReportGenerator {
 
         <div class="comparison-details">
           <div class="component-info">
-            <h5>Figma Component</h5>
-            <div class="info-row">
-              <span>ID:</span>
-              <code>${this.escapeHtml(componentId)}</code>
-            </div>
-            <div class="info-row">
-              <span>Name:</span>
-              ${this.escapeHtml(componentName)}
-            </div>
-            <div class="info-row">
-              <span>Type:</span>
-              <span class="badge badge-info">${this.escapeHtml(componentType)}</span>
-            </div>
+          <div class="info-label">
+            <span class="w-1.5 h-1.5 rounded-full bg-foreground" style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#fff; margin-right:8px;"></span>
+            FIGMA DESIGN
           </div>
+          <div class="info-row">
+            <span>Name:</span>
+            <strong>${this.escapeHtml(componentName)}</strong>
+          </div>
+          <div class="info-row">
+            <span>ID:</span>
+            <code>${this.escapeHtml(componentId)}</code>
+          </div>
+          <div class="info-row">
+            <span>Type:</span>
+            <span class="badge badge-info">${this.escapeHtml(componentType)}</span>
+          </div>
+        </div>
 
-          <div class="element-info">
-            <h5>Web Element</h5>
-            <div class="info-row">
-              <span>Tag:</span>
-              <code>${this.escapeHtml(elementTag)}</code>
-            </div>
-            <div class="info-row">
-              <span>ID:</span>
-              ${elementId ? `<code>${this.escapeHtml(elementId)}</code>` : 'None'}
-            </div>
-            <div class="info-row">
-              <span>Classes:</span>
+        <div class="element-info">
+          <div class="info-label">
+            <span class="w-1.5 h-1.5 rounded-full opacity-50" style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#a1a1aa; margin-right:8px;"></span>
+            WEB IMPLEMENTATION
+          </div>
+          <div class="info-row">
+            <span>Tag:</span>
+            <code>${this.escapeHtml(elementTag)}</code>
+          </div>
+          <div class="info-row">
+            <span>ID:</span>
+            ${elementId ? `<code>${this.escapeHtml(elementId)}</code>` : '<span style="color:#71717a">None</span>'}
+          </div>
+          <div class="info-row">
+            <span>Selector:</span>
+            <code>${this.escapeHtml(elementPath)}</code>
+          </div>
+          <div class="info-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <span>Classes:</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
               ${elementClasses.length
-                ? elementClasses.map(cls => `<code>${this.escapeHtml(cls)}</code>`).join(' ')
-                : 'None'
-              }
-            </div>
-            <div class="info-row">
-              <span>Path:</span>
-              <code>${this.escapeHtml(elementPath)}</code>
+        ? elementClasses.slice(0, 5).map(cls => `<code>${this.escapeHtml(cls)}</code>`).join('') + (elementClasses.length > 5 ? `<small style="color:#71717a"> +${elementClasses.length - 5}</small>` : '')
+        : '<span style="color:#71717a">None</span>'
+      }
             </div>
           </div>
         </div>
+      </div>
 
         <table class="property-table">
           <thead>
@@ -497,7 +505,7 @@ export class ReportGenerator {
    */
   formatPropertyValueEnhanced(value, property) {
     if (value === undefined || value === null) {
-      return '<span style="color: #9ca3af; font-style: italic;">N/A</span>';
+      return '<span style="color: #a1a1aa; font-style: italic;">N/A</span>';
     }
 
     if (typeof value === 'object') {
@@ -505,25 +513,51 @@ export class ReportGenerator {
     }
 
     const valueStr = value.toString();
+    const normalizedProp = property?.toLowerCase() || '';
 
-    // Color values
-    if (property?.toLowerCase().includes('color') && valueStr.match(/^#[0-9A-Fa-f]{6}$/)) {
+    // 1. Color values
+    if (normalizedProp.includes('color') && valueStr.match(/^#|rgba|rgb|hsl/)) {
       return `
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <div style="width: 20px; height: 20px; border-radius: 4px; background-color: ${valueStr}; border: 1px solid #e5e7eb;"></div>
+      <div class="preview-container">
+        <div class="preview-swatch" style="background-color: ${valueStr};"></div>
+        <code>${valueStr}</code>
+      </div>
+    `;
+    }
+
+    // 2. Typography previews
+    if (normalizedProp.includes('font') && normalizedProp.includes('family')) {
+      return `
+      <div class="preview-container" style="gap: 12px;">
+        <div class="preview-typo" style="font-family: ${valueStr};">Aa</div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+           <span style="font-size: 11px; font-weight: 500; color: #f4f4f5;">${valueStr}</span>
+        </div>
+      </div>
+    `;
+    }
+
+    // 3. Spacing / Padding / Dimensions (Bars)
+    if (normalizedProp.includes('spacing') || normalizedProp.includes('padding') || normalizedProp.includes('margin') || normalizedProp.includes('gap')) {
+      const num = parseInt(valueStr);
+      if (!isNaN(num)) {
+        return `
+        <div class="preview-container" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+          <div class="preview-bar" style="width: ${Math.min(num * 2, 80)}px;"></div>
           <code>${valueStr}</code>
         </div>
       `;
+      }
     }
 
-    // Font family values
-    if (property?.toLowerCase().includes('font') && property?.toLowerCase().includes('family')) {
-      return `<span style="font-family: ${valueStr}; font-weight: 600;">${valueStr}</span>`;
-    }
-
-    // Size values
-    if (property?.toLowerCase().includes('size') || property?.toLowerCase().includes('width') || property?.toLowerCase().includes('height')) {
-      return `<code>${valueStr}</code>`;
+    // 4. Border Radius (Radius Box)
+    if (normalizedProp.includes('radius') || normalizedProp.includes('rounding')) {
+      return `
+      <div class="preview-container">
+        <div class="preview-radius" style="border-radius: ${valueStr};"></div>
+        <code>${valueStr}</code>
+      </div>
+    `;
     }
 
     // Default formatting
@@ -833,224 +867,182 @@ export class ReportGenerator {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <title>{{title}}</title>
   <style>
     :root {
-      --color-primary: #4f46e5;
-      --color-secondary: #6366f1;
-      --color-success: #10b981;
-      --color-warning: #f59e0b;
+      /* Palette: Zinc (Dark Mode) */
+      --color-zinc-50: #fafafa;
+      --color-zinc-100: #f4f4f5;
+      --color-zinc-200: #e4e4e7;
+      --color-zinc-300: #d4d4d8;
+      --color-zinc-400: #a1a1aa;
+      --color-zinc-500: #71717a;
+      --color-zinc-600: #52525b;
+      --color-zinc-700: #3f3f46;
+      --color-zinc-800: #27272a;
+      --color-zinc-900: #18181b;
+      --color-zinc-950: #09090b;
+
+      /* Palette: Indigo */
+      --color-indigo-400: #818cf8;
+      --color-indigo-500: #6366f1;
+      --color-indigo-600: #4f46e5;
+      
+      /* Status */
+      --color-success: #22c55e;
+      --color-warning: #fbbf24;
       --color-danger: #ef4444;
-      --color-gray-50: #f9fafb;
-      --color-gray-100: #f3f4f6;
-      --color-gray-200: #e5e7eb;
-      --color-gray-300: #d1d5db;
-      --color-gray-400: #9ca3af;
-      --color-gray-500: #6b7280;
-      --color-gray-600: #4b5563;
-      --color-gray-700: #374151;
-      --color-gray-800: #1f2937;
-      --color-gray-900: #111827;
+
+      /* Semantic Tokens */
+      --bg-page: var(--color-zinc-950);
+      --bg-card: rgba(24, 24, 27, 0.6);
+      --bg-card-hover: rgba(39, 39, 42, 0.7);
+      
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-default: rgba(255, 255, 255, 0.15);
+
+      --text-main: var(--color-zinc-50);
+      --text-muted: var(--color-zinc-400);
+
+      --accent: var(--color-indigo-500);
+      --accent-glow: rgba(99, 102, 241, 0.4);
+
+      /* Typography */
+      --font-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
     }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      line-height: 1.5;
-      color: var(--color-gray-800);
-      background-color: var(--color-gray-50);
+
+    *, *::before, *::after {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-    
+
+    body {
+      font-family: var(--font-ui);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 4rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: -20%;
+      width: 140%;
+      height: 140%;
+      background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.07), transparent 40%),
+                  radial-gradient(circle at 80% 10%, rgba(34, 197, 94, 0.03), transparent 30%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 2rem;
+      padding: 0 2rem;
     }
-    
+
+    /* Header */
     header {
-      background-color: white;
-      padding: 1.5rem 2rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2rem;
+      margin-top: 4rem;
+      margin-bottom: 3rem;
+      padding: 3rem;
+      background: linear-gradient(180deg, rgba(39, 39, 42, 0.2) 0%, rgba(24, 24, 27, 0.2) 100%);
+      border: 1px solid var(--border-default);
+      background-color: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    
+
     h1 {
-      margin: 0;
-      color: var(--color-gray-900);
-      font-size: 1.875rem;
+      font-size: 2.5rem;
       font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #fff, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    
-    .metadata {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
-      margin-top: 1rem;
-      color: var(--color-gray-600);
-    }
-    
-    .metadata-item {
-      display: flex;
-      align-items: center;
-    }
-    
-    .metadata-item strong {
-      margin-right: 0.5rem;
-    }
-    
+
+    /* Summary */
     .summary {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1.5rem;
-      margin-bottom: 2rem;
+      margin-bottom: 3rem;
     }
-    
+
     .summary-card {
-      background-color: white;
       padding: 1.5rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      background: rgba(39, 39, 42, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-    
+
     .summary-card h3 {
-      margin-top: 0;
-      color: var(--color-gray-700);
-      font-size: 1.25rem;
-    }
-    
-    .summary-value {
-      font-size: 2.25rem;
-      font-weight: 700;
-      color: var(--color-primary);
-      margin: 0.5rem 0;
-    }
-    
-    .severity-counts {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 1rem;
-    }
-    
-    .severity-count {
-      text-align: center;
-      flex: 1;
-    }
-    
-    .severity-count-value {
-      font-size: 1.5rem;
-      font-weight: 600;
-    }
-    
-    .severity-count-label {
-      font-size: 0.875rem;
-      color: var(--color-gray-600);
-    }
-    
-    .severity-high .severity-count-value {
-      color: var(--color-danger);
-    }
-    
-    .severity-medium .severity-count-value {
-      color: var(--color-warning);
-    }
-    
-    .severity-low .severity-count-value {
-      color: var(--color-success);
-    }
-    
-    .severity-group {
-      margin-bottom: 2rem;
-      width: 100%;
-    }
-    
-    .severity-group h3 {
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.375rem;
-      font-size: 1.25rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .severity-high h3 {
-      background-color: rgba(239, 68, 68, 0.1);
-      color: var(--color-danger);
-    }
-    
-    .severity-medium h3 {
-      background-color: rgba(245, 158, 11, 0.1);
-      color: var(--color-warning);
-    }
-    
-    .severity-low h3 {
-      background-color: rgba(16, 185, 129, 0.1);
-      color: var(--color-success);
-    }
-    
-    .comparison-results {
-      width: 100%;
-    }
-    
-    .comparison-item {
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 1.5rem;
-      overflow: hidden;
-      width: 100%;
-    }
-    
-    .comparison-header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    
-    .comparison-header h4 {
+      font-size: 0.825rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
       margin: 0;
+    }
+
+    .summary-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      font-feature-settings: "tnum";
+    }
+
+    /* Comparison Items */
+    .comparison-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+
+    .comparison-header {
+      padding: 1.5rem 2rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .comparison-header h4 {
       font-size: 1.125rem;
-      color: var(--color-gray-800);
+      font-weight: 600;
+      margin: 0;
+      margin-bottom: 0.5rem;
     }
-    
-    .comparison-meta {
-      display: flex;
-      gap: 1.5rem;
-      font-size: 0.875rem;
-    }
-    
-    .match-score, .match-percentage {
-      display: inline-flex;
-      align-items: center;
-      color: var(--color-gray-700);
-    }
-    
+
     .comparison-details {
+      padding: 2rem;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      padding: 1.5rem;
-      background-color: var(--color-gray-50);
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
     }
-    
+
     .component-info, .element-info {
-      background-color: white;
-      padding: 1rem;
-      border-radius: 0.375rem;
-      border: 1px solid var(--color-gray-200);
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-subtle);
     }
-    
-    .component-info h5, .element-info h5 {
-      margin-top: 0;
-      margin-bottom: 0.75rem;
-      color: var(--color-gray-700);
-      font-size: 1rem;
-    }
-    
-    .info-row {
+
+     .info-row {
       display: flex;
       margin-bottom: 0.5rem;
       font-size: 0.875rem;
@@ -1059,164 +1051,47 @@ export class ReportGenerator {
     .info-row span {
       font-weight: 600;
       min-width: 80px;
-      color: var(--color-gray-600);
+      color: var(--text-muted);
     }
-    
+
     .property-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.875rem;
+      font-size: 0.9rem;
     }
-    
+
     .property-table th {
-      background-color: var(--color-gray-100);
       text-align: left;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 2px solid var(--color-gray-300);
-      color: var(--color-gray-700);
+      padding: 1rem 2rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-default);
+      font-weight: 500;
     }
-    
+
     .property-table td {
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--color-gray-200);
-      vertical-align: top;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border-subtle);
     }
-    
-    .property-table tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .property-table tr.match {
-      background-color: rgba(16, 185, 129, 0.05);
-    }
-    
-    .property-table tr.mismatch {
-      background-color: rgba(239, 68, 68, 0.05);
-    }
-    
-    .status-cell {
-      font-weight: 600;
-    }
-    
-    .status-cell.match {
-      color: var(--color-success);
-    }
-    
-    .status-cell.mismatch {
-      color: var(--color-danger);
-    }
-    
-    .no-data {
-      padding: 2rem;
-      text-align: center;
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      color: var(--color-gray-500);
-    }
-    
-    footer {
-      margin-top: 3rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--color-gray-200);
-      text-align: center;
-      color: var(--color-gray-500);
-      font-size: 0.875rem;
-    }
-    
-    /* Design System Validation Styles */
-    .ds-validation-section {
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2rem;
-      overflow: hidden;
-      border-left: 4px solid var(--color-primary);
-    }
-    
-    .ds-validation-header {
-      padding: 1rem 1.5rem;
-      background-color: var(--color-gray-50);
-      border-bottom: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .ds-validation-header h2 {
-      margin: 0;
-      font-size: 1.25rem;
-      color: var(--color-gray-900);
-    }
-    
-    .ds-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      background-color: var(--color-gray-200);
-    }
-    
-    .ds-column {
-      background-color: white;
-      padding: 1.5rem;
-    }
-    
-    .ds-column h3 {
-      margin-top: 0;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-      color: var(--color-gray-700);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .ds-item {
-      padding: 0.75rem;
-      border-radius: 0.375rem;
-      margin-bottom: 0.75rem;
-      font-size: 0.875rem;
-    }
-    
-    .ds-item-match {
-      background-color: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-    
-    .ds-item-deviation {
-      background-color: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-    }
-    
-    .ds-item-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
-    
-    .ds-token-badge {
-      font-family: monospace;
-      padding: 0.125rem 0.375rem;
+
+    .status-cell.match { color: var(--color-success); }
+    .status-cell.mismatch { color: var(--color-danger); }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      padding: 0.2rem 0.4rem;
       border-radius: 0.25rem;
-      background-color: var(--color-gray-100);
-      color: var(--color-gray-700);
-      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.05); /* very light zinc */
+      color: var(--color-zinc-200);
+      word-break: break-all;
     }
-    
-    .ds-item-message {
-      font-size: 0.75rem;
-      color: var(--color-gray-600);
-      margin-top: 0.25rem;
-      font-style: italic;
-    }
-    
-    .ds-suggestion {
-      margin-top: 0.5rem;
-      padding-top: 0.5rem;
-      border-top: 1px dashed rgba(239, 68, 68, 0.2);
-      font-weight: 600;
-      color: var(--color-danger);
+
+    footer {
+      text-align: center;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-muted);
     }
   </style>
 </head>
@@ -1226,13 +1101,10 @@ export class ReportGenerator {
       <h1>{{title}}</h1>
       <div class="metadata">
         <div class="metadata-item">
-          <strong>Figma File:</strong> {{figmaFileName}}
+          <strong>File:</strong> {{figmaFileName}}
         </div>
         <div class="metadata-item">
-          <strong>Web URL:</strong> {{webUrl}}
-        </div>
-        <div class="metadata-item">
-          <strong>Generated:</strong> {{timestamp}}
+          <strong>URL:</strong> {{webUrl}}
         </div>
       </div>
     </header>
@@ -1242,59 +1114,20 @@ export class ReportGenerator {
         <h3>Components Analyzed</h3>
         <div class="summary-value">{{componentsAnalyzed}}</div>
       </div>
-      
       <div class="summary-card">
-        <h3>Overall Match Percentage</h3>
+        <h3>Match Percentage</h3>
         <div class="summary-value">{{matchPercentage}}%</div>
-        <div>Severity: <strong>{{overallSeverity}}</strong></div>
-      </div>
-      
-      <div class="summary-card">
-        <h3>Issues by Severity</h3>
-        <div class="severity-counts">
-          <div class="severity-count severity-high">
-            <div class="severity-count-value">{{highSeverityCount}}</div>
-            <div class="severity-count-label">High</div>
-          </div>
-          <div class="severity-count severity-medium">
-            <div class="severity-count-value">{{mediumSeverityCount}}</div>
-            <div class="severity-count-label">Medium</div>
-          </div>
-          <div class="severity-count severity-low">
-            <div class="severity-count-value">{{lowSeverityCount}}</div>
-            <div class="severity-count-label">Low</div>
-          </div>
-        </div>
       </div>
     </div>
 
-    <!-- Design System Validation Section -->
-    {{designSystemValidation}}
-    
     <div class="comparison-results">
       {{comparisonTables}}
     </div>
     
-    <!-- DevRev Issues Table Section -->
-    {{devrevIssuesTable}}
-    
     <footer>
-      <p>Generated by Figma-Web Comparison Tool</p>
+      <p>Generated by DesignQA</p>
     </footer>
   </div>
-  
-  <script>
-    // Store comparison data for interactive features
-    const comparisonData = {{jsonData}};
-    
-    // Add interactive features here if needed
-  </script>
-  
-  <!-- DevRev Table Styles -->
-  {{devrevTableStyles}}
-  
-  <!-- DevRev Table Scripts -->
-  {{devrevTableScripts}}
 </body>
 </html>`;
   }
@@ -1505,7 +1338,7 @@ export class ReportGenerator {
     try {
       const stylesPath = path.join(__dirname, 'utils/devrevTableStyles.css');
       logger.info(`Loading DevRev table styles from: ${stylesPath}`);
-      const styles = fs.readFileSync(stylesPath, 'utf8');
+      const styles = readFileSync(stylesPath, 'utf8');
       logger.info(`Loaded DevRev table styles: ${styles.length} characters`);
       return `<style>${styles}</style>`;
     } catch (error) {
@@ -1522,7 +1355,7 @@ export class ReportGenerator {
     try {
       const scriptsPath = path.join(__dirname, 'utils/devrevTableScripts.js');
       logger.info(`Loading DevRev table scripts from: ${scriptsPath}`);
-      const scripts = fs.readFileSync(scriptsPath, 'utf8');
+      const scripts = readFileSync(scriptsPath, 'utf8');
       logger.info(`Loaded DevRev table scripts: ${scripts.length} characters`);
       return `<script>${scripts}</script>`;
     } catch (error) {

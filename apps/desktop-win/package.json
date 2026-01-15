@@ -10,7 +10,7 @@
     "dev:renderer": "vite",
     "build": "npm run build:workspace-packages && npm run verify:workspace-packages && npm run build:frontend && npm run copy:backend && npm run install:backend-deps && npm run install:deps && npm run resolve:deps && npm run build:main && npm run copy:renderer && npm run check:ts-syntax",
     "build:frontend": "cd ../saas-frontend && pnpm build:electron",
-    "copy:renderer": "mkdir -p dist/renderer && cp -r ../saas-frontend/dist/* dist/renderer/",
+    "copy:renderer": "node scripts/copy-frontend.js",
     "install:backend-deps": "node scripts/install-backend-deps.js",
     "install:deps": "pnpm install --filter @designqa/desktop-win",
     "resolve:deps": "node scripts/resolve-deps.js",
@@ -73,6 +73,7 @@
     "concurrently": "^8.2.2",
     "electron": "^28.0.0",
     "electron-builder": "^24.13.3",
+    "prebuild-install": "^7.1.3",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.3.3",
     "vite": "^5.0.8"
