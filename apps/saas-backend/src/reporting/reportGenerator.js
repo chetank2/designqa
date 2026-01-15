@@ -309,10 +309,12 @@ export class ReportGenerator {
               <span class="badge badge-${severity}">${severity.toUpperCase()}</span></h4>
           <div class="comparison-meta">
             <span class="match-score">
-              📊 Match Score: <strong>${matchScore}</strong>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              Match Score: <strong>${matchScore}</strong>
             </span>
             <span class="match-percentage">
-              📈 Match: <strong>${matchPercentage}%</strong>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Match: <strong>${matchPercentage}%</strong>
             </span>
           </div>
           ${progressBar}
@@ -575,13 +577,11 @@ export class ReportGenerator {
       const formatter = new IssueFormatter();
       const issues = formatter.transform(comparisonResults);
 
-      if (!issues || issues.length === 0) {
-        return `
+      return `
           <div class="no-data">
-            <p>✅ No issues found - All components match the design specifications!</p>
+            <p><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom; margin-right: 6px;"><polyline points="20 6 9 17 4 12"/></svg> No issues found - All components match the design specifications!</p>
           </div>
         `;
-      }
 
       // Generate table HTML
       return `
@@ -589,7 +589,7 @@ export class ReportGenerator {
           <div class="section-header">
             <div class="section-heading-row">
               <span class="section-pill">DevRev Export</span>
-              <h2>📋 Comparison Issues (DevRev Format)</h2>
+              <h2><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Comparison Issues (DevRev Format)</h2>
             </div>
             <p class="section-description">
               Structured issue log engineered for DevRev ingestion. Filter, triage, and export without leaving the browser.
@@ -629,9 +629,9 @@ export class ReportGenerator {
               onkeyup="filterDevRevTable()"
             >
             <div class="issue-stats">
-              <span class="stat-badge stat-critical">🔴 Critical <strong>${issues.filter(i => i.severity === 'Critical').length}</strong></span>
-              <span class="stat-badge stat-major">🟠 Major <strong>${issues.filter(i => i.severity === 'Major').length}</strong></span>
-              <span class="stat-badge stat-minor">🟢 Minor <strong>${issues.filter(i => i.severity === 'Minor').length}</strong></span>
+              <span class="stat-badge stat-critical"><span class="dot dot-critical"></span> Critical <strong>${issues.filter(i => i.severity === 'Critical').length}</strong></span>
+              <span class="stat-badge stat-major"><span class="dot dot-major"></span> Major <strong>${issues.filter(i => i.severity === 'Major').length}</strong></span>
+              <span class="stat-badge stat-minor"><span class="dot dot-minor"></span> Minor <strong>${issues.filter(i => i.severity === 'Minor').length}</strong></span>
             </div>
           </div>
           
@@ -706,7 +706,12 @@ export class ReportGenerator {
     return `
       <section class="ds-validation-section" id="ds-validation">
         <div class="ds-validation-header">
-          <h2>🛡️ Design System Alignment</h2>
+          <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Design System Alignment
+          </h2>
           <span class="badge ${results.summary === 'consistent' ? 'badge-success' : 'badge-warning'}">
             ${results.summary === 'consistent' ? 'Consistent' : 'Deviations Found'}
           </span>
@@ -714,13 +719,27 @@ export class ReportGenerator {
         
         <div class="ds-grid">
           <div class="ds-column">
-            <h3>🎨 Figma vs Design System</h3>
-            ${this.generateDSItemsHtml(figmaMatches, figmaDeviations)}
+            <h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l5 5"/><path d="M11 11l1 1"/>
+              </svg>
+              Figma vs Design System
+            </h3>
+            <div class="ds-items-container">
+              ${this.generateDSItemsHtml(figmaMatches, figmaDeviations)}
+            </div>
           </div>
           
           <div class="ds-column">
-            <h3>🌐 Web vs Design System</h3>
-            ${this.generateDSItemsHtml(webMatches, webDeviations)}
+            <h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              Web vs Design System
+            </h3>
+            <div class="ds-items-container">
+              ${this.generateDSItemsHtml(webMatches, webDeviations)}
+            </div>
           </div>
         </div>
       </section>
@@ -735,15 +754,26 @@ export class ReportGenerator {
 
     // Deviations first
     deviations.forEach(dev => {
+      const propertyLabel = this.formatPropertyName(dev.property);
+      const visualPreview = this.getPropertyVisualPreview(dev.property, dev.value);
+
       html += `
         <div class="ds-item ds-item-deviation">
           <div class="ds-item-header">
-            <span>${this.formatPropertyName(dev.property)}</span>
+            <span>${propertyLabel}</span>
             <span class="badge badge-danger">Mismatch</span>
           </div>
-          <div class="ds-item-message">Value: <strong>${dev.value}</strong></div>
+          <div class="ds-item-message">
+            <div class="preview-container">
+              ${visualPreview}
+              <span>Value: <strong>${dev.value}</strong></span>
+            </div>
+          </div>
           <div class="ds-suggestion">
-            💡 Suggestion: Use <span class="ds-token-badge">${dev.suggestedToken}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>Suggestion: Use <span class="ds-token-badge">${dev.suggestedToken}</span></span>
           </div>
         </div>
       `;
@@ -751,14 +781,20 @@ export class ReportGenerator {
 
     // Matches
     matches.forEach(match => {
+      const propertyLabel = this.formatPropertyName(match.property);
+      const visualPreview = this.getPropertyVisualPreview(match.property, match.value);
+
       html += `
         <div class="ds-item ds-item-match">
           <div class="ds-item-header">
-            <span>${this.formatPropertyName(match.property)}</span>
+            <span>${propertyLabel}</span>
             <span class="badge badge-success">Match</span>
           </div>
           <div class="ds-item-message">
-            Value <strong>${match.value}</strong> matched token <span class="ds-token-badge">${match.token}</span>
+            <div class="preview-container">
+              ${visualPreview}
+              <span>Value <strong>${match.value}</strong> matched token <span class="ds-token-badge">${match.token}</span></span>
+            </div>
           </div>
         </div>
       `;
@@ -769,6 +805,23 @@ export class ReportGenerator {
     }
 
     return html;
+  }
+
+  /**
+   * Helper to get visual preview for DS items
+   */
+  getPropertyVisualPreview(property, value) {
+    const p = property.toLowerCase();
+    if (p.includes('color')) {
+      return `<div class="preview-swatch" style="background-color: ${value};"></div>`;
+    }
+    if (p.includes('font-family')) {
+      return `<div class="preview-typo" style="font-family: ${value};">Aa</div>`;
+    }
+    if (p.includes('border-radius') || p.includes('corner-radius')) {
+      return `<div class="preview-radius" style="border-radius: ${value};"></div>`;
+    }
+    return '';
   }
 
   /**
