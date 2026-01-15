@@ -10,6 +10,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   build-mac:
     runs-on: macos-latest
@@ -17,6 +20,11 @@ jobs:
       run:
         shell: bash
         working-directory: ${{ github.workspace }}
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,20 +54,17 @@ jobs:
           cd ../compare-engine && pnpm build
 
       - name: Setup code signing (macOS)
-        if: ${{ secrets.CSC_LINK != '' }}
+        if: ${{ env.CSC_LINK != '' }}
         run: |
           echo "🔐 Setting up macOS code signing..."
           # Import signing certificate
           echo "$CSC_LINK" | base64 --decode > certificate.p12
-          security create-keychain -p "${{ secrets.CSC_KEY_PASSWORD }}" build.keychain
+          security create-keychain -p "$CSC_KEY_PASSWORD" build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p "${{ secrets.CSC_KEY_PASSWORD }}" build.keychain
-          security import certificate.p12 -k build.keychain -P "${{ secrets.CSC_KEY_PASSWORD }}" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.CSC_KEY_PASSWORD }}" build.keychain
+          security unlock-keychain -p "$CSC_KEY_PASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$CSC_KEY_PASSWORD" build.keychain
           rm certificate.p12
-        env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-
       - name: Install app dependencies
         run: |
           echo "📦 Installing Mac app dependencies..."
@@ -77,10 +82,6 @@ jobs:
           pnpm run package
         env:
           CI: true
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: true
 
       - name: List build artifacts
@@ -100,20 +101,18 @@ jobs:
           echo "✅ Found $DMG_COUNT DMG file(s):"
           find apps/desktop-mac/build -type f -name "*.dmg" -exec ls -lh {} \;
 
-      - name: Upload mac artifacts to release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload mac artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
-          files: |
-            apps/desktop-mac/build/**/*.dmg
-          fail_on_unmatched_files: true
-          draft: false
-          prerelease: false
+          name: mac-artifacts
+          path: apps/desktop-mac/build/**/*.dmg
+          if-no-files-found: error
 
   build-win:
     runs-on: windows-latest
+    env:
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -143,14 +142,12 @@ jobs:
           cd ../compare-engine && pnpm build
 
       - name: Setup code signing (Windows)
-        if: ${{ secrets.WIN_CSC_LINK != '' }}
+        if: ${{ env.WIN_CSC_LINK != '' }}
         shell: bash
         run: |
           echo "🔐 Setting up Windows code signing..."
           # Decode and save certificate
           echo "$WIN_CSC_LINK" | base64 --decode > certificate.p12
-        env:
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
 
       - name: Install app dependencies
         run: |
@@ -169,8 +166,6 @@ jobs:
           pnpm run package
         env:
           CI: true
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           CSC_IDENTITY_AUTO_DISCOVERY: true
 
       - name: Cleanup certificates
@@ -203,14 +198,39 @@ jobs:
           echo "✅ Found $EXE_COUNT EXE file(s):"
           find apps/desktop-win/build -type f -name "*.exe" -exec ls -lh {} \;
 
-      - name: Upload windows artifacts to release
+      - name: Upload windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-artifacts
+          path: apps/desktop-win/build/**/*.exe
+          if-no-files-found: error
+
+  release:
+    name: Publish Release Assets
+    runs-on: ubuntu-latest
+    needs: [build-mac, build-win]
+    steps:
+      - name: Download mac artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-artifacts
+          path: release-assets/mac
+
+      - name: Download windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: win-artifacts
+          path: release-assets/win
+
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
           files: |
-            apps/desktop-win/build/**/*.exe
+            release-assets/mac/**/*.dmg
+            release-assets/win/**/*.exe
           fail_on_unmatched_files: true
           draft: false
           prerelease: false
@@ -218,7 +238,7 @@ jobs:
   summary:
     name: Release Summary
     runs-on: ubuntu-latest
-    needs: [build-mac, build-win]
+    needs: [release]
     if: always()
     steps:
       - name: Checkout
