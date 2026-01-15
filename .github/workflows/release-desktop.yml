@@ -29,12 +29,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Debug - Show build info
+        run: |
+          echo "🔍 Build Debug Info:"
+          echo "Current branch/ref: $(git branch --show-current || echo 'detached HEAD')"
+          echo "Current commit: $(git rev-parse HEAD)"
+          echo "Latest commit: $(git log -1 --oneline)"
+          echo "Target tag: ${{ github.event.inputs.tag_name || 'v2.0.2' }}"
+          echo "🔧 Checking if fixes are present:"
+          if grep -q "prebuild-install" apps/desktop-mac/package.json 2>/dev/null; then
+            echo "✅ prebuild-install fix is present in Mac"
+          else
+            echo "❌ prebuild-install fix is MISSING in Mac - this will cause build failures"
+          fi
+          if [ -f "apps/desktop-win/scripts/copy-frontend.js" ]; then
+            echo "✅ copy-frontend.js script is present"
+          else
+            echo "❌ copy-frontend.js script is MISSING"
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -130,12 +149,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Debug - Show build info
+        run: |
+          echo "🔍 Build Debug Info:"
+          echo "Current branch/ref: $(git branch --show-current || echo 'detached HEAD')"
+          echo "Current commit: $(git rev-parse HEAD)"
+          echo "Latest commit: $(git log -1 --oneline)"
+          echo "Target tag: ${{ github.event.inputs.tag_name || 'v2.0.2' }}"
+          echo "🔧 Checking if fixes are present:"
+          if grep -q "prebuild-install" apps/desktop-mac/package.json 2>/dev/null; then
+            echo "✅ prebuild-install fix is present in Mac"
+          else
+            echo "❌ prebuild-install fix is MISSING in Mac - this will cause build failures"
+          fi
+          if [ -f "apps/desktop-win/scripts/copy-frontend.js" ]; then
+            echo "✅ copy-frontend.js script is present"
+          else
+            echo "❌ copy-frontend.js script is MISSING"
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -270,7 +308,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: main
 
       - name: Display Release Summary
         run: |
