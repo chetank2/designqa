@@ -37,6 +37,7 @@ jobs:
           node-version: 20
 
       - name: Debug - Show build info
+        shell: bash
         run: |
           echo "🔍 Build Debug Info:"
           echo "Current branch/ref: $(git branch --show-current || echo 'detached HEAD')"
@@ -103,6 +104,7 @@ jobs:
       - name: Build mac app
         run: |
           echo "🍎 Building Mac desktop app..."
+          echo "🔎 Debug: CSC_LINK value = '$CSC_LINK'"
           cd apps/desktop-mac
           pnpm run build
           echo "📦 Packaging Mac app..."
@@ -111,7 +113,13 @@ jobs:
             pnpm run package
           else
             echo "⚠️ Code signing disabled (no certificate provided)"
-            CSC_LINK="" CSC_KEY_PASSWORD="" CSC_IDENTITY_AUTO_DISCOVERY=false pnpm run package
+            echo "📧 Unsetting all certificate environment variables"
+            unset CSC_LINK
+            unset CSC_KEY_PASSWORD
+            unset APPLE_ID
+            unset APPLE_ID_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            pnpm run package
           fi
         env:
           CI: true
@@ -157,6 +165,7 @@ jobs:
           node-version: 20
 
       - name: Debug - Show build info
+        shell: bash
         run: |
           echo "🔍 Build Debug Info:"
           echo "Current branch/ref: $(git branch --show-current || echo 'detached HEAD')"
