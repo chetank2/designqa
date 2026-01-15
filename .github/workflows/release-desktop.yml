@@ -57,14 +57,22 @@ jobs:
         if: env.CSC_LINK
         run: |
           echo "🔐 Setting up macOS code signing..."
-          # Import signing certificate
-          echo "$CSC_LINK" | base64 --decode > certificate.p12
-          security create-keychain -p "$CSC_KEY_PASSWORD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$CSC_KEY_PASSWORD" build.keychain
-          security import certificate.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$CSC_KEY_PASSWORD" build.keychain
-          rm certificate.p12
+          # Validate certificate is base64 encoded
+          if echo "$CSC_LINK" | base64 --decode > /tmp/test.p12 2>/dev/null; then
+            echo "✅ Valid certificate provided"
+            # Import signing certificate
+            echo "$CSC_LINK" | base64 --decode > certificate.p12
+            security create-keychain -p "$CSC_KEY_PASSWORD" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "$CSC_KEY_PASSWORD" build.keychain
+            security import certificate.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$CSC_KEY_PASSWORD" build.keychain
+            rm certificate.p12
+            rm /tmp/test.p12
+          else
+            echo "❌ Invalid certificate format, skipping code signing"
+            echo "CSC_LINK=" >> $GITHUB_ENV
+          fi
       - name: Install app dependencies
         run: |
           echo "📦 Installing Mac app dependencies..."
@@ -73,16 +81,21 @@ jobs:
         env:
           CI: true
 
-      - name: Build and sign mac app
+      - name: Build mac app
         run: |
           echo "🍎 Building Mac desktop app..."
           cd apps/desktop-mac
           pnpm run build
-          echo "📦 Packaging and signing Mac app..."
-          pnpm run package
+          echo "📦 Packaging Mac app..."
+          if [ -n "$CSC_LINK" ]; then
+            echo "🔐 Code signing enabled"
+            pnpm run package
+          else
+            echo "⚠️ Code signing disabled (no certificate provided)"
+            CSC_IDENTITY_AUTO_DISCOVERY=false pnpm run package
+          fi
         env:
           CI: true
-          CSC_IDENTITY_AUTO_DISCOVERY: true
 
       - name: List build artifacts
         run: |
@@ -146,8 +159,15 @@ jobs:
         shell: bash
         run: |
           echo "🔐 Setting up Windows code signing..."
-          # Decode and save certificate
-          echo "$WIN_CSC_LINK" | base64 --decode > certificate.p12
+          # Validate and decode certificate
+          if echo "$WIN_CSC_LINK" | base64 --decode > /tmp/test.p12 2>/dev/null; then
+            echo "✅ Valid certificate provided"
+            echo "$WIN_CSC_LINK" | base64 --decode > certificate.p12
+            rm /tmp/test.p12
+          else
+            echo "❌ Invalid certificate format, skipping code signing"
+            echo "WIN_CSC_LINK=" >> $GITHUB_ENV
+          fi
 
       - name: Install app dependencies
         run: |
@@ -157,16 +177,21 @@ jobs:
         env:
           CI: true
 
-      - name: Build and sign windows app
+      - name: Build windows app
         run: |
           echo "🪟 Building Windows desktop app..."
           cd apps/desktop-win
           pnpm run build
-          echo "📦 Packaging and signing Windows app..."
-          pnpm run package
+          echo "📦 Packaging Windows app..."
+          if [ -n "$WIN_CSC_LINK" ]; then
+            echo "🔐 Code signing enabled"
+            pnpm run package
+          else
+            echo "⚠️ Code signing disabled (no certificate provided)"
+            WIN_CSC_LINK="" WIN_CSC_KEY_PASSWORD="" pnpm run package
+          fi
         env:
           CI: true
-          CSC_IDENTITY_AUTO_DISCOVERY: true
 
       - name: Cleanup certificates
         if: always()
