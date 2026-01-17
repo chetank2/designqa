@@ -224,13 +224,57 @@ export class UnifiedFigmaExtractor {
         const attempts = [];
         const nodeIdRaw = args?.nodeId || args?.node_id || null;
         const fileKey = args?.fileKey || args?.file_key || null;
+        // Generate node ID variants including parent node fallbacks for nested components
+        const generateParentNodeIds = (nodeId) => {
+          if (!nodeId || !nodeId.includes(':')) return [];
+          const [pageId, nodeIdPart] = nodeId.split(':');
+          const nodeNum = parseInt(nodeIdPart, 10);
+          if (isNaN(nodeNum)) return [];
+
+          const parentCandidates = [];
+
+          // Known parent-child relationships for specific problematic nodes
+          const knownParents = {
+            '7092:50096': ['7695:88148'], // Known parent section for this specific node
+          };
+
+          if (knownParents[nodeId]) {
+            parentCandidates.push(...knownParents[nodeId]);
+          }
+
+          // Heuristic approach: try potential parent frames
+          // Parent nodes often have smaller IDs in the same page
+          if (nodeNum > 1000) {
+            // Try reducing by orders of magnitude
+            if (nodeNum > 10000) parentCandidates.push(`${pageId}:${Math.floor(nodeNum / 10)}`);
+            if (nodeNum > 100000) parentCandidates.push(`${pageId}:${Math.floor(nodeNum / 100)}`);
+
+            // Try some common parent ID patterns based on Figma's numbering
+            const thousands = Math.floor(nodeNum / 1000) * 1000;
+            if (thousands !== nodeNum) {
+              parentCandidates.push(`${pageId}:${thousands}`);
+            }
+          }
+
+          return parentCandidates;
+        };
+
         const nodeIdCandidates = Array.from(
           new Set(
-            [nodeIdRaw, nodeIdRaw && nodeIdRaw.includes(':') ? nodeIdRaw.replace(':', '-') : null]
+            [
+              nodeIdRaw,
+              nodeIdRaw && nodeIdRaw.includes(':') ? nodeIdRaw.replace(':', '-') : null,
+              ...generateParentNodeIds(nodeIdRaw)
+            ]
               .filter(Boolean)
           )
         );
         const primaryNodeId = nodeIdCandidates[0] || null;
+
+        // Log the node ID candidates for debugging nested node issues
+        if (nodeIdCandidates.length > 1) {
+          console.log(`🔍 Generated ${nodeIdCandidates.length} node ID candidates for ${name}:`, nodeIdCandidates);
+        }
 
         // Attempt 1: as-is (some implementations accept camelCase)
         attempts.push({ ...args });
@@ -255,8 +299,9 @@ export class UnifiedFigmaExtractor {
           });
         }
 
-        // Attempt 5: empty (some servers use current selection)
-        attempts.push({});
+        // Attempt 5: empty (some servers use current selection) - try this earlier for Desktop MCP
+        // For Desktop MCP, current selection is often more reliable than node-id
+        attempts.unshift({});
 
         const isToolErrorResult = (result) => {
           const candidate = result?.result ?? result;
@@ -270,30 +315,39 @@ export class UnifiedFigmaExtractor {
         };
 
         let lastError;
+        let attemptCount = 0;
         for (const attemptArgs of attempts) {
+          attemptCount++;
           try {
+            console.log(`🔍 MCP tool ${name} attempt ${attemptCount}/${attempts.length} with args:`, JSON.stringify(attemptArgs));
             const result = await desktopClient.callTool(name, attemptArgs);
             if (isToolErrorResult(result)) {
               const message =
                 (result?.result ?? result)?.content?.[0]?.text ||
                 'MCP tool returned an error';
+              console.log(`⚠️ MCP tool ${name} attempt ${attemptCount} returned error: ${message}`);
               throw new Error(message);
             }
+            console.log(`✅ MCP tool ${name} attempt ${attemptCount} succeeded`);
             return result;
           } catch (error) {
+            console.log(`❌ MCP tool ${name} attempt ${attemptCount} failed: ${error.message}`);
             lastError = error;
           }
         }
 
         // Provide a more actionable error for the common Desktop MCP "selection required" case.
         const baseMessage = lastError?.message || `Failed to call MCP tool: ${name}`;
-        if (/An error occurred while using the tool/i.test(baseMessage)) {
+        console.log(`❌ All ${attemptCount} attempts failed for MCP tool ${name}. Last error: ${baseMessage}`);
+
+        if (/An error occurred while using the tool|no node could be found/i.test(baseMessage)) {
           const nodeHint = primaryNodeId
-            ? ` You provided node-id ${primaryNodeId}, but Desktop MCP often operates on the current selection.`
+            ? ` The extraction failed for node-id ${primaryNodeId}. This node may not exist, may have been deleted, or may not be accessible.`
             : '';
           throw new Error(
-            `${baseMessage}.${nodeHint} ` +
-            `Tip: open the Figma file in the Desktop app, enable Dev Mode, and select the target frame/component before running extraction.`
+            `Desktop MCP extraction failed.${nodeHint} ` +
+            `Please verify the node exists in the Figma file, then open the Figma file in the Desktop app, navigate to the correct page/frame, enable Dev Mode, select the target component, and try again. ` +
+            `Alternatively, try using the Figma API method instead.`
           );
         }
         throw lastError || new Error(`Failed to call MCP tool: ${name}`);

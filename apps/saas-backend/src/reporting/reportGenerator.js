@@ -241,26 +241,71 @@ export class ReportGenerator {
 
     let tablesHtml = '';
 
-    // Group comparisons by severity
-    const severityGroups = {
-      high: [],
-      medium: [],
-      low: []
+    // Group comparisons by property type (from comparison.mismatches)
+    const propertyGroups = {
+      colors: [],
+      typography: [],
+      spacing: [],
+      radius: [],
+      layout: [],
+      shadows: [],
+      other: []
     };
 
     comparisons.forEach(comp => {
-      const severity = comp.overallDeviation?.severity || 'low';
-      severityGroups[severity].push(comp);
+      // Determine primary property type from mismatches
+      const mismatches = comp.mismatches || [];
+      const propertyTypes = new Set();
+      
+      mismatches.forEach(m => {
+        const propType = m.property?.split(':')[0];
+        if (propType) propertyTypes.add(propType);
+      });
+
+      // Categorize comparison based on property types
+      if (propertyTypes.has('color')) {
+        propertyGroups.colors.push(comp);
+      } else if (propertyTypes.has('typography')) {
+        propertyGroups.typography.push(comp);
+      } else if (propertyTypes.has('spacing')) {
+        propertyGroups.spacing.push(comp);
+      } else if (propertyTypes.has('radius')) {
+        propertyGroups.radius.push(comp);
+      } else if (propertyTypes.has('layout')) {
+        propertyGroups.layout.push(comp);
+      } else if (propertyTypes.has('shadows')) {
+        propertyGroups.shadows.push(comp);
+      } else {
+        propertyGroups.other.push(comp);
+      }
     });
 
-    // Generate tables for each severity group
-    Object.entries(severityGroups).forEach(([severity, comps]) => {
+    // Property type labels and icons
+    const propertyLabels = {
+      colors: { label: 'Colors', icon: '🎨', description: 'Color mismatches between Figma and implementation' },
+      typography: { label: 'Typography', icon: '📝', description: 'Font size, weight, and text style differences' },
+      spacing: { label: 'Spacing & Padding', icon: '📏', description: 'Margin, padding, and spacing inconsistencies' },
+      radius: { label: 'Border Radius', icon: '⭕', description: 'Corner radius and roundness differences' },
+      layout: { label: 'Layout & Sizing', icon: '📐', description: 'Width, height, and positioning mismatches' },
+      shadows: { label: 'Shadows & Effects', icon: '✨', description: 'Box shadow and visual effect differences' },
+      other: { label: 'Other Properties', icon: '🔧', description: 'Additional property mismatches' }
+    };
+
+    // Generate sections for each property type
+    Object.entries(propertyGroups).forEach(([propType, comps]) => {
       if (comps.length === 0) return;
 
+      const { label, icon, description } = propertyLabels[propType];
+      
       tablesHtml += `
-        <div class="severity-group severity-${severity}">
-          <h3>${this.capitalizeFirst(severity)} Severity Issues (${comps.length})</h3>
-          ${comps.map(comp => this.generateComparisonTable(comp)).join('')}
+        <div class="property-group property-${propType}" id="property-${propType}">
+          <div class="property-group-header">
+            <h3><span class="property-icon">${icon}</span> ${label} <span class="property-count">(${comps.length})</span></h3>
+            <p class="property-description">${description}</p>
+          </div>
+          <div class="property-group-items">
+            ${comps.map(comp => this.generateComparisonTable(comp)).join('')}
+          </div>
         </div>
       `;
     });
@@ -577,11 +622,14 @@ export class ReportGenerator {
       const formatter = new IssueFormatter();
       const issues = formatter.transform(comparisonResults);
 
-      return `
+      // If no issues, show success message
+      if (!issues || issues.length === 0) {
+        return `
           <div class="no-data">
             <p><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom; margin-right: 6px;"><polyline points="20 6 9 17 4 12"/></svg> No issues found - All components match the design specifications!</p>
           </div>
         `;
+      }
 
       // Generate table HTML
       return `
@@ -1082,17 +1130,19 @@ export class ReportGenerator {
     }
 
     .comparison-details {
-      padding: 2rem;
+      padding: 20px;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 2rem;
     }
 
     .component-info, .element-info {
-      padding: 1.5rem;
+      padding: 0;
       background: rgba(255, 255, 255, 0.03);
       border-radius: 0.5rem;
       border: 1px solid var(--border-subtle);
+      width: 100%;
+      height: 100%;
     }
 
      .info-row {

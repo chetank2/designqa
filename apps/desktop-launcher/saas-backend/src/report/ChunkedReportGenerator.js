@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ErrorHandlingService } from '../utils/ErrorHandlingService.js';
+import { getReportsDir } from '../utils/outputPaths.js';
 
 export class ChunkedReportGenerator {
   constructor(config = {}) {
@@ -8,7 +9,7 @@ export class ChunkedReportGenerator {
       chunkSize: 10,
       maxStringLength: 1000000, // 1MB
       maxArraySize: 1000,
-      outputDir: 'output/reports',
+      outputDir: getReportsDir(),
       ...config
     };
 

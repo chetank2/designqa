@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { generateCSSIncludes } from './utils/cssIncludes.js';
 import { IssueFormatter } from '../services/reports/IssueFormatter.js';
+import { getReportsDir } from '../utils/outputPaths.js';
 import {
   generateProgressBar,
   generateCircularProgress,
@@ -30,7 +31,7 @@ export class ReportGenerator {
       templatePath: path.join(__dirname, 'templates/report.html'),
       webTemplatePath: path.join(__dirname, 'templates/web-extraction-report.html'),
       figmaTemplatePath: path.join(__dirname, 'templates/figma-extraction-report.html'),
-      outputDir: path.join(rootDir, 'output/reports'),
+      outputDir: getReportsDir(),
       ...config
     };
   }
@@ -156,6 +157,10 @@ export class ReportGenerator {
     const issueCount = summary.componentsAnalyzed || comparisonResults.comparisons?.length || 0;
     html = html.replaceAll('{{totalIssues}}', issueCount);
 
+    // Total comparisons count for tab badges
+    const comparisonCount = comparisonResults.comparisons?.length || 0;
+    html = html.replaceAll('{{totalComparisons}}', comparisonCount);
+
     // Generate Sections
     html = html.replaceAll('{{designSystemValidation}}', this.generateDesignSystemValidationHtml(comparisonResults));
     html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
@@ -236,26 +241,71 @@ export class ReportGenerator {
 
     let tablesHtml = '';
 
-    // Group comparisons by severity
-    const severityGroups = {
-      high: [],
-      medium: [],
-      low: []
+    // Group comparisons by property type (from comparison.mismatches)
+    const propertyGroups = {
+      colors: [],
+      typography: [],
+      spacing: [],
+      radius: [],
+      layout: [],
+      shadows: [],
+      other: []
     };
 
     comparisons.forEach(comp => {
-      const severity = comp.overallDeviation?.severity || 'low';
-      severityGroups[severity].push(comp);
+      // Determine primary property type from mismatches
+      const mismatches = comp.mismatches || [];
+      const propertyTypes = new Set();
+      
+      mismatches.forEach(m => {
+        const propType = m.property?.split(':')[0];
+        if (propType) propertyTypes.add(propType);
+      });
+
+      // Categorize comparison based on property types
+      if (propertyTypes.has('color')) {
+        propertyGroups.colors.push(comp);
+      } else if (propertyTypes.has('typography')) {
+        propertyGroups.typography.push(comp);
+      } else if (propertyTypes.has('spacing')) {
+        propertyGroups.spacing.push(comp);
+      } else if (propertyTypes.has('radius')) {
+        propertyGroups.radius.push(comp);
+      } else if (propertyTypes.has('layout')) {
+        propertyGroups.layout.push(comp);
+      } else if (propertyTypes.has('shadows')) {
+        propertyGroups.shadows.push(comp);
+      } else {
+        propertyGroups.other.push(comp);
+      }
     });
 
-    // Generate tables for each severity group
-    Object.entries(severityGroups).forEach(([severity, comps]) => {
+    // Property type labels and icons
+    const propertyLabels = {
+      colors: { label: 'Colors', icon: '🎨', description: 'Color mismatches between Figma and implementation' },
+      typography: { label: 'Typography', icon: '📝', description: 'Font size, weight, and text style differences' },
+      spacing: { label: 'Spacing & Padding', icon: '📏', description: 'Margin, padding, and spacing inconsistencies' },
+      radius: { label: 'Border Radius', icon: '⭕', description: 'Corner radius and roundness differences' },
+      layout: { label: 'Layout & Sizing', icon: '📐', description: 'Width, height, and positioning mismatches' },
+      shadows: { label: 'Shadows & Effects', icon: '✨', description: 'Box shadow and visual effect differences' },
+      other: { label: 'Other Properties', icon: '🔧', description: 'Additional property mismatches' }
+    };
+
+    // Generate sections for each property type
+    Object.entries(propertyGroups).forEach(([propType, comps]) => {
       if (comps.length === 0) return;
 
+      const { label, icon, description } = propertyLabels[propType];
+      
       tablesHtml += `
-        <div class="severity-group severity-${severity}">
-          <h3>${this.capitalizeFirst(severity)} Severity Issues (${comps.length})</h3>
-          ${comps.map(comp => this.generateComparisonTable(comp)).join('')}
+        <div class="property-group property-${propType}" id="property-${propType}">
+          <div class="property-group-header">
+            <h3><span class="property-icon">${icon}</span> ${label} <span class="property-count">(${comps.length})</span></h3>
+            <p class="property-description">${description}</p>
+          </div>
+          <div class="property-group-items">
+            ${comps.map(comp => this.generateComparisonTable(comp)).join('')}
+          </div>
         </div>
       `;
     });
@@ -273,9 +323,10 @@ export class ReportGenerator {
     const element = this.resolveElement(comparison);
     const matchScore = comparison.matchScore?.toFixed(2) || '0.00';
     const matchPercentage = comparison.overallDeviation?.matchPercentage?.toFixed(2) || '0.00';
+    const severity = comparison.overallDeviation?.severity || 'low';
     const componentName = component.name || (component.id ? `Component ${component.id}` : 'Component');
-    const componentType = component.type || 'Component';
     const componentId = component.id || 'N/A';
+    const componentType = component.type || 'Component';
     const elementFallback = comparison.status === 'no_match' ? 'Not matched' : 'Not available';
     const elementTag = element.tagName || elementFallback;
     const elementId = element.id || (comparison.status === 'no_match' ? 'Not matched' : 'N/A');
@@ -286,41 +337,89 @@ export class ReportGenerator {
         : [];
     const elementPath = element.path || element.selector || (comparison.status === 'no_match' ? 'Not matched' : 'N/A');
 
+    // Generate progress bar for match percentage
+    const progressClass = matchPercentage >= 80 ? 'success' : matchPercentage >= 60 ? 'warning' : 'danger';
+    const progressBar = `
+      <div class="progress-bar">
+        <div class="progress-fill ${progressClass}" style="width: ${matchPercentage}%"></div>
+      </div>
+    `;
+
     const propertyComparisons = comparison.propertyComparisons || this.buildPropertyComparisons(comparison);
 
     return `
-      <div class="comparison-item severity-${comparison.overallDeviation?.severity || 'low'}">
+      <div class="comparison-item severity-${severity}">
         <div class="comparison-header">
-          <h4>${this.escapeHtml(componentName)} (${this.escapeHtml(componentType)})</h4>
+          <h4>${this.escapeHtml(componentName)}
+              <span class="badge badge-${severity}">${severity.toUpperCase()}</span></h4>
           <div class="comparison-meta">
-            <span class="match-score">Match Score: ${matchScore}</span>
-            <span class="match-percentage">Match Percentage: ${matchPercentage}%</span>
+            <span class="match-score">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              Match Score: <strong>${matchScore}</strong>
+            </span>
+            <span class="match-percentage">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Match: <strong>${matchPercentage}%</strong>
+            </span>
           </div>
+          ${progressBar}
         </div>
-        
+
         <div class="comparison-details">
           <div class="component-info">
-            <h5>Figma Component</h5>
-            <div class="info-row"><span>ID:</span> ${this.escapeHtml(componentId)}</div>
-            <div class="info-row"><span>Name:</span> ${this.escapeHtml(componentName)}</div>
-            <div class="info-row"><span>Type:</span> ${this.escapeHtml(componentType)}</div>
+          <div class="info-label">
+            <span class="w-1.5 h-1.5 rounded-full bg-foreground" style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#fff; margin-right:8px;"></span>
+            FIGMA DESIGN
           </div>
-          
-          <div class="element-info">
-            <h5>Web Element</h5>
-            <div class="info-row"><span>Tag:</span> ${this.escapeHtml(elementTag)}</div>
-            <div class="info-row"><span>ID:</span> ${elementId ? this.escapeHtml(elementId) : 'None'}</div>
-            <div class="info-row"><span>Classes:</span> ${elementClasses.length ? elementClasses.map(cls => this.escapeHtml(cls)).join(', ') : 'None'}</div>
-            <div class="info-row"><span>Path:</span> ${this.escapeHtml(elementPath)}</div>
+          <div class="info-row">
+            <span>Name:</span>
+            <strong>${this.escapeHtml(componentName)}</strong>
+          </div>
+          <div class="info-row">
+            <span>ID:</span>
+            <code>${this.escapeHtml(componentId)}</code>
+          </div>
+          <div class="info-row">
+            <span>Type:</span>
+            <span class="badge badge-info">${this.escapeHtml(componentType)}</span>
           </div>
         </div>
-        
+
+        <div class="element-info">
+          <div class="info-label">
+            <span class="w-1.5 h-1.5 rounded-full opacity-50" style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#a1a1aa; margin-right:8px;"></span>
+            WEB IMPLEMENTATION
+          </div>
+          <div class="info-row">
+            <span>Tag:</span>
+            <code>${this.escapeHtml(elementTag)}</code>
+          </div>
+          <div class="info-row">
+            <span>ID:</span>
+            ${elementId ? `<code>${this.escapeHtml(elementId)}</code>` : '<span style="color:#71717a">None</span>'}
+          </div>
+          <div class="info-row">
+            <span>Selector:</span>
+            <code>${this.escapeHtml(elementPath)}</code>
+          </div>
+          <div class="info-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <span>Classes:</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+              ${elementClasses.length
+        ? elementClasses.slice(0, 5).map(cls => `<code>${this.escapeHtml(cls)}</code>`).join('') + (elementClasses.length > 5 ? `<small style="color:#71717a"> +${elementClasses.length - 5}</small>` : '')
+        : '<span style="color:#71717a">None</span>'
+      }
+            </div>
+          </div>
+        </div>
+      </div>
+
         <table class="property-table">
           <thead>
             <tr>
               <th>Property</th>
-              <th>Figma Value</th>
-              <th>Web Value</th>
+              <th>Expected (Figma)</th>
+              <th>Actual (Web)</th>
               <th>Status</th>
               <th>Deviation</th>
             </tr>
@@ -340,22 +439,41 @@ export class ReportGenerator {
    */
   generatePropertyRows(propertyComparisons) {
     if (!propertyComparisons || propertyComparisons.length === 0) {
-      return '<tr><td colspan="5">No property comparisons available</td></tr>';
+      return `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 2rem; color: #6b7280;">
+            <strong>No property comparisons available</strong>
+            <br><small>This comparison may be missing detailed property analysis.</small>
+          </td>
+        </tr>
+      `;
     }
 
     return propertyComparisons.map(prop => {
       const statusClass = prop.matches ? 'match' : 'mismatch';
       const deviation = typeof prop.deviation === 'number'
-        ? prop.deviation.toFixed(2)
+        ? `${prop.deviation.toFixed(2)}${typeof prop.deviation === 'number' && prop.property?.includes('color') ? ' ΔE' : ''}`
         : prop.deviation || 'N/A';
+
+      // Format property values with appropriate styling
+      const figmaValue = this.formatPropertyValueEnhanced(prop.figmaValue, prop.property);
+      const webValue = this.formatPropertyValueEnhanced(prop.webValue, prop.property);
+
+      // Add severity indicator based on deviation
+      let severityIndicator = '';
+      if (typeof prop.deviation === 'number' && !prop.matches) {
+        if (prop.deviation > 10) severityIndicator = ' <span class="badge badge-danger">High</span>';
+        else if (prop.deviation > 5) severityIndicator = ' <span class="badge badge-warning">Medium</span>';
+        else severityIndicator = ' <span class="badge badge-info">Low</span>';
+      }
 
       return `
         <tr class="${statusClass}">
-          <td>${this.formatPropertyName(prop.property)}</td>
-          <td>${this.formatPropertyValue(prop.figmaValue)}</td>
-          <td>${this.formatPropertyValue(prop.webValue)}</td>
+          <td><strong>${this.formatPropertyName(prop.property)}</strong></td>
+          <td>${figmaValue}</td>
+          <td>${webValue}</td>
           <td class="status-cell ${statusClass}">${prop.matches ? 'Match' : 'Mismatch'}</td>
-          <td>${deviation}</td>
+          <td>${deviation}${severityIndicator}</td>
         </tr>
       `;
     }).join('');
@@ -427,6 +545,73 @@ export class ReportGenerator {
   }
 
   /**
+   * Enhanced property value formatting with visual indicators
+   * @param {*} value - Property value
+   * @param {string} property - Property name for context
+   * @returns {string} Formatted property value
+   */
+  formatPropertyValueEnhanced(value, property) {
+    if (value === undefined || value === null) {
+      return '<span style="color: #a1a1aa; font-style: italic;">N/A</span>';
+    }
+
+    if (typeof value === 'object') {
+      return `<code>${JSON.stringify(value)}</code>`;
+    }
+
+    const valueStr = value.toString();
+    const normalizedProp = property?.toLowerCase() || '';
+
+    // 1. Color values
+    if (normalizedProp.includes('color') && valueStr.match(/^#|rgba|rgb|hsl/)) {
+      return `
+      <div class="preview-container">
+        <div class="preview-swatch" style="background-color: ${valueStr};"></div>
+        <code>${valueStr}</code>
+      </div>
+    `;
+    }
+
+    // 2. Typography previews
+    if (normalizedProp.includes('font') && normalizedProp.includes('family')) {
+      return `
+      <div class="preview-container" style="gap: 12px;">
+        <div class="preview-typo" style="font-family: ${valueStr};">Aa</div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+           <span style="font-size: 11px; font-weight: 500; color: #f4f4f5;">${valueStr}</span>
+        </div>
+      </div>
+    `;
+    }
+
+    // 3. Spacing / Padding / Dimensions (Bars)
+    if (normalizedProp.includes('spacing') || normalizedProp.includes('padding') || normalizedProp.includes('margin') || normalizedProp.includes('gap')) {
+      const num = parseInt(valueStr);
+      if (!isNaN(num)) {
+        return `
+        <div class="preview-container" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+          <div class="preview-bar" style="width: ${Math.min(num * 2, 80)}px;"></div>
+          <code>${valueStr}</code>
+        </div>
+      `;
+      }
+    }
+
+    // 4. Border Radius (Radius Box)
+    if (normalizedProp.includes('radius') || normalizedProp.includes('rounding')) {
+      return `
+      <div class="preview-container">
+        <div class="preview-radius" style="border-radius: ${valueStr};"></div>
+        <code>${valueStr}</code>
+      </div>
+    `;
+    }
+
+    // Default formatting
+    return `<code>${this.escapeHtml(valueStr)}</code>`;
+  }
+
+  /**
    * Generate DevRev-ready issues table
    * @param {Object} comparisonResults - Comparison results
    * @returns {string} HTML content for DevRev issues table
@@ -437,10 +622,11 @@ export class ReportGenerator {
       const formatter = new IssueFormatter();
       const issues = formatter.transform(comparisonResults);
 
+      // If no issues, show success message
       if (!issues || issues.length === 0) {
         return `
           <div class="no-data">
-            <p>✅ No issues found - All components match the design specifications!</p>
+            <p><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom; margin-right: 6px;"><polyline points="20 6 9 17 4 12"/></svg> No issues found - All components match the design specifications!</p>
           </div>
         `;
       }
@@ -451,7 +637,7 @@ export class ReportGenerator {
           <div class="section-header">
             <div class="section-heading-row">
               <span class="section-pill">DevRev Export</span>
-              <h2>📋 Comparison Issues (DevRev Format)</h2>
+              <h2><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Comparison Issues (DevRev Format)</h2>
             </div>
             <p class="section-description">
               Structured issue log engineered for DevRev ingestion. Filter, triage, and export without leaving the browser.
@@ -491,9 +677,9 @@ export class ReportGenerator {
               onkeyup="filterDevRevTable()"
             >
             <div class="issue-stats">
-              <span class="stat-badge stat-critical">🔴 Critical <strong>${issues.filter(i => i.severity === 'Critical').length}</strong></span>
-              <span class="stat-badge stat-major">🟠 Major <strong>${issues.filter(i => i.severity === 'Major').length}</strong></span>
-              <span class="stat-badge stat-minor">🟢 Minor <strong>${issues.filter(i => i.severity === 'Minor').length}</strong></span>
+              <span class="stat-badge stat-critical"><span class="dot dot-critical"></span> Critical <strong>${issues.filter(i => i.severity === 'Critical').length}</strong></span>
+              <span class="stat-badge stat-major"><span class="dot dot-major"></span> Major <strong>${issues.filter(i => i.severity === 'Major').length}</strong></span>
+              <span class="stat-badge stat-minor"><span class="dot dot-minor"></span> Minor <strong>${issues.filter(i => i.severity === 'Minor').length}</strong></span>
             </div>
           </div>
           
@@ -568,7 +754,12 @@ export class ReportGenerator {
     return `
       <section class="ds-validation-section" id="ds-validation">
         <div class="ds-validation-header">
-          <h2>🛡️ Design System Alignment</h2>
+          <h2>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Design System Alignment
+          </h2>
           <span class="badge ${results.summary === 'consistent' ? 'badge-success' : 'badge-warning'}">
             ${results.summary === 'consistent' ? 'Consistent' : 'Deviations Found'}
           </span>
@@ -576,13 +767,27 @@ export class ReportGenerator {
         
         <div class="ds-grid">
           <div class="ds-column">
-            <h3>🎨 Figma vs Design System</h3>
-            ${this.generateDSItemsHtml(figmaMatches, figmaDeviations)}
+            <h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l5 5"/><path d="M11 11l1 1"/>
+              </svg>
+              Figma vs Design System
+            </h3>
+            <div class="ds-items-container">
+              ${this.generateDSItemsHtml(figmaMatches, figmaDeviations)}
+            </div>
           </div>
           
           <div class="ds-column">
-            <h3>🌐 Web vs Design System</h3>
-            ${this.generateDSItemsHtml(webMatches, webDeviations)}
+            <h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              Web vs Design System
+            </h3>
+            <div class="ds-items-container">
+              ${this.generateDSItemsHtml(webMatches, webDeviations)}
+            </div>
           </div>
         </div>
       </section>
@@ -597,15 +802,26 @@ export class ReportGenerator {
 
     // Deviations first
     deviations.forEach(dev => {
+      const propertyLabel = this.formatPropertyName(dev.property);
+      const visualPreview = this.getPropertyVisualPreview(dev.property, dev.value);
+
       html += `
         <div class="ds-item ds-item-deviation">
           <div class="ds-item-header">
-            <span>${this.formatPropertyName(dev.property)}</span>
+            <span>${propertyLabel}</span>
             <span class="badge badge-danger">Mismatch</span>
           </div>
-          <div class="ds-item-message">Value: <strong>${dev.value}</strong></div>
+          <div class="ds-item-message">
+            <div class="preview-container">
+              ${visualPreview}
+              <span>Value: <strong>${dev.value}</strong></span>
+            </div>
+          </div>
           <div class="ds-suggestion">
-            💡 Suggestion: Use <span class="ds-token-badge">${dev.suggestedToken}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>Suggestion: Use <span class="ds-token-badge">${dev.suggestedToken}</span></span>
           </div>
         </div>
       `;
@@ -613,14 +829,20 @@ export class ReportGenerator {
 
     // Matches
     matches.forEach(match => {
+      const propertyLabel = this.formatPropertyName(match.property);
+      const visualPreview = this.getPropertyVisualPreview(match.property, match.value);
+
       html += `
         <div class="ds-item ds-item-match">
           <div class="ds-item-header">
-            <span>${this.formatPropertyName(match.property)}</span>
+            <span>${propertyLabel}</span>
             <span class="badge badge-success">Match</span>
           </div>
           <div class="ds-item-message">
-            Value <strong>${match.value}</strong> matched token <span class="ds-token-badge">${match.token}</span>
+            <div class="preview-container">
+              ${visualPreview}
+              <span>Value <strong>${match.value}</strong> matched token <span class="ds-token-badge">${match.token}</span></span>
+            </div>
           </div>
         </div>
       `;
@@ -631,6 +853,23 @@ export class ReportGenerator {
     }
 
     return html;
+  }
+
+  /**
+   * Helper to get visual preview for DS items
+   */
+  getPropertyVisualPreview(property, value) {
+    const p = property.toLowerCase();
+    if (p.includes('color')) {
+      return `<div class="preview-swatch" style="background-color: ${value};"></div>`;
+    }
+    if (p.includes('font-family')) {
+      return `<div class="preview-typo" style="font-family: ${value};">Aa</div>`;
+    }
+    if (p.includes('border-radius') || p.includes('corner-radius')) {
+      return `<div class="preview-radius" style="border-radius: ${value};"></div>`;
+    }
+    return '';
   }
 
   /**
@@ -729,223 +968,184 @@ export class ReportGenerator {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <title>{{title}}</title>
   <style>
     :root {
-      --color-primary: #4f46e5;
-      --color-secondary: #6366f1;
-      --color-success: #10b981;
-      --color-warning: #f59e0b;
+      /* Palette: Zinc (Dark Mode) */
+      --color-zinc-50: #fafafa;
+      --color-zinc-100: #f4f4f5;
+      --color-zinc-200: #e4e4e7;
+      --color-zinc-300: #d4d4d8;
+      --color-zinc-400: #a1a1aa;
+      --color-zinc-500: #71717a;
+      --color-zinc-600: #52525b;
+      --color-zinc-700: #3f3f46;
+      --color-zinc-800: #27272a;
+      --color-zinc-900: #18181b;
+      --color-zinc-950: #09090b;
+
+      /* Palette: Indigo */
+      --color-indigo-400: #818cf8;
+      --color-indigo-500: #6366f1;
+      --color-indigo-600: #4f46e5;
+      
+      /* Status */
+      --color-success: #22c55e;
+      --color-warning: #fbbf24;
       --color-danger: #ef4444;
-      --color-gray-50: #f9fafb;
-      --color-gray-100: #f3f4f6;
-      --color-gray-200: #e5e7eb;
-      --color-gray-300: #d1d5db;
-      --color-gray-400: #9ca3af;
-      --color-gray-500: #6b7280;
-      --color-gray-600: #4b5563;
-      --color-gray-700: #374151;
-      --color-gray-800: #1f2937;
-      --color-gray-900: #111827;
+
+      /* Semantic Tokens */
+      --bg-page: var(--color-zinc-950);
+      --bg-card: rgba(24, 24, 27, 0.6);
+      --bg-card-hover: rgba(39, 39, 42, 0.7);
+      
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-default: rgba(255, 255, 255, 0.15);
+
+      --text-main: var(--color-zinc-50);
+      --text-muted: var(--color-zinc-400);
+
+      --accent: var(--color-indigo-500);
+      --accent-glow: rgba(99, 102, 241, 0.4);
+
+      /* Typography */
+      --font-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
     }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      line-height: 1.5;
-      color: var(--color-gray-800);
-      background-color: var(--color-gray-50);
+
+    *, *::before, *::after {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-    
+
+    body {
+      font-family: var(--font-ui);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 4rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: -20%;
+      width: 140%;
+      height: 140%;
+      background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.07), transparent 40%),
+                  radial-gradient(circle at 80% 10%, rgba(34, 197, 94, 0.03), transparent 30%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 2rem;
+      padding: 0 2rem;
     }
-    
+
+    /* Header */
     header {
-      background-color: white;
-      padding: 1.5rem 2rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2rem;
+      margin-top: 4rem;
+      margin-bottom: 3rem;
+      padding: 3rem;
+      background: linear-gradient(180deg, rgba(39, 39, 42, 0.2) 0%, rgba(24, 24, 27, 0.2) 100%);
+      border: 1px solid var(--border-default);
+      background-color: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    
+
     h1 {
-      margin: 0;
-      color: var(--color-gray-900);
-      font-size: 1.875rem;
+      font-size: 2.5rem;
       font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #fff, #a1a1aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    
-    .metadata {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
-      margin-top: 1rem;
-      color: var(--color-gray-600);
-    }
-    
-    .metadata-item {
-      display: flex;
-      align-items: center;
-    }
-    
-    .metadata-item strong {
-      margin-right: 0.5rem;
-    }
-    
+
+    /* Summary */
     .summary {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1.5rem;
-      margin-bottom: 2rem;
+      margin-bottom: 3rem;
     }
-    
+
     .summary-card {
-      background-color: white;
       padding: 1.5rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .summary-card h3 {
-      margin-top: 0;
-      color: var(--color-gray-700);
-      font-size: 1.25rem;
-    }
-    
-    .summary-value {
-      font-size: 2.25rem;
-      font-weight: 700;
-      color: var(--color-primary);
-      margin: 0.5rem 0;
-    }
-    
-    .severity-counts {
+      background: rgba(39, 39, 42, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.75rem;
       display: flex;
-      justify-content: space-between;
-      margin-top: 1rem;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-    
-    .severity-count {
-      text-align: center;
-      flex: 1;
+
+    .summary-card h3 {
+      font-size: 0.825rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin: 0;
     }
-    
-    .severity-count-value {
-      font-size: 1.5rem;
-      font-weight: 600;
+
+    .summary-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      font-feature-settings: "tnum";
     }
-    
-    .severity-count-label {
-      font-size: 0.875rem;
-      color: var(--color-gray-600);
-    }
-    
-    .severity-high .severity-count-value {
-      color: var(--color-danger);
-    }
-    
-    .severity-medium .severity-count-value {
-      color: var(--color-warning);
-    }
-    
-    .severity-low .severity-count-value {
-      color: var(--color-success);
-    }
-    
-    .severity-group {
-      margin-bottom: 2rem;
-      width: 100%;
-    }
-    
-    .severity-group h3 {
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.375rem;
-      font-size: 1.25rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .severity-high h3 {
-      background-color: rgba(239, 68, 68, 0.1);
-      color: var(--color-danger);
-    }
-    
-    .severity-medium h3 {
-      background-color: rgba(245, 158, 11, 0.1);
-      color: var(--color-warning);
-    }
-    
-    .severity-low h3 {
-      background-color: rgba(16, 185, 129, 0.1);
-      color: var(--color-success);
-    }
-    
-    .comparison-results {
-      width: 100%;
-    }
-    
+
+    /* Comparison Items */
     .comparison-item {
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 1rem;
+      margin-bottom: 2rem;
       overflow: hidden;
     }
-    
+
     .comparison-header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
+      padding: 1.5rem 2rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-subtle);
     }
-    
+
     .comparison-header h4 {
-      margin: 0;
       font-size: 1.125rem;
-      color: var(--color-gray-800);
+      font-weight: 600;
+      margin: 0;
+      margin-bottom: 0.5rem;
     }
-    
-    .comparison-meta {
-      display: flex;
-      gap: 1.5rem;
-      font-size: 0.875rem;
-    }
-    
-    .match-score, .match-percentage {
-      display: inline-flex;
-      align-items: center;
-      color: var(--color-gray-700);
-    }
-    
+
     .comparison-details {
+      padding: 20px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      padding: 1.5rem;
-      background-color: var(--color-gray-50);
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
     }
-    
+
     .component-info, .element-info {
-      background-color: white;
-      padding: 1rem;
-      border-radius: 0.375rem;
-      border: 1px solid var(--color-gray-200);
+      padding: 0;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-subtle);
+      width: 100%;
+      height: 100%;
     }
-    
-    .component-info h5, .element-info h5 {
-      margin-top: 0;
-      margin-bottom: 0.75rem;
-      color: var(--color-gray-700);
-      font-size: 1rem;
-    }
-    
-    .info-row {
+
+     .info-row {
       display: flex;
       margin-bottom: 0.5rem;
       font-size: 0.875rem;
@@ -954,164 +1154,47 @@ export class ReportGenerator {
     .info-row span {
       font-weight: 600;
       min-width: 80px;
-      color: var(--color-gray-600);
+      color: var(--text-muted);
     }
-    
+
     .property-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.875rem;
+      font-size: 0.9rem;
     }
-    
+
     .property-table th {
-      background-color: var(--color-gray-100);
       text-align: left;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 2px solid var(--color-gray-300);
-      color: var(--color-gray-700);
+      padding: 1rem 2rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-default);
+      font-weight: 500;
     }
-    
+
     .property-table td {
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--color-gray-200);
-      vertical-align: top;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border-subtle);
     }
-    
-    .property-table tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .property-table tr.match {
-      background-color: rgba(16, 185, 129, 0.05);
-    }
-    
-    .property-table tr.mismatch {
-      background-color: rgba(239, 68, 68, 0.05);
-    }
-    
-    .status-cell {
-      font-weight: 600;
-    }
-    
-    .status-cell.match {
-      color: var(--color-success);
-    }
-    
-    .status-cell.mismatch {
-      color: var(--color-danger);
-    }
-    
-    .no-data {
-      padding: 2rem;
-      text-align: center;
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      color: var(--color-gray-500);
-    }
-    
-    footer {
-      margin-top: 3rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--color-gray-200);
-      text-align: center;
-      color: var(--color-gray-500);
-      font-size: 0.875rem;
-    }
-    
-    /* Design System Validation Styles */
-    .ds-validation-section {
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2rem;
-      overflow: hidden;
-      border-left: 4px solid var(--color-primary);
-    }
-    
-    .ds-validation-header {
-      padding: 1rem 1.5rem;
-      background-color: var(--color-gray-50);
-      border-bottom: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .ds-validation-header h2 {
-      margin: 0;
-      font-size: 1.25rem;
-      color: var(--color-gray-900);
-    }
-    
-    .ds-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      background-color: var(--color-gray-200);
-    }
-    
-    .ds-column {
-      background-color: white;
-      padding: 1.5rem;
-    }
-    
-    .ds-column h3 {
-      margin-top: 0;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-      color: var(--color-gray-700);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .ds-item {
-      padding: 0.75rem;
-      border-radius: 0.375rem;
-      margin-bottom: 0.75rem;
-      font-size: 0.875rem;
-    }
-    
-    .ds-item-match {
-      background-color: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-    
-    .ds-item-deviation {
-      background-color: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-    }
-    
-    .ds-item-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
-    
-    .ds-token-badge {
-      font-family: monospace;
-      padding: 0.125rem 0.375rem;
+
+    .status-cell.match { color: var(--color-success); }
+    .status-cell.mismatch { color: var(--color-danger); }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      padding: 0.2rem 0.4rem;
       border-radius: 0.25rem;
-      background-color: var(--color-gray-100);
-      color: var(--color-gray-700);
-      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.05); /* very light zinc */
+      color: var(--color-zinc-200);
+      word-break: break-all;
     }
-    
-    .ds-item-message {
-      font-size: 0.75rem;
-      color: var(--color-gray-600);
-      margin-top: 0.25rem;
-      font-style: italic;
-    }
-    
-    .ds-suggestion {
-      margin-top: 0.5rem;
-      padding-top: 0.5rem;
-      border-top: 1px dashed rgba(239, 68, 68, 0.2);
-      font-weight: 600;
-      color: var(--color-danger);
+
+    footer {
+      text-align: center;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-muted);
     }
   </style>
 </head>
@@ -1121,13 +1204,10 @@ export class ReportGenerator {
       <h1>{{title}}</h1>
       <div class="metadata">
         <div class="metadata-item">
-          <strong>Figma File:</strong> {{figmaFileName}}
+          <strong>File:</strong> {{figmaFileName}}
         </div>
         <div class="metadata-item">
-          <strong>Web URL:</strong> {{webUrl}}
-        </div>
-        <div class="metadata-item">
-          <strong>Generated:</strong> {{timestamp}}
+          <strong>URL:</strong> {{webUrl}}
         </div>
       </div>
     </header>
@@ -1137,59 +1217,20 @@ export class ReportGenerator {
         <h3>Components Analyzed</h3>
         <div class="summary-value">{{componentsAnalyzed}}</div>
       </div>
-      
       <div class="summary-card">
-        <h3>Overall Match Percentage</h3>
+        <h3>Match Percentage</h3>
         <div class="summary-value">{{matchPercentage}}%</div>
-        <div>Severity: <strong>{{overallSeverity}}</strong></div>
-      </div>
-      
-      <div class="summary-card">
-        <h3>Issues by Severity</h3>
-        <div class="severity-counts">
-          <div class="severity-count severity-high">
-            <div class="severity-count-value">{{highSeverityCount}}</div>
-            <div class="severity-count-label">High</div>
-          </div>
-          <div class="severity-count severity-medium">
-            <div class="severity-count-value">{{mediumSeverityCount}}</div>
-            <div class="severity-count-label">Medium</div>
-          </div>
-          <div class="severity-count severity-low">
-            <div class="severity-count-value">{{lowSeverityCount}}</div>
-            <div class="severity-count-label">Low</div>
-          </div>
-        </div>
       </div>
     </div>
 
-    <!-- Design System Validation Section -->
-    {{designSystemValidation}}
-    
     <div class="comparison-results">
       {{comparisonTables}}
     </div>
     
-    <!-- DevRev Issues Table Section -->
-    {{devrevIssuesTable}}
-    
     <footer>
-      <p>Generated by Figma-Web Comparison Tool</p>
+      <p>Generated by DesignQA</p>
     </footer>
   </div>
-  
-  <script>
-    // Store comparison data for interactive features
-    const comparisonData = {{jsonData}};
-    
-    // Add interactive features here if needed
-  </script>
-  
-  <!-- DevRev Table Styles -->
-  {{devrevTableStyles}}
-  
-  <!-- DevRev Table Scripts -->
-  {{devrevTableScripts}}
 </body>
 </html>`;
   }

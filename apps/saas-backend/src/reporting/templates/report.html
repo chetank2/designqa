@@ -343,18 +343,22 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 3rem;
-      padding: 2rem;
+      padding: 20px;
       background: rgba(255, 255, 255, 0.02);
       border-top: 1px solid var(--border-subtle);
     }
 
     .component-info {
-      padding: 2rem;
+      padding: 0;
       border-right: 1px solid var(--border-subtle);
+      width: 100%;
+      height: 100%;
     }
 
     .element-info {
-      padding: 2rem;
+      padding: 0;
+      width: 100%;
+      height: 100%;
     }
 
     @media (max-width: 768px) {
@@ -794,20 +798,6 @@
         </div>
       </div>
 
-      <div class="alert-banner" id="note-banner">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <div class="alert-content">
-          <strong>Heads up:</strong> We currently surface missing/existence mismatches. Enhanced visual regression
-          (color/spacing) coming soon.
-        </div>
-        <button class="alert-dismiss"
-          onclick="document.getElementById('note-banner').style.display='none'">Dismiss</button>
-      </div>
     </header>
 
     <!-- Design System Validation Section -->
@@ -828,10 +818,10 @@
 
       <div class="tab-content">
         <div id="comparison-tab" class="tab-pane active">
-          <div class="comparison-results">
-            {{comparisonTables}}
+    <div class="comparison-results">
+        {{comparisonTables}}
           </div>
-        </div>
+    </div>
 
         <div id="devrev-tab" class="tab-pane">
           <!-- DevRev issues will be loaded here if needed, but the main table is outside -->
@@ -846,7 +836,7 @@
       {{devrevIssuesTable}}
     </div>
   </div>
-
+  
   {{devrevTableScripts}}
 
   <script>
