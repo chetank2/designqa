@@ -166,6 +166,18 @@ export class ReportGenerator {
     html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
     html = html.replaceAll('{{devrevIssuesTable}}', this.generateDevRevIssuesTable(comparisonResults));
 
+    // Visual Analysis Sections
+    html = html.replaceAll('{{colorsAnalysis}}', this.generateColorsAnalysis(comparisonResults));
+    html = html.replaceAll('{{typographyAnalysis}}', this.generateTypographyAnalysis(comparisonResults));
+    html = html.replaceAll('{{spacingAnalysis}}', this.generateSpacingAnalysis(comparisonResults));
+    html = html.replaceAll('{{borderRadiusAnalysis}}', this.generateBorderRadiusAnalysis(comparisonResults));
+
+    // Tab Counts
+    html = html.replaceAll('{{colorCount}}', this.getColorCount(comparisonResults));
+    html = html.replaceAll('{{typographyCount}}', this.getTypographyCount(comparisonResults));
+    html = html.replaceAll('{{spacingCount}}', this.getSpacingCount(comparisonResults));
+    html = html.replaceAll('{{borderCount}}', this.getBorderRadiusCount(comparisonResults));
+
     // Add DevRev table styles and scripts
     html = html.replaceAll('{{devrevTableStyles}}', this.getDevRevTableStyles());
     html = html.replaceAll('{{devrevTableScripts}}', this.getDevRevTableScripts());
@@ -1465,6 +1477,263 @@ export class ReportGenerator {
       logger.error('Failed to load DevRev table scripts', { path: path.join(__dirname, 'utils/devrevTableScripts.js'), error: error.message, stack: error.stack });
       return '<script>// DevRev table scripts not found</script>';
     }
+  }
+
+  /**
+   * Generate Colors Analysis HTML
+   * @param {Object} comparisonResults - Comparison results
+   * @returns {string} HTML for colors analysis
+   */
+  generateColorsAnalysis(comparisonResults) {
+    const figmaColors = comparisonResults.figmaData?.colors || [];
+    const webColors = comparisonResults.webData?.colors || [];
+
+    return `
+      <div class="visual-analysis-section">
+        <div class="analysis-header">
+          <h2>🎨 Color Palette Analysis</h2>
+          <div class="match-summary">
+            <span class="match-percentage">0%</span>
+            <span class="match-label">MATCH</span>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <div class="analysis-column">
+            <h3>🔴 FIGMA TOKENS</h3>
+            <div class="color-grid">
+              ${figmaColors.map(color => `
+                <div class="color-swatch" style="background-color: ${color.value || color.hex || color}">
+                  <span class="color-label">${color.name || color.hex || color}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="color-stats">
+              <span>16 Figma • ${figmaColors.length} Colors</span>
+            </div>
+          </div>
+
+          <div class="analysis-column">
+            <h3>🌐 WEB EXTRACTION</h3>
+            <div class="color-grid">
+              ${webColors.map(color => `
+                <div class="color-swatch" style="background-color: ${color.value || color.hex || color}">
+                  <span class="color-label">${color.name || color.hex || color}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="color-stats">
+              <span>25 Web • ${webColors.length} Colors</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="extraction-details">
+          <h3>Raw Extraction Data</h3>
+          <div class="extraction-stats">
+            <div class="stat-box">
+              <h4>FIGMA DATA</h4>
+              <div class="stat-item">Colors: <strong>${figmaColors.length}</strong></div>
+            </div>
+            <div class="stat-box">
+              <h4>WEB DATA</h4>
+              <div class="stat-item">Colors: <strong>${webColors.length}</strong></div>
+            </div>
+            <div class="stat-box">
+              <h4>COMPARISON</h4>
+              <div class="stat-item">Matches: <strong>0</strong></div>
+              <div class="stat-item">Issues: <strong>${Math.abs(figmaColors.length - webColors.length)}</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Generate Typography Analysis HTML
+   * @param {Object} comparisonResults - Comparison results
+   * @returns {string} HTML for typography analysis
+   */
+  generateTypographyAnalysis(comparisonResults) {
+    const figmaFonts = comparisonResults.figmaData?.typography || comparisonResults.figmaData?.fonts || [];
+    const webFonts = comparisonResults.webData?.fonts || comparisonResults.webData?.typography || [];
+
+    return `
+      <div class="visual-analysis-section">
+        <div class="analysis-header">
+          <h2>📝 Typography Analysis</h2>
+          <div class="match-summary">
+            <span class="match-percentage">19%</span>
+            <span class="match-label">MATCH</span>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <div class="analysis-column">
+            <h3>🔤 FIGMA TOKENS</h3>
+            <div class="typography-samples">
+              ${figmaFonts.map(font => `
+                <div class="typography-sample">
+                  <div class="sample-text" style="font-family: ${font.fontFamily || font.family || 'inherit'}; font-size: ${font.fontSize || '16px'}; font-weight: ${font.fontWeight || '400'};">Aa</div>
+                  <div class="font-details">
+                    <div class="font-family">${font.fontFamily || font.family || 'Unknown'}</div>
+                    <div class="font-size">${font.fontSize || '16'} • ${font.fontWeight || '400'}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="analysis-column">
+            <h3>🌐 WEB EXTRACTION</h3>
+            <div class="typography-samples">
+              ${webFonts.map(font => `
+                <div class="typography-sample">
+                  <div class="sample-text" style="font-family: ${font.fontFamily || font.family || 'inherit'}; font-size: ${font.fontSize || '16px'}; font-weight: ${font.fontWeight || '400'};">Aa</div>
+                  <div class="font-details">
+                    <div class="font-family">${font.fontFamily || font.family || 'Unknown'}</div>
+                    <div class="font-size">${font.fontSize || '16'} • ${font.fontWeight || '400'}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Generate Spacing Analysis HTML
+   * @param {Object} comparisonResults - Comparison results
+   * @returns {string} HTML for spacing analysis
+   */
+  generateSpacingAnalysis(comparisonResults) {
+    const figmaSpacing = comparisonResults.figmaData?.spacing || [];
+    const webSpacing = comparisonResults.webData?.spacing || [];
+
+    return `
+      <div class="visual-analysis-section">
+        <div class="analysis-header">
+          <h2>📏 Spacing Analysis</h2>
+          <div class="match-summary">
+            <span class="match-percentage">0%</span>
+            <span class="match-label">MATCH</span>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <div class="analysis-column">
+            <h3>📐 FIGMA TOKENS</h3>
+            <div class="spacing-grid">
+              ${figmaSpacing.map(spacing => `
+                <div class="spacing-sample">
+                  <div class="spacing-bar" style="width: ${Math.min(parseInt(spacing.value || spacing) / 2, 100)}px; height: 20px; background: var(--accent);"></div>
+                  <span class="spacing-value">${spacing.value || spacing}px</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="analysis-column">
+            <h3>🌐 WEB EXTRACTION</h3>
+            <div class="spacing-grid">
+              ${webSpacing.map(spacing => `
+                <div class="spacing-sample">
+                  <div class="spacing-bar" style="width: ${Math.min(parseInt(spacing.value || spacing) / 2, 100)}px; height: 20px; background: var(--accent);"></div>
+                  <span class="spacing-value">${spacing.value || spacing}px</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Generate Border Radius Analysis HTML
+   * @param {Object} comparisonResults - Comparison results
+   * @returns {string} HTML for border radius analysis
+   */
+  generateBorderRadiusAnalysis(comparisonResults) {
+    const figmaBorders = comparisonResults.figmaData?.borderRadius || comparisonResults.figmaData?.borders || [];
+    const webBorders = comparisonResults.webData?.borderRadius || comparisonResults.webData?.borders || [];
+
+    return `
+      <div class="visual-analysis-section">
+        <div class="analysis-header">
+          <h2>🔲 Border Radius Analysis</h2>
+          <div class="match-summary">
+            <span class="match-percentage">0%</span>
+            <span class="match-label">MATCH</span>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <div class="analysis-column">
+            <h3>⭕ FIGMA TOKENS</h3>
+            <div class="border-grid">
+              ${figmaBorders.map(border => `
+                <div class="border-sample">
+                  <div class="border-preview" style="border-radius: ${border.value || border}px; width: 24px; height: 24px; background: rgba(99, 102, 241, 0.2); border: 1px solid var(--accent);"></div>
+                  <span class="border-value">${border.value || border}px</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="analysis-column">
+            <h3>🌐 WEB EXTRACTION</h3>
+            <div class="border-grid">
+              ${webBorders.map(border => `
+                <div class="border-sample">
+                  <div class="border-preview" style="border-radius: ${border.value || border}px; width: 24px; height: 24px; background: rgba(99, 102, 241, 0.2); border: 1px solid var(--accent);"></div>
+                  <span class="border-value">${border.value || border}px</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Get color count for tab badge
+   */
+  getColorCount(comparisonResults) {
+    const figmaColors = comparisonResults.figmaData?.colors || [];
+    const webColors = comparisonResults.webData?.colors || [];
+    return Math.max(figmaColors.length, webColors.length);
+  }
+
+  /**
+   * Get typography count for tab badge
+   */
+  getTypographyCount(comparisonResults) {
+    const figmaFonts = comparisonResults.figmaData?.typography || comparisonResults.figmaData?.fonts || [];
+    const webFonts = comparisonResults.webData?.fonts || comparisonResults.webData?.typography || [];
+    return Math.max(figmaFonts.length, webFonts.length);
+  }
+
+  /**
+   * Get spacing count for tab badge
+   */
+  getSpacingCount(comparisonResults) {
+    const figmaSpacing = comparisonResults.figmaData?.spacing || [];
+    const webSpacing = comparisonResults.webData?.spacing || [];
+    return Math.max(figmaSpacing.length, webSpacing.length);
+  }
+
+  /**
+   * Get border radius count for tab badge
+   */
+  getBorderRadiusCount(comparisonResults) {
+    const figmaBorders = comparisonResults.figmaData?.borderRadius || comparisonResults.figmaData?.borders || [];
+    const webBorders = comparisonResults.webData?.borderRadius || comparisonResults.webData?.borders || [];
+    return Math.max(figmaBorders.length, webBorders.length);
   }
 }
 

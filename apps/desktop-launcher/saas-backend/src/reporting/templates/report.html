@@ -671,6 +671,230 @@
       border-radius: 0.25rem;
     }
 
+    /* Visual Analysis Sections */
+    .visual-analysis-section {
+      margin-bottom: 3rem;
+    }
+
+    .analysis-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .analysis-header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .match-summary {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .match-percentage {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--color-danger);
+    }
+
+    .match-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .analysis-column h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Color Analysis */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .color-swatch {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      cursor: pointer;
+    }
+
+    .color-label {
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .color-stats {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* Typography Analysis */
+    .typography-samples {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .typography-sample {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.5rem;
+    }
+
+    .sample-text {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 0.25rem;
+      font-weight: 600;
+    }
+
+    .font-details {
+      flex: 1;
+    }
+
+    .font-family {
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .font-size {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Spacing Analysis */
+    .spacing-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .spacing-sample {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .spacing-bar {
+      background: var(--accent);
+      border-radius: 2px;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .spacing-value {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Border Analysis */
+    .border-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .border-sample {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .border-preview {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid var(--accent);
+    }
+
+    .border-value {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Extraction Details */
+    .extraction-details {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .extraction-details h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 1rem;
+    }
+
+    .extraction-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-box {
+      padding: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.5rem;
+    }
+
+    .stat-box h4 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-item {
+      font-size: 0.875rem;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-item strong {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
     /* Footer */
     footer {
       text-align: center;
@@ -810,21 +1034,53 @@
           <span>Comparison Analysis</span>
           <span class="tab-badge" id="comparison-badge">{{totalComparisons}}</span>
         </button>
+        <button class="tab-button" onclick="switchTab(event, 'colors-tab')" id="colors-btn">
+          <span>🎨 Colors</span>
+          <span class="tab-badge" id="colors-badge">{{colorCount}}</span>
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'typography-tab')" id="typography-btn">
+          <span>🔤 Typography</span>
+          <span class="tab-badge" id="typography-badge">{{typographyCount}}</span>
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'spacing-tab')" id="spacing-btn">
+          <span>📐 Spacing</span>
+          <span class="tab-badge" id="spacing-badge">{{spacingCount}}</span>
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'borders-tab')" id="borders-btn">
+          <span>🔲 Border Radius</span>
+          <span class="tab-badge" id="borders-badge">{{borderCount}}</span>
+        </button>
         <button class="tab-button" onclick="switchTab(event, 'devrev-tab')" id="devrev-btn">
-          <span>DevRev Issues</span>
+          <span>📋 DevRev Issues</span>
           <span class="tab-badge" id="devrev-badge">{{totalIssues}}</span>
         </button>
       </div>
 
       <div class="tab-content">
         <div id="comparison-tab" class="tab-pane active">
-    <div class="comparison-results">
-        {{comparisonTables}}
+          <div class="comparison-results">
+            {{comparisonTables}}
           </div>
-    </div>
+        </div>
+
+        <div id="colors-tab" class="tab-pane">
+          {{colorsAnalysis}}
+        </div>
+
+        <div id="typography-tab" class="tab-pane">
+          {{typographyAnalysis}}
+        </div>
+
+        <div id="spacing-tab" class="tab-pane">
+          {{spacingAnalysis}}
+        </div>
+
+        <div id="borders-tab" class="tab-pane">
+          {{borderRadiusAnalysis}}
+        </div>
 
         <div id="devrev-tab" class="tab-pane">
-          <!-- DevRev issues will be loaded here if needed, but the main table is outside -->
+          {{devrevIssuesTable}}
         </div>
       </div>
     </div>
@@ -832,9 +1088,6 @@
     <footer>
       <p>Generated by <span>DesignQA</span></p>
     </footer>
-    <div class="devrev-issues-wrapper">
-      {{devrevIssuesTable}}
-    </div>
   </div>
   
   {{devrevTableScripts}}
@@ -856,6 +1109,22 @@
           const btn = document.getElementById('comparison-btn');
           if (btn) switchTab({ currentTarget: btn }, 'comparison-tab');
         } else if (e.key === '2') {
+          e.preventDefault();
+          const btn = document.getElementById('colors-btn');
+          if (btn) switchTab({ currentTarget: btn }, 'colors-tab');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          const btn = document.getElementById('typography-btn');
+          if (btn) switchTab({ currentTarget: btn }, 'typography-tab');
+        } else if (e.key === '4') {
+          e.preventDefault();
+          const btn = document.getElementById('spacing-btn');
+          if (btn) switchTab({ currentTarget: btn }, 'spacing-tab');
+        } else if (e.key === '5') {
+          e.preventDefault();
+          const btn = document.getElementById('borders-btn');
+          if (btn) switchTab({ currentTarget: btn }, 'borders-tab');
+        } else if (e.key === '6') {
           e.preventDefault();
           const btn = document.getElementById('devrev-btn');
           if (btn) switchTab({ currentTarget: btn }, 'devrev-tab');
