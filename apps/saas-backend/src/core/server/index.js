@@ -756,6 +756,45 @@ export async function startServer(portArg) {
     }
   });
 
+  // Desktop bridge health endpoint - minimal response for web app connection detection
+  // This endpoint is specifically designed for cross-origin requests from the web app
+  app.get('/api/desktop/health', (req, res) => {
+    try {
+      // Read version from package.json
+      let version = '0.0.0';
+      const possiblePaths = [
+        path.join(process.cwd(), 'package.json'),
+        path.join(__dirname, '../../../package.json'),
+        path.join(process.resourcesPath || '', 'app/package.json')
+      ];
+
+      for (const pkgPath of possiblePaths) {
+        try {
+          if (fs.existsSync(pkgPath)) {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            version = pkg.version || version;
+            break;
+          }
+        } catch (e) {
+          // Continue to next path
+        }
+      }
+
+      res.json({
+        ok: true,
+        version,
+        platform: process.platform,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(200).json({
+        ok: false,
+        error: 'Desktop health check failed',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Version endpoint for build tracking
   app.get('/api/version', (req, res) => {
     try {

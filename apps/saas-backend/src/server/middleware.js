@@ -9,6 +9,16 @@ const DEFAULT_MAX_REQUESTS = 100;
 const DEFAULT_EXTRACTION_MAX = 10;
 const DEFAULT_HEALTH_MAX = 60;
 
+// Default allowed origins for web app -> desktop communication
+const DEFAULT_WEB_ORIGINS = [
+  'https://designqa-ck.vercel.app',
+  'https://designqa-ck-git-main.vercel.app',
+  'http://localhost:3846',
+  'http://localhost:5173',
+  'http://127.0.0.1:3846',
+  'http://127.0.0.1:5173'
+];
+
 /**
  * Configure baseline security middleware shared across deployments.
  */
@@ -17,15 +27,57 @@ export function configureSecurityMiddleware(app, config = {}) {
 
   const security = config.security || {};
   const corsConfig = security.cors || {};
-  const allowedOrigins = corsConfig.allowedOrigins || security.allowedOrigins;
+  const configuredOrigins = corsConfig.allowedOrigins || security.allowedOrigins;
+
+  // Determine allowed origins based on configuration
+  // IMPORTANT: If origins are explicitly configured, respect that without adding defaults
+  // This prevents security regressions when users want strict origin control
+  let allowedOrigins;
+  if (configuredOrigins && configuredOrigins.length > 0) {
+    // User explicitly configured origins - use ONLY those (strict mode)
+    allowedOrigins = configuredOrigins;
+  } else {
+    // No explicit config - use defaults in local/desktop mode, allow all in cloud mode
+    const isLocalMode = process.env.RUNNING_IN_ELECTRON === 'true' ||
+      (!process.env.RENDER && !process.env.VERCEL && !process.env.RAILWAY_ENVIRONMENT);
+    allowedOrigins = isLocalMode ? DEFAULT_WEB_ORIGINS : true;
+  }
+
   const corsOptions = {
-    origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
+    origin: allowedOrigins,
     credentials: true,
     methods: corsConfig.methods || ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: corsConfig.allowedHeaders || ['Content-Type', 'Authorization', 'Cache-Control', 'X-Requested-With']
   };
 
   app.set('trust proxy', 1);
+
+  // Private Network Access (PNA) support for desktop bridge endpoint
+  // MUST be registered BEFORE generic CORS handlers to intercept OPTIONS requests
+  // This allows web apps on HTTPS to access localhost HTTP services
+  // See: https://developer.chrome.com/blog/private-network-access-preflight
+  app.options('/api/desktop/*', (req, res) => {
+    // Set CORS headers
+    const origin = req.headers.origin;
+    if (origin && (allowedOrigins === true || allowedOrigins.includes(origin))) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // PNA header for preflight
+    if (req.headers['access-control-request-private-network'] === 'true') {
+      res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
+    res.status(204).end();
+  });
+
+  // Add PNA header to actual /api/desktop requests
+  app.use('/api/desktop', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    next();
+  });
+
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions));
 

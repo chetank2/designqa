@@ -205,6 +205,20 @@ function createWindow() {
  * Setup IPC handlers for mode switching
  */
 function setupIpcHandlers() {
+  // Open external URLs in default browser
+  ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      // Allow http(s) and file URLs; block everything else.
+      const parsed = new URL(url);
+      if (!['http:', 'https:', 'file:'].includes(parsed.protocol)) return false;
+      await shell.openExternal(url);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   // Start local server
   ipcMain.handle('mode:start-local-server', async () => {
     try {

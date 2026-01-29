@@ -26,5 +26,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveApiKey: (apiKey) => ipcRenderer.invoke('apikey:save', apiKey),
   getApiKey: () => ipcRenderer.invoke('apikey:get'),
   deleteApiKey: () => ipcRenderer.invoke('apikey:delete'),
-  hasApiKey: () => ipcRenderer.invoke('apikey:has')
+  hasApiKey: () => ipcRenderer.invoke('apikey:has'),
+
+  // Open URLs outside the app (default browser)
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
 });

@@ -7,7 +7,9 @@ import {
   ChevronRightIcon,
   ArrowsRightLeftIcon,
   CameraIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  GlobeAltIcon,
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -27,11 +29,24 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ]
 
+// Web app URL for external link (only shown in Electron)
+const WEB_APP_URL = 'https://designqa-ck.vercel.app'
+
 import { useAppMode } from '../../contexts/ModeContext'
 
 const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const location = useLocation()
   const { isElectron } = useAppMode()
+
+  // Handler for opening external URLs in Electron
+  const handleOpenWebApp = () => {
+    if (isElectron && (window as any).electronAPI?.openExternal) {
+      (window as any).electronAPI.openExternal(WEB_APP_URL)
+    } else {
+      // Fallback for non-Electron (shouldn't happen since we hide the button)
+      window.open(WEB_APP_URL, '_blank')
+    }
+  }
 
   return (
     <motion.div
@@ -99,8 +114,8 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
             (item.href === '/new-comparison' && location.pathname === '/')
 
           return (
-            <Link 
-              key={item.name} 
+            <Link
+              key={item.name}
               to={item.href}
               onClick={(e) => {
               }}
@@ -145,6 +160,35 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </Link>
           )
         })}
+
+        {/* Web App link - only visible in Electron/Desktop mode */}
+        {isElectron && (
+          <>
+            <div className="my-4 border-t border-border/40" />
+            <button
+              onClick={handleOpenWebApp}
+              className={cn(
+                "group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 relative w-full",
+                "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                !isOpen && "justify-center px-2"
+              )}
+            >
+              <GlobeAltIcon className="w-6 h-6 relative z-10 transition-transform duration-300 group-hover:scale-110" />
+              {isOpen && (
+                <motion.span
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="font-medium text-sm whitespace-nowrap relative z-10 flex items-center gap-2"
+                >
+                  Web App
+                  <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-50" />
+                </motion.span>
+              )}
+            </button>
+          </>
+        )}
       </nav>
 
       {/* Footer / Status */}

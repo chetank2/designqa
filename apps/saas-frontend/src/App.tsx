@@ -12,6 +12,7 @@ import ColorAnalytics from './pages/ColorAnalytics'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { Toaster } from '@/components/ui/toaster'
 import { ModeProvider } from './contexts/ModeContext'
+import DesktopConnectionGate from './components/DesktopConnectionGate'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -96,10 +97,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ModeProvider>
-        <Router>
-          <AppContent />
-          <Toaster />
-        </Router>
+        <DesktopConnectionGate>
+          <Router>
+            <AppContent />
+            <Toaster />
+          </Router>
+        </DesktopConnectionGate>
       </ModeProvider>
     </ErrorBoundary>
   )
