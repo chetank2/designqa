@@ -1,6 +1,6 @@
 {
   "name": "@designqa/desktop-win",
-  "version": "2.0.1",
+  "version": "2.0.3",
   "description": "DesignQA Desktop App for Windows",
   "main": "dist/main/index.js",
   "type": "module",
