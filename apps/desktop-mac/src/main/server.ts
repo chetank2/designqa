@@ -5,8 +5,9 @@
 
 import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'fs';
 import { Server } from 'http';
+import { execFileSync } from 'child_process';
 
 // Dynamic import for dotenv to handle missing package gracefully
 let dotenv: typeof import('dotenv') | null = null;
@@ -30,6 +31,94 @@ const __dirname = dirname(__filename);
 
 // Track server instance for graceful shutdown
 let serverInstance: Server | null = null;
+
+function ensureLocalHttpsCerts(): void {
+  const { app } = require('electron');
+  const userDataPath = process.env.DESIGNQA_USER_DATA_DIR || app.getPath('userData');
+  const homePath = app.getPath('home');
+  const certDir = join(userDataPath, 'https');
+  const certPath = join(certDir, 'localhost.pem');
+  const keyPath = join(certDir, 'localhost-key.pem');
+  const caPath = join(certDir, 'rootCA.pem');
+
+  if (existsSync(certPath) && existsSync(keyPath)) {
+    process.env.HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH || certPath;
+    process.env.HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH || keyPath;
+    process.env.HTTPS_CA_PATH = process.env.HTTPS_CA_PATH || (existsSync(caPath) ? caPath : '');
+    process.env.HTTPS_PORT = process.env.HTTPS_PORT || '3848';
+    return;
+  }
+
+  mkdirSync(certDir, { recursive: true });
+
+  const opensslConfig = [
+    '[req]',
+    'distinguished_name=req_distinguished_name',
+    'x509_extensions=v3_req',
+    'prompt=no',
+    '',
+    '[req_distinguished_name]',
+    'CN=localhost',
+    '',
+    '[v3_req]',
+    'basicConstraints=CA:FALSE',
+    'keyUsage=digitalSignature,keyEncipherment',
+    'extendedKeyUsage=serverAuth',
+    'subjectAltName=@alt_names',
+    '',
+    '[alt_names]',
+    'DNS.1=localhost',
+    'IP.1=127.0.0.1',
+    'IP.2=::1'
+  ].join('\n');
+
+  const configPath = join(certDir, 'openssl.cnf');
+  writeFileSync(configPath, opensslConfig, 'utf8');
+
+  try {
+    execFileSync('openssl', [
+      'req',
+      '-x509',
+      '-nodes',
+      '-newkey',
+      'rsa:2048',
+      '-keyout',
+      keyPath,
+      '-out',
+      certPath,
+      '-days',
+      '825',
+      '-config',
+      configPath,
+      '-extensions',
+      'v3_req'
+    ]);
+  } catch (error: any) {
+    console.warn('⚠️ Failed to generate HTTPS certificate:', error?.message || error);
+    return;
+  }
+
+  try {
+    const loginKeychain = join(homePath, 'Library', 'Keychains', 'login.keychain-db');
+    execFileSync('security', [
+      'add-trusted-cert',
+      '-d',
+      '-r',
+      'trustRoot',
+      '-k',
+      loginKeychain,
+      certPath
+    ]);
+    writeFileSync(caPath, certPath);
+  } catch (error: any) {
+    console.warn('⚠️ Failed to trust local HTTPS certificate:', error?.message || error);
+  }
+
+  process.env.HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH || certPath;
+  process.env.HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH || keyPath;
+  process.env.HTTPS_CA_PATH = process.env.HTTPS_CA_PATH || (existsSync(caPath) ? caPath : '');
+  process.env.HTTPS_PORT = process.env.HTTPS_PORT || '3848';
+}
 
 /**
  * Resolve backend server path for both development and production
@@ -130,12 +219,14 @@ async function loadDesktopEnv() {
     const homePath = app.getPath('home');
 
     // Provide a stable writable base directory to the embedded backend (for puppeteer profiles, screenshots, etc.).
-    if (!process.env.DESIGNQA_USER_DATA_DIR) {
-      process.env.DESIGNQA_USER_DATA_DIR = userDataPath;
-    }
-    if (!process.env.PERSIST_BROWSER_SESSIONS) {
-      process.env.PERSIST_BROWSER_SESSIONS = 'true';
-    }
+  if (!process.env.DESIGNQA_USER_DATA_DIR) {
+    process.env.DESIGNQA_USER_DATA_DIR = userDataPath;
+  }
+  if (!process.env.PERSIST_BROWSER_SESSIONS) {
+    process.env.PERSIST_BROWSER_SESSIONS = 'true';
+  }
+
+  ensureLocalHttpsCerts();
     
     const envPaths = [
       join(userDataPath, '.env'),           // ~/Library/Application Support/DesignQA/.env
