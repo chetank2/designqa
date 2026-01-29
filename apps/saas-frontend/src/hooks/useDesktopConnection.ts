@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-// Desktop app runs on localhost:3847
-const DESKTOP_HEALTH_URL = 'http://localhost:3847/api/desktop/health'
+// Desktop app runs on localhost over HTTPS for PNA compliance
+const DEFAULT_DESKTOP_HTTPS_URL = 'https://localhost:3848'
+const DESKTOP_BASE_URL = import.meta.env.VITE_DESKTOP_HTTPS_URL || DEFAULT_DESKTOP_HTTPS_URL
+const DESKTOP_HEALTH_URL = `${DESKTOP_BASE_URL}/api/desktop/health`
 
 // Polling configuration
 const INITIAL_INTERVAL_MS = 2000

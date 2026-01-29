@@ -99,6 +99,8 @@ Configure environment variables:
 - `DATABASE_URL` - SQLite database path (default: `file:./data/app.db`) for local mode
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` - For SaaS mode (optional)
 
+If you enable desktop-required web mode (`VITE_REQUIRE_DESKTOP=true`), the desktop backend must serve HTTPS on localhost. See `docs/guides/DESKTOP_HTTPS.md` for setup (`HTTPS_*` and `VITE_DESKTOP_HTTPS_URL`).
+
 4. Initialize database (runs automatically on first start):
 
 ```bash

@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { createServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -175,6 +176,25 @@ export async function startServer(portArg) {
   // Create Express app and HTTP server
   const app = express();
   const httpServer = createServer(app);
+  let httpsServer = null;
+
+  const httpsKeyPath = process.env.HTTPS_KEY_PATH;
+  const httpsCertPath = process.env.HTTPS_CERT_PATH;
+  const httpsCaPath = process.env.HTTPS_CA_PATH;
+
+  if (httpsKeyPath && httpsCertPath) {
+    try {
+      const httpsOptions = {
+        key: fs.readFileSync(httpsKeyPath),
+        cert: fs.readFileSync(httpsCertPath),
+        ca: httpsCaPath ? fs.readFileSync(httpsCaPath) : undefined
+      };
+      httpsServer = createHttpsServer(httpsOptions, app);
+    } catch (error) {
+      console.error('❌ Failed to initialize HTTPS server:', error.message);
+      httpsServer = null;
+    }
+  }
 
   // Enhanced service initialization with backward compatibility
   let serviceManager;
@@ -3175,6 +3195,7 @@ export async function startServer(portArg) {
 
   // Start server
   const PORT = portArg || config.server?.port || parseInt(process.env.PORT || '3847', 10);
+  const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || String(PORT + 1), 10);
   const HOST = config.server?.host || process.env.HOST || '0.0.0.0';
 
   // Wrap server.listen in a Promise to ensure it's actually listening before returning
@@ -3252,8 +3273,22 @@ export async function startServer(portArg) {
       process.on('SIGINT', () => gracefulShutdown('SIGINT'));
       process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'));
 
+      if (httpsServer) {
+        httpsServer.on('error', (error) => {
+          if (error.code === 'EADDRINUSE') {
+            console.error(`❌ HTTPS port ${HTTPS_PORT} is already in use`);
+          } else {
+            console.error('❌ HTTPS server error:', error.message);
+          }
+        });
+
+        httpsServer.listen(HTTPS_PORT, HOST, () => {
+          process.stdout.write(`HTTPS server running on port ${HTTPS_PORT}\n`);
+        });
+      }
+
       // Server is now listening, resolve the promise
       resolve(server);
     });
   });
-} 
+}
