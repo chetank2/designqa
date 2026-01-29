@@ -73,12 +73,18 @@ export function useDesktopConnection(options: DesktopConnectionOptions = {}): De
     try {
       setIsChecking(true)
 
-      // Simple request without custom headers to avoid CORS preflight complexity
-      // PNA headers are still sent by the server on the actual response
+      // Force a preflight so the browser will accept HTTPS -> localhost (PNA)
       const response = await fetch(DESKTOP_HEALTH_URL, {
-        method: 'GET',
+        method: 'POST',
         signal: controller.signal,
-        mode: 'cors'
+        mode: 'cors',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'DesignQA'
+        },
+        body: JSON.stringify({ ping: true })
       })
 
       clearTimeout(timeoutId)

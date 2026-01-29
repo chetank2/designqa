@@ -758,7 +758,7 @@ export async function startServer(portArg) {
 
   // Desktop bridge health endpoint - minimal response for web app connection detection
   // This endpoint is specifically designed for cross-origin requests from the web app
-  app.get('/api/desktop/health', (req, res) => {
+  const desktopHealthHandler = (req, res) => {
     try {
       // Read version from package.json
       let version = '0.0.0';
@@ -793,7 +793,10 @@ export async function startServer(portArg) {
         timestamp: new Date().toISOString()
       });
     }
-  });
+  };
+
+  app.get('/api/desktop/health', desktopHealthHandler);
+  app.post('/api/desktop/health', desktopHealthHandler);
 
   // Version endpoint for build tracking
   app.get('/api/version', (req, res) => {
