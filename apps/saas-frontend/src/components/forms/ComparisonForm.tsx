@@ -278,9 +278,24 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           }
 
           // Extract nodeId from URL if present
-          const nodeIdMatch = figmaUrl.match(/[?&]node-id=([^&]+)/);
-          if (nodeIdMatch) {
-            nodeId = nodeIdMatch[1].replace('-', ':');
+          const urlObj = new URL(figmaUrl);
+          let extractedNodeId = urlObj.searchParams.get('node-id');
+          if (!extractedNodeId && urlObj.hash) {
+            const hashMatch = urlObj.hash.match(/node-id=([^&]+)/);
+            if (hashMatch) {
+              try {
+                extractedNodeId = decodeURIComponent(hashMatch[1]);
+              } catch {
+                extractedNodeId = hashMatch[1];
+              }
+            }
+          }
+          if (extractedNodeId) {
+            extractedNodeId = extractedNodeId.replace(/%3A/gi, ':');
+            if (!extractedNodeId.includes(':') && extractedNodeId.includes('-')) {
+              extractedNodeId = extractedNodeId.replace('-', ':');
+            }
+            nodeId = extractedNodeId;
           }
 
           // Ensure URL is in file format for API compatibility

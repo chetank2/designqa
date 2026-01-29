@@ -1,5 +1,7 @@
 # 🚀 Figma Dev Mode MCP Integration Plan
 
+> Note: This plan only applies if you are using Figma API/MCP. If not, you can ignore `FIGMA_*` setup steps.
+
 ## 🐛 **Current Issues Fixed**
 
 ### **Issue 1: Double Extraction Bug** ✅ FIXED

@@ -52,28 +52,26 @@ export function configureSecurityMiddleware(app, config = {}) {
 
   app.set('trust proxy', 1);
 
-  // Private Network Access (PNA) support for desktop bridge endpoint
+  // Private Network Access (PNA) support for localhost API access from HTTPS web app
   // MUST be registered BEFORE generic CORS handlers to intercept OPTIONS requests
   // This allows web apps on HTTPS to access localhost HTTP services
   // See: https://developer.chrome.com/blog/private-network-access-preflight
-  app.options('/api/desktop/*', (req, res) => {
-    // Set CORS headers
+  app.options('/api/*', (req, res) => {
     const origin = req.headers.origin;
     if (origin && (allowedOrigins === true || allowedOrigins.includes(origin))) {
       res.setHeader('Access-Control-Allow-Origin', origin);
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    // PNA header for preflight
     if (req.headers['access-control-request-private-network'] === 'true') {
       res.setHeader('Access-Control-Allow-Private-Network', 'true');
     }
     res.status(204).end();
   });
 
-  // Add PNA header to actual /api/desktop requests
-  app.use('/api/desktop', (req, res, next) => {
+  // Add PNA header to actual /api requests
+  app.use('/api', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     next();
   });

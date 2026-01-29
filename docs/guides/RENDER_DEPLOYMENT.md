@@ -14,6 +14,8 @@ This project now includes a Render blueprint (`render.yaml`) plus a matching `.r
 
 ## 2. Environment Variables
 
+> Note: `FIGMA_*` variables are only needed if you are using Figma API/MCP. Otherwise, you can omit them.
+
 Set these in the newly created service before the first deploy:
 
 ### Required Variables
@@ -23,7 +25,7 @@ Set these in the newly created service before the first deploy:
 | `NODE_ENV` | `production` | Production environment |
 | `PORT` | `3847` | Server port (Render sets automatically, but good to have) |
 | `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD` | `true` | Saves several minutes of build time |
-| `FIGMA_API_KEY` | `figd_your_token_here` | **REQUIRED** - Your Figma Personal Access Token |
+| `FIGMA_API_KEY` | `figd_your_token_here` | Optional - only if using Figma API/MCP |
 | `FIGMA_CONNECTION_MODE` | `figma` | **Recommended**: Use Remote MCP mode (`https://mcp.figma.com/mcp`) |
 | `FIGMA_CONNECTION_MODE` | `api` | Alternative: Use direct REST API mode (simpler, no MCP protocol) |
 | `FIGMA_MCP_URL` | `https://mcp.figma.com/mcp` | Optional: Custom Remote MCP URL (only if using `figma` mode) |

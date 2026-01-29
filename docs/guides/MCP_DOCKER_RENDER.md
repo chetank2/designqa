@@ -1,5 +1,7 @@
 # Figma MCP in Docker & Render.com - Complete Guide
 
+> Note: This guide is only relevant if you are using Figma API/MCP. If not, you can ignore `FIGMA_*` env vars and skip this guide.
+
 ## Cloud-Only Deployment
 
 This application is designed for cloud deployments only. **Local desktop MCP mode is not supported**. All deployments must use either:
@@ -27,7 +29,7 @@ You have **two options** for Render.com:
 # Use Remote MCP mode (recommended)
 FIGMA_CONNECTION_MODE=figma
 
-# Your Figma Personal Access Token (REQUIRED)
+# Your Figma Personal Access Token (only if using Figma API/MCP)
 FIGMA_API_KEY=figd_your_token_here
 
 # Optional: Custom Remote MCP URL (defaults to https://mcp.figma.com/mcp)
@@ -48,7 +50,7 @@ FIGMA_MCP_URL=https://mcp.figma.com/mcp
 # Use direct API mode
 FIGMA_CONNECTION_MODE=api
 
-# Your Figma Personal Access Token (REQUIRED)
+# Your Figma Personal Access Token (only if using Figma API/MCP)
 FIGMA_API_KEY=figd_your_token_here
 ```
 
@@ -62,8 +64,8 @@ FIGMA_API_KEY=figd_your_token_here
 
 | Mode | Connection Type | Works in Docker? | Works in Render? | Requires | Description |
 |------|----------------|------------------|------------------|----------|-------------|
-| `api` | Figma REST API (Direct) | ✅ Yes | ✅ Yes | `FIGMA_API_KEY` token | Direct REST API calls, no MCP protocol |
-| `figma` | **Remote MCP (Cloud)** | ✅ Yes | ✅ Yes | `FIGMA_API_KEY` token | **Uses Figma's Remote MCP service at `https://mcp.figma.com/mcp`** |
+| `api` | Figma REST API (Direct) | ✅ Yes | ✅ Yes | `FIGMA_API_KEY` token (if using Figma API/MCP) | Direct REST API calls, no MCP protocol |
+| `figma` | **Remote MCP (Cloud)** | ✅ Yes | ✅ Yes | `FIGMA_API_KEY` token (if using Figma API/MCP) | **Uses Figma's Remote MCP service at `https://mcp.figma.com/mcp`** |
 
 **Note**: `desktop` mode is no longer supported. Use `figma` (Remote MCP) or `api` (Direct API) instead.
 
@@ -87,7 +89,7 @@ FIGMA_API_KEY=figd_your_token_here
 **Configuration:**
 ```bash
 FIGMA_CONNECTION_MODE=figma          # Use Remote MCP mode
-FIGMA_API_KEY=figd_your_token       # Your Figma Personal Access Token
+FIGMA_API_KEY=figd_your_token       # Your Figma Personal Access Token (only if using Figma API/MCP)
 FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Optional, defaults to this URL
 ```
 
@@ -129,7 +131,7 @@ FIGMA_MCP_URL=https://mcp.figma.com/mcp  # Optional, defaults to this URL
 
 ## Configuration for Render.com Deployment
 
-### Minimum Required Variables
+### Minimum Required Variables (only if using Figma API/MCP)
 
 **Option A: Remote MCP (Recommended)**
 ```bash

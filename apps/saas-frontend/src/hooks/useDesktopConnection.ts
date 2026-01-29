@@ -77,7 +77,9 @@ export function useDesktopConnection(options: DesktopConnectionOptions = {}): De
         method: 'GET',
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          // Force a CORS preflight so PNA headers are included.
+          'X-Requested-With': 'DesignQA'
         }
       })
 

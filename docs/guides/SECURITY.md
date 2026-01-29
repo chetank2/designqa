@@ -2,6 +2,8 @@
 
 ## 🚨 API Token Security
 
+> Note: Figma tokens are only relevant if you are using Figma API/MCP. If not, you can ignore the `FIGMA_*` guidance below.
+
 ### NEVER commit sensitive data to version control:
 - ❌ API tokens (`figd_*`)
 - ❌ Access keys
@@ -16,7 +18,7 @@
    cp config.example.json config.json
    ```
 
-2. **Add your Figma token:**
+2. **Add your Figma token (only if using Figma API/MCP):**
    ```json
    {
      "accessToken": "figd_your_actual_token_here"
@@ -30,7 +32,7 @@
 
 ### 🔒 Environment Variables (Recommended)
 
-Instead of `config.json`, use environment variables:
+Instead of `config.json`, use environment variables (only if using Figma API/MCP):
 
 ```bash
 export FIGMA_ACCESS_TOKEN="figd_your_token_here"

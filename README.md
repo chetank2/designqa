@@ -8,9 +8,9 @@ A tool for comparing Figma designs with web implementations.
 
 **Direct download links:**
 
-- **macOS (Apple Silicon M1/M2/M3):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.2/DesignQA-2.0.1-arm64.dmg)
-- **macOS (Intel):** [Download DMG](https://github.com/chetank2/designqa/releases/download/v2.0.2/DesignQA-2.0.1.dmg)
-- **Windows:** [Download EXE](https://github.com/chetank2/designqa/releases/download/v2.0.2/DesignQA%20Setup%202.0.1.exe)
+- **macOS (Apple Silicon M1/M2/M3):** [Download DMG](https://github.com/chetan/designqa/releases/download/v2.0.2/DesignQA-2.0.1-arm64.dmg)
+- **macOS (Intel):** [Download DMG](https://github.com/chetan/designqa/releases/download/v2.0.2/DesignQA-2.0.1.dmg)
+- **Windows:** [Download EXE](https://github.com/chetan/designqa/releases/download/v2.0.2/DesignQA%20Setup%202.0.1.exe)
 
 **What's New in v2.0.2:**
 - 🎯 Enhanced component extraction with better MCP metadata parsing
@@ -19,7 +19,7 @@ A tool for comparing Figma designs with web implementations.
 - 🔧 Improved build process and desktop app packaging
 - 🎨 Better visual properties extraction (colors, typography, spacing)
 
-**Full Release Notes:** [View on GitHub](https://github.com/chetank2/designqa/releases/tag/v2.0.2)
+**Full Release Notes:** [View on GitHub](https://github.com/chetan/designqa/releases/tag/v2.0.2)
 
 **Or visit:** [download.html](download.html) for a simple download page
 
@@ -86,17 +86,16 @@ The build process automatically syncs `VITE_` prefixed variables from root `.env
 2. Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 3. Create a `.env` file (copy from `env.example`):
 
 ```bash
-cp env.example .env
+cp .env.example .env
 ```
 
 Configure environment variables:
-- `FIGMA_API_KEY` - Your Figma Personal Access Token
 - `DATABASE_URL` - SQLite database path (default: `file:./data/app.db`) for local mode
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` - For SaaS mode (optional)
 
@@ -140,3 +139,15 @@ See `docs/guides/LOCAL_SERVER_LAUNCHER.md` for build and packaging details.
 ## License
 
 MIT
+
+## Contributing
+
+See `CONTRIBUTING.md` for setup, workflow, and PR guidelines.
+
+## Security
+
+Please report security issues via `SECURITY.md`.
+
+## Release Process
+
+See `docs/RELEASE.md` for tagging and release steps.

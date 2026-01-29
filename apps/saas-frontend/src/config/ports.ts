@@ -123,9 +123,14 @@ const DEFAULT_CLOUD_API_URL = 'https://designqa.onrender.com';
 // Get the API base URL with the correct port
 export function getApiBaseUrl(): string {
   const envApiUrl = import.meta.env.VITE_API_URL;
+  const requireDesktop = import.meta.env.VITE_REQUIRE_DESKTOP === 'true';
   const isElectron =
     typeof window !== 'undefined' &&
     typeof (window as any).electronAPI !== 'undefined';
+
+  if (!isElectron && requireDesktop) {
+    return `http://localhost:${APP_SERVER_PORT}`;
+  }
 
   if (!isElectron && envApiUrl && shouldUseConfiguredUrl(envApiUrl)) {
     return envApiUrl;
@@ -135,6 +140,18 @@ export function getApiBaseUrl(): string {
     const runtimeApiUrl = (window as any).__env?.VITE_API_URL;
     if (runtimeApiUrl && shouldUseConfiguredUrl(runtimeApiUrl)) {
       return runtimeApiUrl;
+    }
+  }
+
+  if (!isElectron && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const isLocalHost =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0';
+
+    if (!isLocalHost) {
+      return DEFAULT_CLOUD_API_URL;
     }
   }
 

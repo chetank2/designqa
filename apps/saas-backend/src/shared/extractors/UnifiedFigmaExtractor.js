@@ -355,7 +355,7 @@ export class UnifiedFigmaExtractor {
 
       // Extract data
       const fileId = this.parseFileId(figmaUrl);
-      const nodeId = options.nodeId || this.parseNodeId(figmaUrl);
+      const nodeId = this.normalizeNodeId(options.nodeId) || this.parseNodeId(figmaUrl);
 
       if (!fileId) {
         throw new Error('Cannot extract file ID from Figma URL');
@@ -639,15 +639,39 @@ export class UnifiedFigmaExtractor {
     try {
       const urlObj = new URL(url);
       let nodeId = urlObj.searchParams.get('node-id');
+      if (!nodeId && urlObj.hash) {
+        const hashMatch = urlObj.hash.match(/node-id=([^&]+)/);
+        if (hashMatch) {
+          nodeId = hashMatch[1];
+        }
+      }
       if (nodeId) {
-        nodeId = decodeURIComponent(nodeId);
-        // Convert hyphen format (5607-29953) to colon format (5607:29953) for Figma API
-        return nodeId.replace('-', ':');
+        return this.normalizeNodeId(nodeId);
       }
       return null;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Normalize node ID across URL-encoded and dashed formats.
+   * @param {string} nodeId
+   * @returns {string|null}
+   */
+  normalizeNodeId(nodeId) {
+    if (!nodeId || typeof nodeId !== 'string') return null;
+    let normalized = nodeId;
+    try {
+      normalized = decodeURIComponent(normalized);
+    } catch {
+      // Keep original if decoding fails.
+    }
+    normalized = normalized.replace(/%3A/gi, ':');
+    if (!normalized.includes(':') && normalized.includes('-')) {
+      normalized = normalized.replace('-', ':');
+    }
+    return normalized;
   }
 
   /**

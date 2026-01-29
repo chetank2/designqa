@@ -1,5 +1,7 @@
 # Remote MCP: How It Works in Docker & Render.com
 
+> Note: This guide references `FIGMA_*` env vars for Figma API/MCP. If you are not using Figma API/MCP, you can ignore those variables and steps.
+
 ## Quick Answer
 
 **Yes!** Remote MCP works in both Docker and Render.com. Here's how:

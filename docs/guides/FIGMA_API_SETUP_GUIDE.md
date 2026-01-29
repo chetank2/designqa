@@ -1,5 +1,7 @@
 # Figma API Setup Guide
 
+> Note: Only needed if you are using Figma API/MCP. If not, you can skip this guide.
+
 This guide will help you set up a Figma API token with the correct permissions for the Comparison Tool.
 
 ## Creating a Personal Access Token

@@ -32,6 +32,8 @@ The build process:
 
 ### Required Environment Variables
 
+> Note: `FIGMA_*` variables are only needed if you are using Figma API/MCP. Otherwise, you can omit them.
+
 Set these in Railway Dashboard → Your Project → Variables:
 
 #### **Core Configuration**
@@ -49,9 +51,9 @@ PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENABLE_LOCAL_MCP=false
 ```
 
-#### **Figma API Configuration**
+#### **Figma API Configuration (optional)**
 ```bash
-# Figma Personal Access Token (REQUIRED)
+# Figma Personal Access Token (only if using Figma API/MCP)
 FIGMA_API_KEY=figd_your_token_here
 # OR
 FIGMA_TOKEN=figd_your_token_here

@@ -2,16 +2,16 @@
 
 This guide explains how to configure environment variables for cloud deployments (Render/Railway) of the Figma-Web Comparison Tool.
 
-**Note**: This application is designed for cloud deployments only. Local desktop mode is no longer supported.
+**Note**: `FIGMA_*` env vars are only needed if you are using Figma API/MCP. Otherwise, you can omit them.
 
-## 🔐 **Required Environment Variables**
+## 🔐 **Environment Variables**
 
-### **Figma Configuration**
+### **Figma Configuration (optional)**
 ```bash
-# Figma Personal Access Token (REQUIRED)
+# Figma Personal Access Token (only if using Figma API/MCP)
 FIGMA_API_KEY=figd_your_actual_token_here
 
-# Figma Connection Mode (REQUIRED)
+# Figma Connection Mode (only if using Figma API/MCP)
 FIGMA_CONNECTION_MODE=figma  # Options: 'api' (direct REST API) or 'figma' (Remote MCP - recommended)
 
 # Optional Figma Configuration

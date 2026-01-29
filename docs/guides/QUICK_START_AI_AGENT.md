@@ -1,5 +1,7 @@
 # 🤖 AI Agent for Figma-to-Browser Comparison
 
+> Note: This guide references Figma API/MCP. If you are not using Figma API/MCP, ignore the `FIGMA_*` env vars and related steps.
+
 ## What This AI Agent Does
 
 Your system is a sophisticated AI agent that:
