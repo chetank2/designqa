@@ -73,16 +73,12 @@ export function useDesktopConnection(options: DesktopConnectionOptions = {}): De
     try {
       setIsChecking(true)
 
+      // Simple request without custom headers to avoid CORS preflight complexity
+      // PNA headers are still sent by the server on the actual response
       const response = await fetch(DESKTOP_HEALTH_URL, {
         method: 'GET',
         signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          // Force a CORS preflight so PNA headers are included.
-          'X-Requested-With': 'DesignQA'
-        },
-        mode: 'cors',
-        credentials: 'include'
+        mode: 'cors'
       })
 
       clearTimeout(timeoutId)
