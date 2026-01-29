@@ -27,7 +27,10 @@ export function configureSecurityMiddleware(app, config = {}) {
 
   const security = config.security || {};
   const corsConfig = security.cors || {};
-  const configuredOrigins = corsConfig.allowedOrigins || security.allowedOrigins;
+  const configuredOriginsRaw = corsConfig.allowedOrigins || security.allowedOrigins;
+  const configuredOrigins = typeof configuredOriginsRaw === 'string'
+    ? configuredOriginsRaw.split(',').map(origin => origin.trim()).filter(Boolean)
+    : configuredOriginsRaw;
 
   // Determine allowed origins based on configuration
   // IMPORTANT: If origins are explicitly configured, respect that without adding defaults

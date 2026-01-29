@@ -80,7 +80,9 @@ export function useDesktopConnection(options: DesktopConnectionOptions = {}): De
           'Accept': 'application/json',
           // Force a CORS preflight so PNA headers are included.
           'X-Requested-With': 'DesignQA'
-        }
+        },
+        mode: 'cors',
+        credentials: 'include'
       })
 
       clearTimeout(timeoutId)
