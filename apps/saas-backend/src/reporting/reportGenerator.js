@@ -998,6 +998,157 @@ export class ReportGenerator {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  asArray(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (value instanceof Set) return Array.from(value);
+    if (typeof value === 'object') {
+      if (Array.isArray(value.items)) return value.items;
+      if (Array.isArray(value.values)) return value.values;
+      return Object.values(value).flatMap(item => Array.isArray(item) ? item : [item]);
+    }
+    return [value];
+  }
+
+  uniqueTokens(tokens) {
+    const seen = new Set();
+    return this.asArray(tokens).filter(token => {
+      const key = this.getTokenValue(token).toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  getTokenValue(token) {
+    if (token === undefined || token === null) return '';
+    if (typeof token !== 'object') return String(token);
+    return String(
+      token.value ??
+      token.hex ??
+      token.color ??
+      token.fontFamily ??
+      token.family ??
+      token.name ??
+      ''
+    );
+  }
+
+  collectStyleTokens(items, properties) {
+    const values = [];
+    this.asArray(items).forEach(item => {
+      const styleSources = [
+        item?.styles,
+        item?.style,
+        item?.computedStyles,
+        item?.css,
+        item
+      ];
+
+      styleSources.forEach(styles => {
+        if (!styles || typeof styles !== 'object') return;
+        properties.forEach(property => {
+          const value = styles[property];
+          if (value !== undefined && value !== null && value !== '') {
+            values.push(value);
+          }
+        });
+      });
+    });
+    return values;
+  }
+
+  normalizeTypographyTokens(tokens) {
+    if (!tokens) return [];
+    if (!Array.isArray(tokens) && typeof tokens === 'object') {
+      const families = this.asArray(tokens.fontFamilies);
+      const sizes = this.asArray(tokens.fontSizes);
+      const weights = this.asArray(tokens.fontWeights);
+
+      if (families.length || sizes.length || weights.length) {
+        const count = Math.max(families.length, sizes.length, weights.length);
+        return Array.from({ length: count }, (_, index) => ({
+          fontFamily: families[index] || families[0] || 'Unknown',
+          fontSize: sizes[index] || sizes[0] || '',
+          fontWeight: weights[index] || weights[0] || ''
+        }));
+      }
+    }
+    return this.asArray(tokens);
+  }
+
+  getVisualTokens(comparisonResults, source, category) {
+    const data = comparisonResults?.[`${source}Data`] || {};
+    const details = comparisonResults?.extractionDetails?.[source] || {};
+    const components = source === 'figma'
+      ? (data.components || data.elements || [])
+      : (data.elements || data.components || []);
+
+    const tokenSources = {
+      colors: [
+        data.colors,
+        data.colorPalette,
+        data.designTokens?.colors,
+        details.colors,
+        source === 'figma' ? comparisonResults?.colorAnalysis?.figmaColors : comparisonResults?.colorAnalysis?.webColors,
+        source === 'figma' ? comparisonResults?.comparison?.colorAnalysis?.figmaColors : comparisonResults?.comparison?.colorAnalysis?.webColors,
+        this.collectStyleTokens(components, ['color', 'backgroundColor', 'background-color', 'fill', 'stroke'])
+      ],
+      typography: [
+        data.typography,
+        data.fonts,
+        data.designTokens?.typography,
+        details.typography,
+        this.collectStyleTokens(components, ['fontFamily', 'font-family', 'fontSize', 'font-size'])
+      ],
+      spacing: [
+        data.spacing,
+        data.designTokens?.spacing,
+        details.spacing,
+        this.collectStyleTokens(components, [
+          'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+          'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+          'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+          'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+          'gap', 'rowGap', 'columnGap', 'row-gap', 'column-gap'
+        ])
+      ],
+      borderRadius: [
+        data.borderRadius,
+        data.borders,
+        data.radius,
+        data.designTokens?.borderRadius,
+        data.designTokens?.radius,
+        details.borderRadius,
+        details.radius,
+        this.collectStyleTokens(components, [
+          'borderRadius', 'border-radius',
+          'borderTopLeftRadius', 'border-top-left-radius',
+          'borderTopRightRadius', 'border-top-right-radius',
+          'borderBottomLeftRadius', 'border-bottom-left-radius',
+          'borderBottomRightRadius', 'border-bottom-right-radius'
+        ])
+      ]
+    };
+
+    const tokens = tokenSources[category]?.flatMap(value =>
+      category === 'typography' ? this.normalizeTypographyTokens(value) : this.asArray(value)
+    ) || [];
+
+    return this.uniqueTokens(tokens);
+  }
+
+  calculateTokenMatch(figmaTokens, webTokens) {
+    const webValues = new Set(webTokens.map(token => this.getTokenValue(token).toLowerCase()));
+    const matches = figmaTokens.filter(token => webValues.has(this.getTokenValue(token).toLowerCase())).length;
+    const total = Math.max(figmaTokens.length, webTokens.length);
+    return {
+      matches,
+      issues: Math.abs(figmaTokens.length - webTokens.length),
+      percentage: total ? Math.round((matches / total) * 100) : 0
+    };
+  }
+
   /**
    * Get default HTML template
    * @returns {string} HTML template
@@ -1513,15 +1664,18 @@ export class ReportGenerator {
    * @returns {string} HTML for colors analysis
    */
   generateColorsAnalysis(comparisonResults) {
-    const figmaColors = comparisonResults.figmaData?.colors || [];
-    const webColors = comparisonResults.webData?.colors || [];
+    const figmaColors = this.getVisualTokens(comparisonResults, 'figma', 'colors');
+    const webColors = this.getVisualTokens(comparisonResults, 'web', 'colors');
+    const colorMatch = this.calculateTokenMatch(figmaColors, webColors);
+    const figmaCount = comparisonResults.figmaData?.components?.length || comparisonResults.figmaData?.metadata?.componentCount || comparisonResults.extractionDetails?.figma?.componentCount || 0;
+    const webCount = comparisonResults.webData?.elements?.length || comparisonResults.webData?.metadata?.elementCount || comparisonResults.extractionDetails?.web?.elementCount || 0;
 
     return `
       <div class="visual-analysis-section">
         <div class="analysis-header">
           <h2>🎨 Color Palette Analysis</h2>
           <div class="match-summary">
-            <span class="match-percentage">0%</span>
+            <span class="match-percentage">${colorMatch.percentage}%</span>
             <span class="match-label">MATCH</span>
           </div>
         </div>
@@ -1531,13 +1685,13 @@ export class ReportGenerator {
             <h3>🔴 FIGMA TOKENS</h3>
             <div class="color-grid">
               ${figmaColors.map(color => `
-                <div class="color-swatch" style="background-color: ${color.value || color.hex || color}">
-                  <span class="color-label">${color.name || color.hex || color}</span>
+                <div class="color-swatch" style="background-color: ${this.escapeHtml(this.getTokenValue(color))}">
+                  <span class="color-label">${this.escapeHtml(color.name || this.getTokenValue(color))}</span>
                 </div>
               `).join('')}
             </div>
             <div class="color-stats">
-              <span>16 Figma • ${figmaColors.length} Colors</span>
+              <span>${figmaCount} Figma • ${figmaColors.length} Colors</span>
             </div>
           </div>
 
@@ -1545,13 +1699,13 @@ export class ReportGenerator {
             <h3>🌐 WEB EXTRACTION</h3>
             <div class="color-grid">
               ${webColors.map(color => `
-                <div class="color-swatch" style="background-color: ${color.value || color.hex || color}">
-                  <span class="color-label">${color.name || color.hex || color}</span>
+                <div class="color-swatch" style="background-color: ${this.escapeHtml(this.getTokenValue(color))}">
+                  <span class="color-label">${this.escapeHtml(color.name || this.getTokenValue(color))}</span>
                 </div>
               `).join('')}
             </div>
             <div class="color-stats">
-              <span>25 Web • ${webColors.length} Colors</span>
+              <span>${webCount} Web • ${webColors.length} Colors</span>
             </div>
           </div>
         </div>
@@ -1569,8 +1723,8 @@ export class ReportGenerator {
             </div>
             <div class="stat-box">
               <h4>COMPARISON</h4>
-              <div class="stat-item">Matches: <strong>0</strong></div>
-              <div class="stat-item">Issues: <strong>${Math.abs(figmaColors.length - webColors.length)}</strong></div>
+              <div class="stat-item">Matches: <strong>${colorMatch.matches}</strong></div>
+              <div class="stat-item">Issues: <strong>${colorMatch.issues}</strong></div>
             </div>
           </div>
         </div>
@@ -1584,15 +1738,16 @@ export class ReportGenerator {
    * @returns {string} HTML for typography analysis
    */
   generateTypographyAnalysis(comparisonResults) {
-    const figmaFonts = comparisonResults.figmaData?.typography || comparisonResults.figmaData?.fonts || [];
-    const webFonts = comparisonResults.webData?.fonts || comparisonResults.webData?.typography || [];
+    const figmaFonts = this.getVisualTokens(comparisonResults, 'figma', 'typography');
+    const webFonts = this.getVisualTokens(comparisonResults, 'web', 'typography');
+    const typographyMatch = this.calculateTokenMatch(figmaFonts, webFonts);
 
     return `
       <div class="visual-analysis-section">
         <div class="analysis-header">
           <h2>📝 Typography Analysis</h2>
           <div class="match-summary">
-            <span class="match-percentage">19%</span>
+            <span class="match-percentage">${typographyMatch.percentage}%</span>
             <span class="match-label">MATCH</span>
           </div>
         </div>
@@ -1638,15 +1793,16 @@ export class ReportGenerator {
    * @returns {string} HTML for spacing analysis
    */
   generateSpacingAnalysis(comparisonResults) {
-    const figmaSpacing = comparisonResults.figmaData?.spacing || [];
-    const webSpacing = comparisonResults.webData?.spacing || [];
+    const figmaSpacing = this.getVisualTokens(comparisonResults, 'figma', 'spacing');
+    const webSpacing = this.getVisualTokens(comparisonResults, 'web', 'spacing');
+    const spacingMatch = this.calculateTokenMatch(figmaSpacing, webSpacing);
 
     return `
       <div class="visual-analysis-section">
         <div class="analysis-header">
           <h2>📏 Spacing Analysis</h2>
           <div class="match-summary">
-            <span class="match-percentage">0%</span>
+            <span class="match-percentage">${spacingMatch.percentage}%</span>
             <span class="match-label">MATCH</span>
           </div>
         </div>
@@ -1686,15 +1842,16 @@ export class ReportGenerator {
    * @returns {string} HTML for border radius analysis
    */
   generateBorderRadiusAnalysis(comparisonResults) {
-    const figmaBorders = comparisonResults.figmaData?.borderRadius || comparisonResults.figmaData?.borders || [];
-    const webBorders = comparisonResults.webData?.borderRadius || comparisonResults.webData?.borders || [];
+    const figmaBorders = this.getVisualTokens(comparisonResults, 'figma', 'borderRadius');
+    const webBorders = this.getVisualTokens(comparisonResults, 'web', 'borderRadius');
+    const borderMatch = this.calculateTokenMatch(figmaBorders, webBorders);
 
     return `
       <div class="visual-analysis-section">
         <div class="analysis-header">
           <h2>🔲 Border Radius Analysis</h2>
           <div class="match-summary">
-            <span class="match-percentage">0%</span>
+            <span class="match-percentage">${borderMatch.percentage}%</span>
             <span class="match-label">MATCH</span>
           </div>
         </div>
@@ -1732,8 +1889,8 @@ export class ReportGenerator {
    * Get color count for tab badge
    */
   getColorCount(comparisonResults) {
-    const figmaColors = comparisonResults.figmaData?.colors || [];
-    const webColors = comparisonResults.webData?.colors || [];
+    const figmaColors = this.getVisualTokens(comparisonResults, 'figma', 'colors');
+    const webColors = this.getVisualTokens(comparisonResults, 'web', 'colors');
     return Math.max(figmaColors.length, webColors.length);
   }
 
@@ -1741,8 +1898,8 @@ export class ReportGenerator {
    * Get typography count for tab badge
    */
   getTypographyCount(comparisonResults) {
-    const figmaFonts = comparisonResults.figmaData?.typography || comparisonResults.figmaData?.fonts || [];
-    const webFonts = comparisonResults.webData?.fonts || comparisonResults.webData?.typography || [];
+    const figmaFonts = this.getVisualTokens(comparisonResults, 'figma', 'typography');
+    const webFonts = this.getVisualTokens(comparisonResults, 'web', 'typography');
     return Math.max(figmaFonts.length, webFonts.length);
   }
 
@@ -1750,8 +1907,8 @@ export class ReportGenerator {
    * Get spacing count for tab badge
    */
   getSpacingCount(comparisonResults) {
-    const figmaSpacing = comparisonResults.figmaData?.spacing || [];
-    const webSpacing = comparisonResults.webData?.spacing || [];
+    const figmaSpacing = this.getVisualTokens(comparisonResults, 'figma', 'spacing');
+    const webSpacing = this.getVisualTokens(comparisonResults, 'web', 'spacing');
     return Math.max(figmaSpacing.length, webSpacing.length);
   }
 
@@ -1759,8 +1916,8 @@ export class ReportGenerator {
    * Get border radius count for tab badge
    */
   getBorderRadiusCount(comparisonResults) {
-    const figmaBorders = comparisonResults.figmaData?.borderRadius || comparisonResults.figmaData?.borders || [];
-    const webBorders = comparisonResults.webData?.borderRadius || comparisonResults.webData?.borders || [];
+    const figmaBorders = this.getVisualTokens(comparisonResults, 'figma', 'borderRadius');
+    const webBorders = this.getVisualTokens(comparisonResults, 'web', 'borderRadius');
     return Math.max(figmaBorders.length, webBorders.length);
   }
 }
