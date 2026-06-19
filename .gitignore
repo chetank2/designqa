@@ -35,11 +35,22 @@ secrets/
 **/*.password
 **/figd_*
 
-# Output directories with potentially sensitive data
-output/reports/
-output/images/
-output/screenshots/
-output/tests/
+# Output directories with generated reports, screenshots, snapshots, and local data
+output/
+**/output/
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
+**/local-db.json
+
+# Debug/demo artifacts generated during local troubleshooting
+debug-*.html
+debug-*.png
+*_report.html
+latest_report.html
+new_report.html
+fixed_report.html
+clear-browser-cache.html
 
 # Logs
 *.log
@@ -158,6 +169,9 @@ apps/desktop-mac/saas-backend/
 apps/desktop-win/saas-backend/
 apps/desktop-mac/build/
 apps/desktop-win/build/
+*.dmg
+*.exe
+*.blockmap
 
 # npm cache
 **/.npm-cache/

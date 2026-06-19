@@ -136,8 +136,10 @@ export class ReportGenerator {
     html = html.replaceAll('{{webUrl}}', comparisonResults.webData?.url || 'URL');
     html = html.replaceAll('{{timestamp}}', new Date(comparisonResults.timestamp || Date.now()).toLocaleString());
 
+    const comparisons = this.getComparisons(comparisonResults);
+
     // Stats and Counts
-    const summary = comparisonResults.summary || {};
+    const summary = this.getSummary(comparisonResults);
     const figmaCount = comparisonResults.figmaData?.components?.length || comparisonResults.figmaData?.metadata?.componentCount || 0;
     const webCount = comparisonResults.webData?.elements?.length || 0;
 
@@ -154,16 +156,16 @@ export class ReportGenerator {
     html = html.replaceAll('{{lowSeverityCount}}', counts.low);
 
     // Total issues count for DevRev reports
-    const issueCount = summary.componentsAnalyzed || comparisonResults.comparisons?.length || 0;
+    const issueCount = summary.componentsAnalyzed || comparisons.length || 0;
     html = html.replaceAll('{{totalIssues}}', issueCount);
 
     // Total comparisons count for tab badges
-    const comparisonCount = comparisonResults.comparisons?.length || 0;
+    const comparisonCount = comparisons.length || 0;
     html = html.replaceAll('{{totalComparisons}}', comparisonCount);
 
     // Generate Sections
     html = html.replaceAll('{{designSystemValidation}}', this.generateDesignSystemValidationHtml(comparisonResults));
-    html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
+    html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisons));
     html = html.replaceAll('{{devrevIssuesTable}}', this.generateDevRevIssuesTable(comparisonResults));
 
     // Visual Analysis Sections
@@ -184,7 +186,7 @@ export class ReportGenerator {
 
     // JSON Data for interactivity
     const jsonData = JSON.stringify({
-      comparisons: comparisonResults.comparisons || [],
+      comparisons,
       summary: summary
     }).replace(/</g, '\\u003c');
     html = html.replaceAll('{{jsonData}}', jsonData);
@@ -323,6 +325,32 @@ export class ReportGenerator {
     });
 
     return tablesHtml;
+  }
+
+  getComparisons(comparisonResults = {}) {
+    return comparisonResults.comparisons ||
+      comparisonResults.comparison?.comparisons ||
+      comparisonResults.result?.comparisons ||
+      comparisonResults.result?.comparison?.comparisons ||
+      [];
+  }
+
+  getSummary(comparisonResults = {}) {
+    const summary = comparisonResults.summary ||
+      comparisonResults.comparison?.summary ||
+      comparisonResults.result?.summary ||
+      comparisonResults.result?.comparison?.summary ||
+      {};
+
+    return {
+      ...summary,
+      overallMatchPercentage: summary.overallMatchPercentage ??
+        summary.overallSimilarity ??
+        comparisonResults.comparison?.overallSimilarity ??
+        comparisonResults.result?.comparison?.overallSimilarity ??
+        0,
+      severityCounts: summary.severityCounts || summary.severity || { high: 0, medium: 0, low: 0 }
+    };
   }
 
   /**

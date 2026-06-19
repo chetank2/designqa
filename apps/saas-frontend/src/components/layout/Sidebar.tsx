@@ -15,6 +15,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getFrontendVersion } from '../../services/version'
+import { ServerStatusBadge } from '../ui/ServerStatusBadge'
 
 interface SidebarProps {
   isOpen: boolean
@@ -194,8 +195,14 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
       {/* Footer / Status */}
       <div className="p-4 border-t border-border/40 bg-muted/5 backdrop-blur-sm">
         {isOpen && (
-          <div className="flex items-center justify-start px-2">
+          <div className="flex items-center justify-between gap-3 px-2">
             <span className="text-xs text-muted-foreground">v{getFrontendVersion()}</span>
+            <ServerStatusBadge />
+          </div>
+        )}
+        {!isOpen && (
+          <div className="flex justify-center">
+            <ServerStatusBadge compact />
           </div>
         )}
       </div>

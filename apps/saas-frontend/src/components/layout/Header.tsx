@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAppMode } from '../../contexts/ModeContext'
 import { ModeBadge } from '../ui/ModeBadge'
+import { ServerStatusBadge } from '../ui/ServerStatusBadge'
 
 interface HeaderProps {
   title: string
@@ -50,6 +51,8 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-full bg-muted/20 border border-white/5 mx-2">
             <ModeBadge />
+            <div className="w-px h-4 bg-border/20 mx-1" />
+            <ServerStatusBadge />
             <div className="w-px h-4 bg-border/20 mx-1" />
             <MCPStatus />
           </div>

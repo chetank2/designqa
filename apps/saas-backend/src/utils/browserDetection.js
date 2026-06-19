@@ -94,10 +94,14 @@ export function getBrowserArgs(platform = process.platform) {
  */
 export function getBrowserConfig(options = {}) {
   const detectedExecutablePath = getBrowserExecutablePath();
-  const executablePath = options.executablePath ?? detectedExecutablePath;
-  const args = options.args ?? getBrowserArgs();
+  const cleanOptions = Object.fromEntries(
+    Object.entries(options).filter(([, value]) => value !== undefined)
+  );
+  const executablePath = cleanOptions.executablePath ?? detectedExecutablePath;
+  const args = cleanOptions.args ?? getBrowserArgs();
   
   return {
+    ...cleanOptions,
     headless: options.headless !== false ? 'new' : false,
     executablePath,
     args,
@@ -109,8 +113,7 @@ export function getBrowserConfig(options = {}) {
     ignoreDefaultArgs: ['--disable-extensions'],
     handleSIGINT: false,
     handleSIGTERM: false,
-    handleSIGHUP: false,
-    ...options
+    handleSIGHUP: false
   };
 }
 

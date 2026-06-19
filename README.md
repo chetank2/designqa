@@ -1,155 +1,172 @@
-# DesignQA - Figma-Web Comparison Tool
+# DesignQA
 
-A tool for comparing Figma designs with web implementations.
+DesignQA helps you compare a Figma design with a real website and see what does not match.
 
-## 📥 Download Desktop App
+It is made for designers, product managers, QA teams, founders, and developers who want a simple way to check whether a built page matches the design. You paste a Figma link, paste a website link, run a comparison, and get a readable report with mismatches like color, typography, spacing, size, layout, and missing elements.
 
-**Latest Release: v2.0.2 - Enhanced Component Extraction & Automated Distribution**
+## Download
 
-**Direct download links:**
+Latest release: **v2.0.4**
 
-- **macOS (Apple Silicon M1/M2/M3):** [Download DMG](https://github.com/chetan/designqa/releases/download/v2.0.2/DesignQA-2.0.1-arm64.dmg)
-- **macOS (Intel):** [Download DMG](https://github.com/chetan/designqa/releases/download/v2.0.2/DesignQA-2.0.1.dmg)
-- **Windows:** [Download EXE](https://github.com/chetan/designqa/releases/download/v2.0.2/DesignQA%20Setup%202.0.1.exe)
+- **Mac, Apple Silicon:** [Download DesignQA-2.0.4-arm64.dmg](https://github.com/chetank2/designqa/releases/download/v2.0.4/DesignQA-2.0.4-arm64.dmg)
+- **Mac, Intel:** [Download DesignQA-2.0.4.dmg](https://github.com/chetank2/designqa/releases/download/v2.0.4/DesignQA-2.0.4.dmg)
+- **Release page:** [DesignQA v2.0.4 on GitHub](https://github.com/chetank2/designqa/releases/tag/v2.0.4)
 
-**What's New in v2.0.2:**
-- 🎯 Enhanced component extraction with better MCP metadata parsing
-- 📊 Professional tabbed reports interface with keyboard shortcuts
-- 🚀 Automated distribution system with GitHub Actions
-- 🔧 Improved build process and desktop app packaging
-- 🎨 Better visual properties extraction (colors, typography, spacing)
+If your Mac has an M1, M2, M3, or M4 chip, use the **Apple Silicon** download. If it is an older Intel Mac, use the **Intel** download.
 
-**Full Release Notes:** [View on GitHub](https://github.com/chetan/designqa/releases/tag/v2.0.2)
+## What You Can Do
 
-**Or visit:** [download.html](download.html) for a simple download page
+- Compare a Figma frame or component against a live web page.
+- Find visual differences in colors, text styles, spacing, sizing, and layout.
+- Generate an HTML report that can be shared with designers, developers, or QA.
+- Run everything locally from the desktop app.
+- Use Figma Desktop Dev Mode / MCP when available for better extraction.
 
----
+## Who This Is For
 
-## Features
+You do not need to be technical to use DesignQA. It is useful when:
 
-- Extract design data from Figma using the Figma API and MCP
-- Extract web implementation data using Puppeteer
-- Compare design data with web implementation data
-- Generate detailed HTML reports of comparison results
-- RESTful API for integration with other tools
+- A designer wants to check whether implementation matches the design.
+- A product manager wants a clear QA report before release.
+- A QA person wants visual mismatch evidence.
+- A developer wants a punch list of UI differences.
+- A founder or client wants to verify that a page was built correctly.
 
-## Architecture
+## Install on Mac
 
-The project follows a modular architecture:
+1. Download the correct DMG from the links above.
+2. Open the DMG file.
+3. Drag **DesignQA** into **Applications**.
+4. Open DesignQA from Applications.
+5. If macOS blocks it because it is not signed, right-click the app and choose **Open**.
 
-- `src/core/` - Core utilities and server setup
-  - `config/` - Configuration loading and management
-  - `server/` - Express server setup, middleware, and routes
-  - `utils/` - Utility functions for logging, file system operations, etc.
-- `src/extractors/` - Data extraction modules
-  - `base/` - Base extractor class
-  - `figma/` - Figma data extraction
-  - `web/` - Web implementation data extraction
-- `src/comparison/` - Comparison engine
-- `src/reporting/` - Report generation
-- `src/mcp/` - Figma MCP integration
-- `src/database/` - Unified database layer
-  - `adapters/` - Database adapters (SQLite, Supabase)
-  - `repositories/` - Data access layer
-  - `migrations/` - Schema migration system
-- `src/services/` - Business logic layer
-- `src/storage/` - Storage abstraction (filesystem, Supabase Storage)
+Note: the current local builds are not code signed, so macOS may show a warning the first time you open the app.
 
-## API Endpoints
+## Basic Use
 
-- `GET /api/figma/file/:fileId` - Get Figma file data
-- `GET /api/figma/file/:fileId/node/:nodeId` - Get Figma node data
-- `GET /api/figma/mcp/status` - Check MCP status
-- `POST /api/web/extract` - Extract web data
-- `POST /api/compare` - Compare Figma and web data
-- `POST /api/report` - Generate HTML report
-- `POST /api/analyze` - Extract, compare, and generate report in one step
+1. Open **DesignQA**.
+2. Make sure the server badge in the app shows the local server is running.
+3. Open your design in **Figma Desktop**.
+4. In Figma, select the frame or component you want to compare.
+5. Paste the Figma URL into DesignQA.
+6. Paste the live website URL into DesignQA.
+7. Click **Extract Design & Web Data**.
+8. Review the results in the app.
+9. Open or download the generated HTML report.
 
-## Getting Started
+## Figma Setup
 
-### Prerequisites
+For best results, use Figma Desktop:
 
-- Node.js 18 or later
-- Figma API key
+1. Install or open **Figma Desktop**.
+2. Open the file you want to compare.
+3. Select the exact frame or component.
+4. Make sure Dev Mode / MCP is enabled in Figma if your setup uses it.
+5. Run the comparison in DesignQA.
 
-### Environment Variables
+If Figma extraction fails, check that the file is open in Figma Desktop and the target frame/component is selected.
 
-**Important for Vite builds**: Vite only reads environment variables from `frontend/.env` at build time, not from the root `.env`. 
+## Website Setup
 
-For Supabase configuration (SaaS mode), ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set in `frontend/.env`. 
+DesignQA opens the website in an automated browser so it can inspect the page visually and structurally.
 
-The build process automatically syncs `VITE_` prefixed variables from root `.env` to `frontend/.env` via `npm run sync:env`. See [docs/guides/VITE_ENV_SETUP.md](docs/guides/VITE_ENV_SETUP.md) for details.
+Use a URL that the app can access:
 
-### Installation
+- Public website URLs work best.
+- Localhost URLs can work if the site is running on your machine.
+- Login-protected pages may require credentials or a saved browser session.
+- Pages with bot protection, heavy animations, or restricted iframes may be harder to extract.
 
-1. Clone the repository
-2. Install dependencies:
+## Reports
+
+After a comparison, DesignQA creates a report showing:
+
+- What was analyzed.
+- How many Figma components and web elements were found.
+- Visual mismatches.
+- Match and mismatch details.
+- Design token differences such as colors and typography.
+
+Reports are HTML files, so they can be opened in a browser and shared with others.
+
+## Troubleshooting
+
+### The app opens, but comparison fails
+
+Check the server badge in the app. DesignQA uses an embedded local server to run extraction and comparison. If the server is not running, restart the app.
+
+### Figma extraction fails
+
+Open Figma Desktop, open the target file, select the frame/component, and try again.
+
+### Web extraction fails
+
+The app needs Chrome or a compatible browser to inspect web pages. Make sure Google Chrome is installed on your Mac.
+
+### The report shows no mismatches
+
+Run the comparison again with the latest v2.0.4 build. Older local reports may not include enough saved comparison data to regenerate mismatch rows.
+
+### macOS says the app is from an unidentified developer
+
+This build is not code signed. Right-click the app, choose **Open**, then confirm.
+
+## Privacy
+
+The desktop app is designed to run locally. Your Figma link, website link, extracted data, and generated reports are stored on your machine unless you choose to share them.
+
+On macOS, local app data is stored under:
+
+```text
+~/Library/Application Support/@designqa/desktop-mac/
+```
+
+## For Developers
+
+This repository contains the desktop app, frontend, backend, comparison engine, and shared packages.
+
+### Requirements
+
+- Node.js 18 or newer
+- pnpm
+- Google Chrome
+
+### Install
 
 ```bash
 pnpm install
 ```
 
-3. Create a `.env` file (copy from `env.example`):
+### Build the Mac App
 
 ```bash
-cp .env.example .env
+pnpm run build:desktop:mac
 ```
 
-Configure environment variables:
-- `DATABASE_URL` - SQLite database path (default: `file:./data/app.db`) for local mode
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY` - For SaaS mode (optional)
+Built DMGs are written to:
 
-If you enable desktop-required web mode (`VITE_REQUIRE_DESKTOP=true`), the desktop backend must serve HTTPS on localhost. See `docs/guides/DESKTOP_HTTPS.md` for setup (`HTTPS_*` and `VITE_DESKTOP_HTTPS_URL`).
-
-4. Initialize database (runs automatically on first start):
-
-```bash
-npm run db:migrate
+```text
+apps/desktop-mac/build/
 ```
 
-5. Migrate existing file-based data (if upgrading):
+### Project Structure
 
-```bash
-npm run db:migrate-data
-```
+- `apps/desktop-mac` - macOS Electron desktop app
+- `apps/desktop-win` - Windows desktop app
+- `apps/saas-frontend` - React frontend
+- `apps/saas-backend` - local/API backend
+- `packages/compare-engine` - comparison logic
+- `packages/mcp-client` - Figma MCP client
+- `packages/shared-types` - shared TypeScript types
 
-### Usage
+## Contributing
 
-Start the server:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and pull request guidance.
 
-```bash
-npm start
-```
+## Security
 
-The server will run on port 3847 by default.
-
-> **Note:** Default server is now 'main'; run `node start-server.js` to start the modular server implementation.
-
-## Development
-
-Run the server in development mode:
-
-```bash
-npm run dev
-```
-
-## Local Server Launcher
-
-If you want a standalone local server without the full desktop UI, use the launcher build.
-See `docs/guides/LOCAL_SERVER_LAUNCHER.md` for build and packaging details.
+See [SECURITY.md](SECURITY.md) for reporting security issues.
 
 ## License
 
 MIT
-
-## Contributing
-
-See `CONTRIBUTING.md` for setup, workflow, and PR guidelines.
-
-## Security
-
-Please report security issues via `SECURITY.md`.
-
-## Release Process
-
-See `docs/RELEASE.md` for tagging and release steps.

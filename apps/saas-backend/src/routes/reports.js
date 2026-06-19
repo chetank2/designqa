@@ -68,6 +68,28 @@ const findReportHtmlByPath = async (reportPath) => {
   return null;
 };
 
+const buildReportDataFromComparison = (comparisonData = {}) => {
+  const result = comparisonData.result || {};
+  const comparison = result.comparison || comparisonData.comparison || {};
+  const summary = result.summary || comparison.summary || comparisonData.summary || {};
+
+  return {
+    figmaData: result.figmaData || comparisonData.figmaData || {},
+    webData: result.webData || comparisonData.webData || {},
+    comparisons: result.comparisons || comparison.comparisons || comparisonData.comparisons || [],
+    summary: {
+      ...summary,
+      overallMatchPercentage: summary.overallMatchPercentage ??
+        summary.overallSimilarity ??
+        comparison.overallSimilarity ??
+        0,
+      severityCounts: summary.severityCounts || summary.severity || { high: 0, medium: 0, low: 0 }
+    },
+    timestamp: result.timestamp || comparisonData.createdAt || new Date().toISOString(),
+    metadata: result.metadata || comparisonData.metadata || {}
+  };
+};
+
 // Common function for listing reports
 const handleReportsList = async (req, res) => {
   try {
@@ -323,14 +345,7 @@ router.get('/:id/view', async (req, res) => {
             const reportGeneratorModule = await import('../reporting/index.js');
             const reportGenerator = reportGeneratorModule.getReportGenerator();
 
-            const reportDataForGeneration = {
-              figmaData: comparisonData.result?.figmaData || comparisonData.figmaData || {},
-              webData: comparisonData.result?.webData || comparisonData.webData || {},
-              comparisons: comparisonData.result?.comparisons || comparisonData.comparisons || [],
-              summary: comparisonData.result?.summary || comparisonData.summary || {},
-              timestamp: comparisonData.result?.timestamp || comparisonData.createdAt || new Date().toISOString(),
-              metadata: comparisonData.result?.metadata || comparisonData.metadata || {}
-            };
+            const reportDataForGeneration = buildReportDataFromComparison(comparisonData);
 
             const htmlContent = await reportGenerator.generateHtmlContent(reportDataForGeneration);
 
@@ -490,14 +505,7 @@ router.post('/save', async (req, res) => {
         const reportGeneratorModule = await import('../reporting/index.js');
         const reportGenerator = reportGeneratorModule.getReportGenerator();
 
-        const reportDataForGeneration = {
-          figmaData: comparisonData.result?.figmaData || comparisonData.figmaData || {},
-          webData: comparisonData.result?.webData || comparisonData.webData || {},
-          comparisons: comparisonData.result?.comparisons || comparisonData.comparisons || [],
-          summary: comparisonData.result?.summary || comparisonData.summary || {},
-          timestamp: comparisonData.result?.timestamp || comparisonData.createdAt || new Date().toISOString(),
-          metadata: comparisonData.result?.metadata || comparisonData.metadata || {}
-        };
+        const reportDataForGeneration = buildReportDataFromComparison(comparisonData);
 
         const htmlContent = await reportGenerator.generateHtmlContent(reportDataForGeneration);
         const storage = await getStorage(req);

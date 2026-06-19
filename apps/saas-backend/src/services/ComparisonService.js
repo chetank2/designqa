@@ -21,7 +21,12 @@ export class ComparisonService {
       figmaUrl: data.figmaUrl,
       webUrl: data.webUrl,
       credentialId: data.credentialId || null,
-      status: 'pending'
+      status: data.status || 'pending',
+      progress: data.progress || 0,
+      result: data.result || null,
+      durationMs: data.durationMs || null,
+      errorMessage: data.errorMessage || null,
+      completedAt: data.completedAt || (data.status === 'completed' ? new Date().toISOString() : null)
     });
 
     return comparison;
@@ -119,4 +124,3 @@ export class ComparisonService {
     return await this.repository.findByUrls(figmaUrl, webUrl);
   }
 }
-
